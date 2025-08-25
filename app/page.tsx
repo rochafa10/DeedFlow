@@ -5,12 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
-  Home, 
-  MapPin, 
   Calendar, 
-  DollarSign, 
   FileText, 
   TrendingUp,
   Search,

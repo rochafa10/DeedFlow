@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Calculator,
   TrendingUp,
-  DollarSign,
   BarChart3,
   PieChart,
   FileText,

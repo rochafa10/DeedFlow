@@ -113,7 +113,7 @@ export function AICostMonitor() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Today's Cost
+              Today&apos;s Cost
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -135,8 +135,8 @@ export function AICostMonitor() {
             <Progress 
               value={budgetUsedPercentage} 
               className="mt-2 h-2"
-              // @ts-ignore - Progress component color prop
-              indicatorClassName={isOverBudget ? 'bg-red-500' : isNearLimit ? 'bg-yellow-500' : 'bg-green-500'}
+                          // @ts-expect-error - Progress component color prop
+            indicatorClassName={isOverBudget ? 'bg-red-500' : isNearLimit ? 'bg-yellow-500' : 'bg-green-500'}
             />
           </CardContent>
         </Card>

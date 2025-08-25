@@ -499,7 +499,7 @@ export default function PropertyAnalysisPage() {
                     <div>
                       <Calculator className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">
-                        Enter investment parameters and click "Calculate Returns" to see analysis
+                        Enter investment parameters and click &quot;Calculate Returns&quot; to see analysis
                       </p>
                     </div>
                   </div>

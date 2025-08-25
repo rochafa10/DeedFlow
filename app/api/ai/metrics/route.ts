@@ -11,7 +11,7 @@ const TOKEN_PRICING = {
   'text-embedding-3-small': { input: 0.00002, output: 0 },
 };
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const supabase = createClient();
     
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       .gte('created_at', startOfMonth.toISOString());
 
     // Calculate metrics
-    const calculateCost = (logs: any[]) => {
+    const calculateCost = (logs: Array<{ model: string; input_tokens: number; output_tokens: number }>) => {
       if (!logs) return 0;
       return logs.reduce((total, log) => {
         const pricing = TOKEN_PRICING[log.model as keyof typeof TOKEN_PRICING];
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       }, 0);
     };
 
-    const calculateTokens = (logs: any[], model: string) => {
+    const calculateTokens = (logs: Array<{ model: string; input_tokens: number; output_tokens: number }>, model: string) => {
       if (!logs) return 0;
       return logs
         .filter(log => log.model.includes(model))

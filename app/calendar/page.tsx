@@ -8,13 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Calendar,
   MapPin,
-  Clock,
   Users,
   DollarSign,
   FileText,
   ChevronLeft,
   ChevronRight,
-  Download,
   ExternalLink,
   Home
 } from 'lucide-react';
@@ -184,19 +182,7 @@ const getAuctionTypeColor = (type: AuctionType) => {
   }
 };
 
-// Helper function to get border color based on auction type
-const getAuctionBorderColor = (type: AuctionType) => {
-  switch (type) {
-    case 'Tax Lien':
-      return 'border-blue-500';
-    case 'Tax Deed':
-      return 'border-red-500';
-    case 'Redeemable Deed':
-      return 'border-green-500';
-    default:
-      return 'border-gray-500';
-  }
-};
+
 
 export default function AuctionCalendar() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());

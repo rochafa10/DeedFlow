@@ -69,7 +69,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function calculateFinancialAnalysis(data: any): FinancialAnalysis {
+function calculateFinancialAnalysis(data: {
+  propertyId: string;
+  exitStrategy?: string;
+  marketValue?: number;
+  repairCosts?: number;
+  purchasePrice: number;
+  holdingTime: number;
+  loanAmount: number;
+  interestRate: number;
+}): FinancialAnalysis {
   const {
     propertyId,
     exitStrategy = 'flip',
