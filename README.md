@@ -306,3 +306,9 @@ For support, email support@taxdeedplatform.com or open an issue on GitHub.
 **Built with ❤️ for Real Estate Investors**
 
 *Making tax deed investing accessible and profitable for everyone*
+
+---
+
+**Built with ❤️ for Real Estate Investors**
+
+*Making tax deed investing accessible and profitable for everyone*
