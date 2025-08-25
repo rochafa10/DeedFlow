@@ -1,0 +1,255 @@
+{
+  "name": "AI Agent - Intelligent Property Researcher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-research-property",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Research Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "ai-research-property"
+    },
+    {
+      "parameters": {
+        "content": "## AI Property Research Agent\n\nYou are an expert property researcher with access to multiple tools. Your goal is to gather comprehensive information about the property and provide actionable investment insights.\n\nYou have access to:\n1. Web search for property information\n2. Database queries for historical data\n3. Calculation tools for financial analysis\n4. Document generation for reports\n\nAlways:\n- Verify information from multiple sources\n- Calculate specific financial metrics\n- Identify red flags and opportunities\n- Provide data-driven recommendations",
+        "options": {}
+      },
+      "id": "agent_instructions",
+      "name": "Agent Instructions",
+      "type": "@n8n/n8n-nodes-langchain.documentDefault",
+      "typeVersion": 1,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "name": "Property Research Agent",
+        "instructions": "={{ $('Agent Instructions').first().json.text }}",
+        "model": "gpt-4-turbo-preview",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 2000
+        }
+      },
+      "id": "ai_agent",
+      "name": "AI Research Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [850, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search the web for current information about properties, market conditions, crime rates, school ratings, and neighborhood data. Use this for any information not in the database.",
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "search_depth",
+              "value": "advanced"
+            },
+            {
+              "name": "max_results",
+              "value": "5"
+            }
+          ]
+        },
+        "headers": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.TAVILY_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "web_search_tool",
+      "name": "Web Search Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Query the property database to get historical data, previous sales, tax information, and property details. Returns structured data about properties.",
+        "resource": "database",
+        "operation": "select",
+        "schema": "public",
+        "table": "properties",
+        "limit": 10,
+        "filterType": "string"
+      },
+      "id": "database_tool",
+      "name": "Database Query Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolDatabase",
+      "typeVersion": 1,
+      "position": [650, 600],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Perform financial calculations for ROI, cash flow, cap rate, and other investment metrics. Provide the numbers and specify the calculation needed.",
+        "jsCode": "// Financial calculator tool\nconst { calculation, ...params } = $input.first().json;\n\nswitch(calculation) {\n  case 'roi':\n    const profit = params.salePrice - params.totalInvestment;\n    const roi = (profit / params.totalInvestment) * 100;\n    return { roi: roi.toFixed(2) + '%', profit };\n    \n  case 'cap_rate':\n    const capRate = (params.noi / params.purchasePrice) * 100;\n    return { capRate: capRate.toFixed(2) + '%' };\n    \n  case 'cash_flow':\n    const cashFlow = params.monthlyRent - params.monthlyExpenses;\n    const annualCashFlow = cashFlow * 12;\n    return { monthlyCashFlow: cashFlow, annualCashFlow };\n    \n  case '70_percent_rule':\n    const maxBid = (params.arv * 0.7) - params.repairCosts;\n    return { maxBid, formula: '(ARV × 0.7) - Repair Costs' };\n    \n  default:\n    return { error: 'Unknown calculation type' };\n}"
+      },
+      "id": "calculator_tool",
+      "name": "Financial Calculator Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [650, 700]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Research this property thoroughly:\n\nAddress: {{ $json.address }}\nParcel: {{ $json.parcelNumber }}\nCounty: {{ $json.county }}, {{ $json.state }}\nMinimum Bid: ${{ $json.minimumBid }}\n\nProvide:\n1. Comprehensive market analysis\n2. Property history and ownership\n3. Neighborhood assessment (crime, schools, amenities)\n4. Investment calculations (ROI, cap rate, cash flow)\n5. Comparable sales analysis\n6. Risk assessment\n7. Recommended bid range\n8. Exit strategy recommendations\n\nBe specific with numbers and data sources."
+      },
+      "id": "research_prompt",
+      "name": "Research Prompt",
+      "type": "@n8n/n8n-nodes-langchain.outputParser",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "embeddings",
+      "name": "OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "collectionName": "property_research",
+        "options": {}
+      },
+      "id": "vector_store",
+      "name": "Vector Store (Memory)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process and structure the agent's research\nconst agentResponse = $('AI Research Agent').first().json;\nconst originalRequest = $('Research Request').first().json;\n\n// Parse agent response\nlet researchResults;\ntry {\n  if (typeof agentResponse === 'string') {\n    researchResults = { summary: agentResponse };\n  } else if (agentResponse.output) {\n    researchResults = agentResponse.output;\n  } else {\n    researchResults = agentResponse;\n  }\n} catch (e) {\n  researchResults = { error: 'Failed to parse agent response', details: e.message };\n}\n\n// Structure the comprehensive report\nconst report = {\n  propertyId: originalRequest.propertyId,\n  parcelNumber: originalRequest.parcelNumber,\n  researchDate: new Date().toISOString(),\n  \n  // Agent findings\n  marketAnalysis: researchResults.marketAnalysis || 'Pending research',\n  propertyHistory: researchResults.propertyHistory || 'Pending research',\n  neighborhoodAssessment: researchResults.neighborhoodAssessment || 'Pending research',\n  financialAnalysis: researchResults.financialAnalysis || 'Pending research',\n  comparables: researchResults.comparables || 'Pending research',\n  riskAssessment: researchResults.riskAssessment || 'Pending research',\n  \n  // Investment recommendations\n  recommendations: {\n    bidRange: researchResults.bidRange || 'Requires further analysis',\n    exitStrategy: researchResults.exitStrategy || 'Multiple options available',\n    expectedROI: researchResults.roi || 'Calculate after bid',\n    confidence: researchResults.confidence || 'Medium'\n  },\n  \n  // Metadata\n  metadata: {\n    researchDepth: 'comprehensive',\n    dataSources: ['web_search', 'database', 'calculations', 'ai_analysis'],\n    modelUsed: 'gpt-4-turbo',\n    processingTime: Date.now() - new Date(originalRequest.timestamp || Date.now()).getTime()\n  },\n  \n  // Full agent output for reference\n  fullAgentResponse: researchResults\n};\n\nreturn [report];"
+      },
+      "id": "process_research",
+      "name": "Process Research Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "ai_research_reports",
+        "columns": "property_id,parcel_number,research_type,report_data,confidence_score,created_at",
+        "additionalFields": {}
+      },
+      "id": "save_research",
+      "name": "Save Research Report",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "send_response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Research Request": {
+      "main": [[{ "node": "Research Prompt", "type": "main", "index": 0 }]]
+    },
+    "Agent Instructions": {
+      "main": [[{ "node": "AI Research Agent", "type": "main", "index": 0 }]]
+    },
+    "Research Prompt": {
+      "main": [[{ "node": "AI Research Agent", "type": "main", "index": 0 }]]
+    },
+    "AI Research Agent": {
+      "main": [[{ "node": "Process Research Results", "type": "main", "index": 0 }]]
+    },
+    "Web Search Tool": {
+      "ai_tool": [[{ "node": "AI Research Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Database Query Tool": {
+      "ai_tool": [[{ "node": "AI Research Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Financial Calculator Tool": {
+      "ai_tool": [[{ "node": "AI Research Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [[{ "node": "Vector Store (Memory)", "type": "ai_embedding", "index": 0 }]]
+    },
+    "Vector Store (Memory)": {
+      "ai_vectorStore": [[{ "node": "AI Research Agent", "type": "ai_vectorStore", "index": 0 }]]
+    },
+    "Process Research Results": {
+      "main": [
+        [
+          { "node": "Save Research Report", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save Research Report": {
+      "main": [[{ "node": "Send Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ai-agent", "research", "autonomous"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

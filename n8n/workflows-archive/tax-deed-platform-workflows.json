@@ -1,0 +1,482 @@
+{
+  "name": "Tax Deed Platform - Complete Workflow Set",
+  "description": "All n8n workflows for Tax Deed Platform",
+  "workflows": [
+    {
+      "name": "Property Enrichment Workflow",
+      "webhook_path": "/webhook/property-enrichment",
+      "description": "Enriches property data from multiple sources",
+      "nodes": [
+        {
+          "type": "webhook",
+          "name": "Webhook Trigger",
+          "path": "/property-enrichment",
+          "method": "POST"
+        },
+        {
+          "type": "http_request",
+          "name": "Fetch County Data",
+          "description": "Get property data from county assessor",
+          "url": "https://api.county.gov/property/{{$json.parcelNumber}}"
+        },
+        {
+          "type": "http_request", 
+          "name": "Zillow API",
+          "description": "Get Zillow Zestimate and property details",
+          "url": "https://api.zillow.com/property/{{$json.address}}"
+        },
+        {
+          "type": "http_request",
+          "name": "Google Maps Geocoding",
+          "description": "Get coordinates and neighborhood info",
+          "url": "https://maps.googleapis.com/maps/api/geocode/json"
+        },
+        {
+          "type": "code",
+          "name": "Calculate Metrics",
+          "description": "Calculate investment metrics and scores",
+          "code": `
+            const property = $input.all()[0].json;
+            
+            // Calculate investment metrics
+            const marketValue = property.zillowData.zestimate || property.countyData.assessedValue * 1.2;
+            const minBid = property.amountDue;
+            const profitPotential = marketValue - minBid - 35000; // Assuming $35k rehab
+            
+            // Calculate score (0-100)
+            let score = 50;
+            if (profitPotential > 50000) score += 20;
+            if (profitPotential > 100000) score += 30;
+            if (property.bedrooms >= 3) score += 10;
+            if (property.bathrooms >= 2) score += 10;
+            if (property.lotSize > 7000) score += 10;
+            
+            // Determine classification
+            let classification = 'C';
+            if (score >= 80) classification = 'A';
+            else if (score >= 60) classification = 'B';
+            
+            return {
+              ...property,
+              marketValue,
+              profitPotential,
+              score: Math.min(score, 100),
+              classification,
+              capRate: (property.estimatedRent * 12) / marketValue,
+              grossYield: (property.estimatedRent * 12) / minBid
+            };
+          `
+        },
+        {
+          "type": "supabase",
+          "name": "Update Property",
+          "operation": "upsert",
+          "table": "properties",
+          "description": "Save enriched data to database"
+        },
+        {
+          "type": "respond_webhook",
+          "name": "Return Response",
+          "response": {
+            "status": "success",
+            "data": "{{$json}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inspection Report Generator",
+      "webhook_path": "/webhook/inspection-report",
+      "description": "Generates property inspection reports",
+      "nodes": [
+        {
+          "type": "webhook",
+          "name": "Webhook Trigger",
+          "path": "/inspection-report",
+          "method": "POST"
+        },
+        {
+          "type": "supabase",
+          "name": "Get Property Data",
+          "operation": "select",
+          "table": "properties",
+          "filter": "id={{$json.propertyId}}"
+        },
+        {
+          "type": "code",
+          "name": "Generate Inspection Items",
+          "code": `
+            const property = $input.all()[0].json;
+            
+            // Generate inspection items based on property age and type
+            const yearBuilt = property.yearBuilt || 1980;
+            const age = new Date().getFullYear() - yearBuilt;
+            
+            const inspectionItems = [
+              {
+                category: 'Exterior',
+                items: [
+                  {
+                    name: 'Roof Condition',
+                    status: age > 20 ? 'fair' : 'good',
+                    notes: age > 20 ? 'May need replacement in 5-7 years' : 'Good condition',
+                    estimatedCost: age > 20 ? 8000 : 0
+                  },
+                  {
+                    name: 'Siding/Exterior Walls',
+                    status: age > 15 ? 'fair' : 'good',
+                    notes: 'Check for paint and repairs',
+                    estimatedCost: age > 15 ? 3000 : 500
+                  }
+                ]
+              },
+              {
+                category: 'Systems',
+                items: [
+                  {
+                    name: 'HVAC',
+                    status: age > 15 ? 'fair' : 'good',
+                    notes: 'Service recommended',
+                    estimatedCost: age > 15 ? 5000 : 200
+                  },
+                  {
+                    name: 'Plumbing',
+                    status: age > 30 ? 'poor' : 'fair',
+                    notes: age > 30 ? 'Galvanized pipes may need replacement' : 'Minor updates needed',
+                    estimatedCost: age > 30 ? 8000 : 1000
+                  }
+                ]
+              }
+            ];
+            
+            const totalRepairCosts = inspectionItems
+              .flatMap(cat => cat.items)
+              .reduce((sum, item) => sum + item.estimatedCost, 0);
+            
+            return {
+              propertyId: property.id,
+              inspectionDate: new Date().toISOString(),
+              items: inspectionItems,
+              estimatedRepairs: totalRepairCosts,
+              overallCondition: totalRepairCosts > 20000 ? 'poor' : totalRepairCosts > 10000 ? 'fair' : 'good'
+            };
+          `
+        },
+        {
+          "type": "supabase",
+          "name": "Save Inspection",
+          "operation": "insert",
+          "table": "inspections"
+        },
+        {
+          "type": "supabase",
+          "name": "Save Inspection Items",
+          "operation": "insert",
+          "table": "inspection_items"
+        },
+        {
+          "type": "respond_webhook",
+          "name": "Return Report",
+          "response": {
+            "status": "success",
+            "data": "{{$json}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Financial Analysis Calculator",
+      "webhook_path": "/webhook/financial-analysis",
+      "description": "Calculates investment returns for different strategies",
+      "nodes": [
+        {
+          "type": "webhook",
+          "name": "Webhook Trigger",
+          "path": "/financial-analysis",
+          "method": "POST"
+        },
+        {
+          "type": "code",
+          "name": "Calculate Strategies",
+          "code": `
+            const input = $input.all()[0].json;
+            const { purchasePrice, rehabBudget, arv, monthlyRent } = input;
+            
+            // Fix & Flip Strategy
+            const flipClosingCosts = purchasePrice * 0.03;
+            const flipHoldingCosts = 500 * 6; // 6 months
+            const flipSellingCosts = arv * 0.08;
+            const flipTotalInvestment = purchasePrice + rehabBudget + flipClosingCosts + flipHoldingCosts;
+            const flipProfit = arv - flipTotalInvestment - flipSellingCosts;
+            const flipROI = (flipProfit / flipTotalInvestment) * 100;
+            
+            // BRRRR Strategy
+            const brrrClosingCosts = purchasePrice * 0.03;
+            const brrrHoldingCosts = 500 * 3; // 3 months
+            const brrrTotalInvestment = purchasePrice + rehabBudget + brrrClosingCosts + brrrHoldingCosts;
+            const brrrRefinanceAmount = arv * 0.75;
+            const brrrCashLeft = brrrTotalInvestment - brrrRefinanceAmount;
+            const brrrMonthlyProfit = monthlyRent - (brrrRefinanceAmount * 0.06 / 12) - 300; // PITI + expenses
+            const brrrCashOnCash = (brrrMonthlyProfit * 12 / brrrCashLeft) * 100;
+            
+            // Wholesale Strategy
+            const wholesaleFee = arv * 0.70 - purchasePrice;
+            const wholesaleROI = (wholesaleFee / purchasePrice) * 100;
+            
+            // Buy & Hold Strategy
+            const holdClosingCosts = purchasePrice * 0.03;
+            const holdTotalInvestment = purchasePrice + rehabBudget + holdClosingCosts;
+            const holdMonthlyProfit = monthlyRent - 300; // expenses
+            const holdCapRate = (holdMonthlyProfit * 12 / holdTotalInvestment) * 100;
+            
+            return {
+              fixFlip: {
+                totalInvestment: flipTotalInvestment,
+                expectedProfit: flipProfit,
+                roi: flipROI,
+                timeline: '6 months'
+              },
+              brrrr: {
+                totalInvestment: brrrTotalInvestment,
+                cashLeft: brrrCashLeft,
+                monthlyIncome: brrrMonthlyProfit,
+                cashOnCash: brrrCashOnCash
+              },
+              wholesale: {
+                assignmentFee: wholesaleFee,
+                roi: wholesaleROI,
+                timeline: '30 days'
+              },
+              buyHold: {
+                totalInvestment: holdTotalInvestment,
+                monthlyIncome: holdMonthlyProfit,
+                capRate: holdCapRate
+              }
+            };
+          `
+        },
+        {
+          "type": "respond_webhook",
+          "name": "Return Analysis",
+          "response": {
+            "status": "success",
+            "data": "{{$json}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auction Scraper",
+      "webhook_path": "/webhook/auction-scraper",
+      "description": "Scrapes auction data from county websites",
+      "schedule": "0 6 * * *",
+      "nodes": [
+        {
+          "type": "cron",
+          "name": "Daily Trigger",
+          "cronExpression": "0 6 * * *"
+        },
+        {
+          "type": "supabase",
+          "name": "Get Active Counties",
+          "operation": "select",
+          "table": "counties",
+          "filter": "is_active=true"
+        },
+        {
+          "type": "loop",
+          "name": "Process Each County",
+          "items": "{{$json}}",
+          "nodes": [
+            {
+              "type": "http_request",
+              "name": "Scrape County Site",
+              "url": "{{$item.auction_url}}"
+            },
+            {
+              "type": "html_extract",
+              "name": "Extract Auction Data",
+              "selectors": {
+                "auctionDate": ".auction-date",
+                "properties": ".property-list-item",
+                "minimumBid": ".minimum-bid"
+              }
+            },
+            {
+              "type": "supabase",
+              "name": "Upsert Auctions",
+              "operation": "upsert",
+              "table": "auctions"
+            },
+            {
+              "type": "supabase",
+              "name": "Upsert Properties",
+              "operation": "upsert",
+              "table": "properties"
+            }
+          ]
+        },
+        {
+          "type": "email",
+          "name": "Send Report",
+          "to": "admin@taxdeedplatform.com",
+          "subject": "Daily Auction Scraping Complete",
+          "body": "Processed {{$json.length}} counties"
+        }
+      ]
+    },
+    {
+      "name": "Property Details Fetcher",
+      "webhook_path": "/webhook/property-details",
+      "description": "Fetches comprehensive property details",
+      "nodes": [
+        {
+          "type": "webhook",
+          "name": "Webhook Trigger",
+          "path": "/property-details",
+          "method": "POST"
+        },
+        {
+          "type": "parallel",
+          "name": "Fetch All Data",
+          "branches": [
+            {
+              "name": "Property Data",
+              "nodes": [
+                {
+                  "type": "supabase",
+                  "operation": "select",
+                  "table": "properties",
+                  "filter": "id={{$json.propertyId}}"
+                }
+              ]
+            },
+            {
+              "name": "Valuation Data",
+              "nodes": [
+                {
+                  "type": "supabase",
+                  "operation": "select",
+                  "table": "property_valuations",
+                  "filter": "property_id={{$json.propertyId}}"
+                }
+              ]
+            },
+            {
+              "name": "Owner Data",
+              "nodes": [
+                {
+                  "type": "supabase",
+                  "operation": "select",
+                  "table": "property_owners",
+                  "filter": "property_id={{$json.propertyId}}"
+                }
+              ]
+            },
+            {
+              "name": "Liens Data",
+              "nodes": [
+                {
+                  "type": "supabase",
+                  "operation": "select",
+                  "table": "property_liens",
+                  "filter": "property_id={{$json.propertyId}}"
+                }
+              ]
+            },
+            {
+              "name": "Risk Assessment",
+              "nodes": [
+                {
+                  "type": "supabase",
+                  "operation": "select",
+                  "table": "risk_assessments",
+                  "filter": "property_id={{$json.propertyId}}"
+                }
+              ]
+            },
+            {
+              "name": "Neighborhood Data",
+              "nodes": [
+                {
+                  "type": "supabase",
+                  "operation": "select",
+                  "table": "neighborhood_analysis",
+                  "filter": "property_id={{$json.propertyId}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "merge",
+          "name": "Combine Data",
+          "mode": "combine"
+        },
+        {
+          "type": "respond_webhook",
+          "name": "Return Details",
+          "response": {
+            "status": "success",
+            "data": "{{$json}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bulk Property Import",
+      "webhook_path": "/webhook/bulk-import",
+      "description": "Imports properties from CSV/Excel files",
+      "nodes": [
+        {
+          "type": "webhook",
+          "name": "Webhook Trigger",
+          "path": "/bulk-import",
+          "method": "POST"
+        },
+        {
+          "type": "spreadsheet_file",
+          "name": "Parse File",
+          "operation": "read"
+        },
+        {
+          "type": "code",
+          "name": "Transform Data",
+          "code": `
+            const rows = $input.all()[0].json;
+            
+            return rows.map(row => ({
+              parcel_number: row['Parcel Number'] || row['PIN'],
+              address: row['Property Address'] || row['Address'],
+              county: row['County'],
+              state: row['State'] || 'FL',
+              amount_due: parseFloat(row['Amount Due'] || row['Minimum Bid'] || 0),
+              sale_date: row['Sale Date'] || row['Auction Date'],
+              bedrooms: parseInt(row['Bedrooms'] || 0),
+              bathrooms: parseFloat(row['Bathrooms'] || 0),
+              living_area: parseInt(row['Square Feet'] || row['Living Area'] || 0),
+              lot_size: parseInt(row['Lot Size'] || 0),
+              year_built: parseInt(row['Year Built'] || 0)
+            }));
+          `
+        },
+        {
+          "type": "supabase",
+          "name": "Bulk Insert",
+          "operation": "insert",
+          "table": "properties",
+          "batchSize": 100
+        },
+        {
+          "type": "respond_webhook",
+          "name": "Return Results",
+          "response": {
+            "status": "success",
+            "imported": "{{$json.length}}",
+            "message": "Properties imported successfully"
+          }
+        }
+      ]
+    }
+  ]
+}

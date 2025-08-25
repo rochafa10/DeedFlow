@@ -1,0 +1,371 @@
+{
+  "name": "🧠 Super-Smart Calendar Scraper - AI Agents + Python + Self-Learning",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule_trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [150, 500]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport hashlib\nfrom datetime import datetime, timedelta\nimport numpy as np\nfrom typing import List, Dict, Any\n\n# Load historical performance data from vector store\n# This helps the AI learn which strategies work best for each county\nhistorical_performance = {\n    'Miami-Dade': {\n        'best_strategy': 'api_first',\n        'success_rate': 0.95,\n        'common_patterns': ['Sale Date:', 'Auction Schedule', 'Tax Deed Sale'],\n        'optimal_selectors': ['.auction-date', '#sale-calendar', '[data-date]']\n    },\n    'Broward': {\n        'best_strategy': 'selenium_required',\n        'success_rate': 0.88,\n        'common_patterns': ['deed sale', 'upcoming auctions'],\n        'requires_javascript': True\n    },\n    'Palm Beach': {\n        'best_strategy': 'pdf_calendar',\n        'success_rate': 0.92,\n        'pdf_patterns': ['Tax_Deed_Sale_*.pdf', 'Auction_Calendar_*.pdf']\n    }\n}\n\n# Enhanced county configuration with learning capabilities\ncounties = [\n    {\n        'name': 'Miami-Dade',\n        'state': 'FL',\n        'url': 'https://www.miamidade.gov/taxcollector/auctions',\n        'apis': [\n            'https://www8.miamidade.gov/Apps/RER/TaxDeedSale/api/calendar',\n            'https://www8.miamidade.gov/Apps/RER/TaxDeedSale/api/properties',\n            'https://www.miami-dadeclerk.com/public-records/api/v1/OfficialRecords'\n        ],\n        'strategy_priority': ['api', 'python_scraping', 'ai_extraction', 'visual_recognition'],\n        'confidence_threshold': 0.85,\n        'max_retries': 3,\n        'ai_hints': {\n            'focus_areas': ['calendar section', 'upcoming sales', 'download section'],\n            'ignore': ['past sales', 'tax lien', 'foreclosure'],\n            'date_indicators': ['Sale Date', 'Auction', 'will be held']\n        },\n        'performance_history': historical_performance.get('Miami-Dade', {})\n    },\n    {\n        'name': 'Broward',\n        'state': 'FL',\n        'url': 'https://www.broward.org/RecordsTaxesTreasury/Pages/TaxDeedSale.aspx',\n        'strategy_priority': ['selenium_browser', 'ai_extraction', 'python_scraping'],\n        'requires_browser': True,\n        'wait_selectors': ['.auction-calendar', '#deed-sales'],\n        'confidence_threshold': 0.80\n    },\n    {\n        'name': 'Palm Beach',\n        'state': 'FL',\n        'url': 'https://pbctax.manatron.com/Tabs/TaxDeedSales.aspx',\n        'strategy_priority': ['pdf_download', 'python_scraping', 'ai_extraction'],\n        'pdf_search_patterns': ['*.pdf', 'download', 'calendar'],\n        'confidence_threshold': 0.82\n    },\n    {\n        'name': 'Hillsborough',\n        'state': 'FL',\n        'url': 'https://www.hillstax.org/tax-deed-sales/',\n        'strategy_priority': ['html_table', 'ai_extraction', 'api'],\n        'table_identifiers': ['sale-schedule', 'auction-table'],\n        'confidence_threshold': 0.85\n    },\n    {\n        'name': 'Orange',\n        'state': 'FL',\n        'url': 'https://www.octaxcol.com/pages/TaxDeedSales.aspx',\n        'strategy_priority': ['ajax_intercept', 'python_scraping', 'ai_extraction'],\n        'ajax_endpoints': ['/api/GetAuctions', '/api/GetProperties'],\n        'confidence_threshold': 0.83\n    }\n]\n\n# Add intelligence scoring and learning metadata\nfor county in counties:\n    county['county_id'] = hashlib.md5(f\"{county['name']}_{county['state']}\".encode()).hexdigest()[:8]\n    county['intelligence_score'] = calculate_intelligence_score(county)\n    county['last_success_strategy'] = county.get('performance_history', {}).get('best_strategy')\n    county['learning_enabled'] = True\n    county['vector_store_key'] = f\"county_learning_{county['county_id']}\"\n    county['processing_timestamp'] = datetime.utcnow().isoformat()\n\ndef calculate_intelligence_score(county):\n    \"\"\"Calculate how well we understand this county's patterns\"\"\"\n    score = 0.5  # Base score\n    \n    if county.get('performance_history'):\n        score += county['performance_history'].get('success_rate', 0) * 0.3\n    \n    if county.get('apis'):\n        score += 0.1 * len(county['apis'])\n    \n    if county.get('last_success_strategy'):\n        score += 0.1\n    \n    return min(score, 1.0)\n\n# Sort by intelligence score (process best-understood counties first)\ncounties.sort(key=lambda x: x['intelligence_score'], reverse=True)\n\nreturn counties"
+      },
+      "id": "python_intelligent_config",
+      "name": "Python Intelligent Configuration",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [350, 500]
+    },
+    {
+      "parameters": {
+        "content": "## Master Orchestrator Agent\n\nYou are the master orchestrator for intelligent calendar extraction. You coordinate multiple specialized agents and Python processors to achieve maximum extraction accuracy.\n\nYour responsibilities:\n1. **Strategy Selection**: Choose the optimal extraction strategy based on county history\n2. **Agent Coordination**: Deploy specialized agents for specific tasks\n3. **Quality Control**: Ensure extraction meets confidence thresholds\n4. **Learning**: Update vector store with successful patterns\n5. **Error Recovery**: Implement fallback strategies when primary methods fail\n\nYou have access to:\n- Python processors for data extraction\n- Specialized AI agents for different tasks\n- Historical performance data\n- Vector store for pattern learning\n\nAlways aim for >90% confidence in extracted data.",
+        "options": {}
+      },
+      "id": "master_agent_instructions",
+      "name": "Master Orchestrator Instructions",
+      "type": "@n8n/n8n-nodes-langchain.documentDefault",
+      "typeVersion": 1,
+      "position": [550, 300]
+    },
+    {
+      "parameters": {
+        "name": "Master Orchestrator Agent",
+        "instructions": "={{ $('Master Orchestrator Instructions').first().json.text }}",
+        "model": "gpt-4-turbo-preview",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 3000
+        }
+      },
+      "id": "master_orchestrator",
+      "name": "Master Orchestrator Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [750, 500],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 30000,
+          "headers": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+              }
+            ]
+          }
+        }
+      },
+      "id": "http_fetch",
+      "name": "HTTP Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [550, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "toolDescription": "Deploy Python extraction specialist for advanced HTML parsing, date extraction, and pattern matching. Use when you need precise data extraction.",
+        "language": "python",
+        "pythonCode": "from bs4 import BeautifulSoup\nimport re\nimport dateutil.parser as date_parser\nfrom datetime import datetime, timedelta\nimport json\n\nhtml_content = _input[0]['json'].get('html', '')\ncounty_config = _input[0]['json'].get('county', {})\n\nclass SmartExtractor:\n    def __init__(self, html, config):\n        self.soup = BeautifulSoup(html, 'html.parser')\n        self.config = config\n        self.results = []\n        \n    def extract_all_strategies(self):\n        strategies = [\n            self.extract_from_apis,\n            self.extract_from_structured_data,\n            self.extract_from_tables,\n            self.extract_from_calendar_elements,\n            self.extract_from_text_patterns,\n            self.extract_from_links\n        ]\n        \n        all_data = {}\n        for strategy in strategies:\n            try:\n                name = strategy.__name__\n                data = strategy()\n                if data:\n                    all_data[name] = {\n                        'data': data,\n                        'count': len(data),\n                        'confidence': self.calculate_confidence(data, name)\n                    }\n            except Exception as e:\n                all_data[strategy.__name__] = {'error': str(e)}\n        \n        return all_data\n    \n    def extract_from_apis(self):\n        \"\"\"Try to find API endpoints in JavaScript\"\"\"\n        scripts = self.soup.find_all('script')\n        api_endpoints = []\n        \n        for script in scripts:\n            if script.string:\n                # Look for API patterns\n                patterns = [\n                    r'fetch\\([\"\\']([^\"^\\']+)[\"\\']',\n                    r'\\$\\.ajax\\({[^}]*url:[\\s]*[\"\\']([^\"^\\']+)[\"\\']',\n                    r'axios\\.[get|post|put|delete]+\\([\"\\']([^\"^\\']+)[\"\\']'\n                ]\n                for pattern in patterns:\n                    matches = re.findall(pattern, script.string)\n                    api_endpoints.extend(matches)\n        \n        return list(set(api_endpoints))\n    \n    def extract_from_structured_data(self):\n        \"\"\"Extract from JSON-LD, microdata, etc.\"\"\"\n        structured = []\n        \n        # JSON-LD\n        json_lds = self.soup.find_all('script', type='application/ld+json')\n        for json_ld in json_lds:\n            try:\n                data = json.loads(json_ld.string)\n                if '@type' in data and 'Event' in data['@type']:\n                    structured.append(data)\n            except:\n                pass\n        \n        # Microdata\n        events = self.soup.find_all(itemtype=re.compile('schema.org/Event'))\n        for event in events:\n            structured.append(self.parse_microdata(event))\n        \n        return structured\n    \n    def extract_from_tables(self):\n        \"\"\"Enhanced table extraction with header detection\"\"\"\n        tables_data = []\n        tables = self.soup.find_all('table')\n        \n        for table in tables:\n            headers = [th.get_text(strip=True) for th in table.find_all('th')]\n            if any('date' in h.lower() or 'auction' in h.lower() for h in headers):\n                rows = []\n                for tr in table.find_all('tr')[1:]:\n                    cells = [td.get_text(strip=True) for td in tr.find_all(['td', 'th'])]\n                    if cells:\n                        rows.append(dict(zip(headers, cells)))\n                tables_data.append({'headers': headers, 'rows': rows})\n        \n        return tables_data\n    \n    def extract_from_calendar_elements(self):\n        \"\"\"Extract from calendar-like structures\"\"\"\n        calendar_data = []\n        \n        # Common calendar selectors\n        selectors = [\n            '.calendar-event', '.fc-event', '.event-item',\n            '[data-date]', '[data-event-date]', '.auction-date'\n        ]\n        \n        for selector in selectors:\n            elements = self.soup.select(selector)\n            for elem in elements:\n                date_str = elem.get('data-date') or elem.get('data-event-date')\n                if not date_str:\n                    date_str = elem.get_text(strip=True)\n                \n                if date_str:\n                    try:\n                        parsed_date = date_parser.parse(date_str, fuzzy=True)\n                        calendar_data.append({\n                            'date': parsed_date.isoformat(),\n                            'text': elem.get_text(strip=True),\n                            'attributes': elem.attrs\n                        })\n                    except:\n                        pass\n        \n        return calendar_data\n    \n    def extract_from_text_patterns(self):\n        \"\"\"Advanced regex pattern matching\"\"\"\n        text = self.soup.get_text()\n        patterns_data = []\n        \n        # Enhanced patterns for auction dates\n        patterns = [\n            (r'(?:Tax Deed Sale|Auction).*?(\\d{1,2}/\\d{1,2}/\\d{2,4})', 'date_slash'),\n            (r'(?:scheduled for|will be held on)\\s+([A-Za-z]+ \\d{1,2}, \\d{4})', 'date_written'),\n            (r'Next (?:sale|auction): ([^\\n]+)', 'next_sale'),\n            (r'(\\d{4}-\\d{2}-\\d{2}).*?(?:auction|sale)', 'iso_date')\n        ]\n        \n        for pattern, pattern_type in patterns:\n            matches = re.finditer(pattern, text, re.IGNORECASE)\n            for match in matches:\n                context_start = max(0, match.start() - 100)\n                context_end = min(len(text), match.end() + 100)\n                patterns_data.append({\n                    'type': pattern_type,\n                    'match': match.group(1),\n                    'context': text[context_start:context_end],\n                    'position': match.start()\n                })\n        \n        return patterns_data\n    \n    def extract_from_links(self):\n        \"\"\"Extract property list and calendar links\"\"\"\n        links_data = []\n        \n        # Find all links with relevant text or URLs\n        links = self.soup.find_all('a', href=True)\n        for link in links:\n            href = link['href']\n            text = link.get_text(strip=True)\n            \n            if any(keyword in text.lower() + href.lower() for keyword in \n                   ['property', 'list', 'download', 'calendar', 'schedule', 'pdf', 'excel']):\n                links_data.append({\n                    'url': href,\n                    'text': text,\n                    'type': self.classify_link(href, text)\n                })\n        \n        return links_data\n    \n    def classify_link(self, url, text):\n        \"\"\"Classify link type based on URL and text\"\"\"\n        url_lower = url.lower()\n        text_lower = text.lower()\n        \n        if '.pdf' in url_lower:\n            return 'pdf'\n        elif '.xls' in url_lower or '.xlsx' in url_lower:\n            return 'excel'\n        elif '.csv' in url_lower:\n            return 'csv'\n        elif 'calendar' in text_lower or 'schedule' in text_lower:\n            return 'calendar'\n        elif 'property' in text_lower or 'list' in text_lower:\n            return 'property_list'\n        else:\n            return 'other'\n    \n    def calculate_confidence(self, data, strategy_name):\n        \"\"\"Calculate confidence score for extracted data\"\"\"\n        base_confidence = {\n            'extract_from_apis': 0.95,\n            'extract_from_structured_data': 0.93,\n            'extract_from_tables': 0.88,\n            'extract_from_calendar_elements': 0.85,\n            'extract_from_text_patterns': 0.75,\n            'extract_from_links': 0.70\n        }\n        \n        confidence = base_confidence.get(strategy_name, 0.5)\n        \n        # Adjust based on data quality\n        if data and len(data) > 0:\n            confidence += 0.05\n        if len(data) > 5:\n            confidence -= 0.1  # Too many results might indicate false positives\n        \n        return min(confidence, 1.0)\n    \n    def parse_microdata(self, element):\n        \"\"\"Parse microdata from HTML element\"\"\"\n        data = {}\n        for prop in element.find_all(attrs={'itemprop': True}):\n            prop_name = prop.get('itemprop')\n            prop_value = prop.get('content') or prop.get_text(strip=True)\n            data[prop_name] = prop_value\n        return data\n\n# Execute extraction\nextractor = SmartExtractor(html_content, county_config)\nresults = extractor.extract_all_strategies()\n\n# Add metadata\nresults['extraction_metadata'] = {\n    'timestamp': datetime.utcnow().isoformat(),\n    'county': county_config.get('name'),\n    'strategies_used': len(results),\n    'total_items_found': sum(r.get('count', 0) for r in results.values() if isinstance(r, dict)),\n    'highest_confidence': max((r.get('confidence', 0) for r in results.values() if isinstance(r, dict)), default=0)\n}\n\nreturn results"
+      },
+      "id": "python_extraction_tool",
+      "name": "Python Extraction Specialist",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [550, 600]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Deploy specialized AI agent for visual understanding and complex pattern recognition. Use for difficult extractions or when confidence is low.",
+        "name": "Visual Understanding Agent",
+        "instructions": "You are a visual and pattern recognition specialist. Analyze the provided content and extract auction information using advanced pattern recognition. Look for:\n\n1. Visual calendar layouts\n2. Date patterns in various formats\n3. Implicit date references (e.g., 'next month', 'third Tuesday')\n4. Property list indicators\n5. Registration information\n\nUse context clues and semantic understanding to extract information that simple parsers might miss.",
+        "model": "gpt-4-vision-preview",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "visual_agent_tool",
+      "name": "Visual Understanding Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [550, 700],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Access vector store to retrieve successful extraction patterns from previous runs. Learn from what worked before.",
+        "collectionName": "calendar_extraction_patterns",
+        "options": {}
+      },
+      "id": "vector_store_tool",
+      "name": "Pattern Learning Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [550, 800],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "embeddings",
+      "name": "OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [350, 800],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Orchestrate extraction for {{ $json.name }} county:\n\nURL: {{ $json.url }}\nBest Historical Strategy: {{ $json.last_success_strategy }}\nIntelligence Score: {{ $json.intelligence_score }}\nConfidence Threshold: {{ $json.confidence_threshold }}\n\nHTML Content Available: {{ $('HTTP Fetch').first().json.data ? 'Yes' : 'No' }}\n\nExecute the following:\n1. Deploy Python extraction specialist\n2. If confidence < threshold, deploy visual understanding agent\n3. Check vector store for successful patterns\n4. Combine all results with confidence weighting\n5. Return structured auction data\n\nAim for maximum accuracy and learn from successful extractions."
+      },
+      "id": "orchestration_prompt",
+      "name": "Orchestration Prompt",
+      "type": "@n8n/n8n-nodes-langchain.outputParser",
+      "typeVersion": 1,
+      "position": [550, 500]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport numpy as np\nfrom datetime import datetime, timedelta\nimport hashlib\nfrom typing import List, Dict, Any, Tuple\n\n# Get all extraction results\norchestrator_result = _input[0]['json']\ncounty_config = _input[1]['json']\n\nclass IntelligentProcessor:\n    def __init__(self, results, config):\n        self.results = results\n        self.config = config\n        self.final_auctions = []\n        self.confidence_threshold = config.get('confidence_threshold', 0.8)\n        \n    def process(self):\n        \"\"\"Main processing pipeline\"\"\"\n        # 1. Combine all extraction results\n        combined_data = self.combine_extractions()\n        \n        # 2. Deduplicate and merge\n        merged_auctions = self.merge_duplicates(combined_data)\n        \n        # 3. Validate and enhance\n        validated_auctions = self.validate_auctions(merged_auctions)\n        \n        # 4. Calculate final confidence\n        scored_auctions = self.calculate_final_confidence(validated_auctions)\n        \n        # 5. Generate learning feedback\n        learning_data = self.generate_learning_data(scored_auctions)\n        \n        return {\n            'auctions': scored_auctions,\n            'learning': learning_data,\n            'summary': self.generate_summary(scored_auctions)\n        }\n    \n    def combine_extractions(self):\n        \"\"\"Combine results from all extraction methods\"\"\"\n        combined = []\n        \n        # Process Python extraction results\n        if 'python_extraction' in self.results:\n            python_data = self.results['python_extraction']\n            for strategy, data in python_data.items():\n                if isinstance(data, dict) and 'data' in data:\n                    for item in data['data']:\n                        combined.append({\n                            'source': f'python_{strategy}',\n                            'confidence': data.get('confidence', 0.5),\n                            'data': item\n                        })\n        \n        # Process AI agent results\n        if 'ai_extraction' in self.results:\n            ai_data = self.results['ai_extraction']\n            if isinstance(ai_data, list):\n                for item in ai_data:\n                    combined.append({\n                        'source': 'ai_agent',\n                        'confidence': 0.85,\n                        'data': item\n                    })\n        \n        # Process visual agent results\n        if 'visual_extraction' in self.results:\n            visual_data = self.results['visual_extraction']\n            for item in visual_data:\n                combined.append({\n                    'source': 'visual_agent',\n                    'confidence': 0.9,\n                    'data': item\n                })\n        \n        return combined\n    \n    def merge_duplicates(self, data: List[Dict]) -> List[Dict]:\n        \"\"\"Intelligent deduplication with confidence-based merging\"\"\"\n        auction_map = {}\n        \n        for item in data:\n            # Extract date from various formats\n            auction_date = self.extract_date(item['data'])\n            if not auction_date:\n                continue\n            \n            # Create unique key\n            key = f\"{self.config['name']}_{auction_date}\"\n            \n            if key not in auction_map:\n                auction_map[key] = {\n                    'auction_date': auction_date,\n                    'sources': [item['source']],\n                    'confidence_scores': [item['confidence']],\n                    'raw_data': [item['data']]\n                }\n            else:\n                # Merge with existing\n                auction_map[key]['sources'].append(item['source'])\n                auction_map[key]['confidence_scores'].append(item['confidence'])\n                auction_map[key]['raw_data'].append(item['data'])\n        \n        # Convert to list with aggregated confidence\n        merged = []\n        for key, auction in auction_map.items():\n            # Calculate weighted confidence\n            confidence = np.average(auction['confidence_scores'])\n            \n            # Boost confidence if multiple sources agree\n            if len(set(auction['sources'])) > 1:\n                confidence = min(confidence * 1.2, 0.99)\n            \n            merged.append({\n                'id': hashlib.md5(key.encode()).hexdigest()[:12],\n                'auction_date': auction['auction_date'],\n                'confidence': confidence,\n                'sources': list(set(auction['sources'])),\n                'source_count': len(auction['sources']),\n                'raw_data': auction['raw_data']\n            })\n        \n        return merged\n    \n    def extract_date(self, data: Any) -> str:\n        \"\"\"Extract date from various data formats\"\"\"\n        if isinstance(data, dict):\n            # Check common date fields\n            for field in ['date', 'auction_date', 'sale_date', 'event_date']:\n                if field in data and data[field]:\n                    try:\n                        dt = datetime.fromisoformat(str(data[field]).replace('Z', '+00:00'))\n                        return dt.date().isoformat()\n                    except:\n                        pass\n            \n            # Check for date in match field\n            if 'match' in data:\n                try:\n                    from dateutil import parser\n                    dt = parser.parse(data['match'], fuzzy=True)\n                    return dt.date().isoformat()\n                except:\n                    pass\n        \n        elif isinstance(data, str):\n            try:\n                from dateutil import parser\n                dt = parser.parse(data, fuzzy=True)\n                return dt.date().isoformat()\n            except:\n                pass\n        \n        return None\n    \n    def validate_auctions(self, auctions: List[Dict]) -> List[Dict]:\n        \"\"\"Validate and enhance auction data\"\"\"\n        validated = []\n        now = datetime.now()\n        \n        for auction in auctions:\n            # Parse auction date\n            try:\n                auction_dt = datetime.fromisoformat(auction['auction_date'])\n                \n                # Check if date is reasonable (not too far in past or future)\n                if auction_dt < now - timedelta(days=7):\n                    auction['status'] = 'past'\n                    auction['confidence'] *= 0.5  # Reduce confidence for past dates\n                elif auction_dt > now + timedelta(days=365):\n                    auction['status'] = 'too_far'\n                    auction['confidence'] *= 0.7  # Reduce confidence for far future\n                else:\n                    auction['status'] = 'valid'\n                    \n                    # Calculate derived fields\n                    auction['days_until'] = (auction_dt - now).days\n                    auction['registration_deadline'] = (auction_dt - timedelta(days=14)).isoformat()\n                    auction['deposit_deadline'] = (auction_dt - timedelta(days=7)).isoformat()\n                \n                validated.append(auction)\n                \n            except Exception as e:\n                # Skip invalid dates\n                continue\n        \n        return validated\n    \n    def calculate_final_confidence(self, auctions: List[Dict]) -> List[Dict]:\n        \"\"\"Calculate final confidence scores with multiple factors\"\"\"\n        for auction in auctions:\n            factors = []\n            \n            # Base confidence from extraction\n            factors.append(auction['confidence'])\n            \n            # Source diversity factor\n            if auction['source_count'] > 2:\n                factors.append(0.95)\n            elif auction['source_count'] > 1:\n                factors.append(0.85)\n            else:\n                factors.append(0.70)\n            \n            # Date validity factor\n            if auction['status'] == 'valid':\n                factors.append(0.90)\n            else:\n                factors.append(0.60)\n            \n            # Historical success factor (if available)\n            if self.config.get('performance_history', {}).get('success_rate'):\n                factors.append(self.config['performance_history']['success_rate'])\n            \n            # Calculate weighted final confidence\n            auction['final_confidence'] = np.average(factors, weights=[0.4, 0.3, 0.2, 0.1])\n            \n            # Determine if meets threshold\n            auction['meets_threshold'] = auction['final_confidence'] >= self.confidence_threshold\n        \n        return auctions\n    \n    def generate_learning_data(self, auctions: List[Dict]) -> Dict:\n        \"\"\"Generate data to improve future extractions\"\"\"\n        learning = {\n            'county': self.config['name'],\n            'extraction_timestamp': datetime.utcnow().isoformat(),\n            'successful_strategies': [],\n            'patterns_found': [],\n            'confidence_distribution': {}\n        }\n        \n        # Identify successful strategies\n        for auction in auctions:\n            if auction['meets_threshold']:\n                learning['successful_strategies'].extend(auction['sources'])\n        \n        learning['successful_strategies'] = list(set(learning['successful_strategies']))\n        \n        # Calculate confidence distribution\n        confidences = [a['final_confidence'] for a in auctions]\n        if confidences:\n            learning['confidence_distribution'] = {\n                'mean': np.mean(confidences),\n                'median': np.median(confidences),\n                'std': np.std(confidences),\n                'max': max(confidences),\n                'min': min(confidences)\n            }\n        \n        # Extract successful patterns (for vector store)\n        for auction in auctions:\n            if auction['final_confidence'] > 0.9:\n                learning['patterns_found'].append({\n                    'date': auction['auction_date'],\n                    'sources': auction['sources'],\n                    'confidence': auction['final_confidence']\n                })\n        \n        return learning\n    \n    def generate_summary(self, auctions: List[Dict]) -> Dict:\n        \"\"\"Generate extraction summary\"\"\"\n        return {\n            'total_auctions_found': len(auctions),\n            'high_confidence_auctions': len([a for a in auctions if a['final_confidence'] > 0.9]),\n            'meets_threshold': len([a for a in auctions if a['meets_threshold']]),\n            'upcoming_soon': len([a for a in auctions if a.get('days_until', 999) < 7]),\n            'extraction_methods_used': len(set(sum([a['sources'] for a in auctions], []))),\n            'average_confidence': np.mean([a['final_confidence'] for a in auctions]) if auctions else 0\n        }\n\n# Process results\nprocessor = IntelligentProcessor(orchestrator_result, county_config)\nprocessed_data = processor.process()\n\n# Prepare for Supabase updates\nsupabase_data = {\n    'auctions': [],\n    'extraction_logs': [],\n    'learning_records': []\n}\n\n# Format auctions for Supabase\nfor auction in processed_data['auctions']:\n    if auction['meets_threshold']:\n        supabase_data['auctions'].append({\n            'id': auction['id'],\n            'county': county_config['name'],\n            'state': county_config['state'],\n            'auction_date': auction['auction_date'],\n            'auction_type': 'Tax Deed',\n            'status': 'upcoming' if auction.get('days_until', 0) > 0 else 'past',\n            'confidence_score': auction['final_confidence'],\n            'extraction_sources': json.dumps(auction['sources']),\n            'registration_deadline': auction.get('registration_deadline'),\n            'deposit_deadline': auction.get('deposit_deadline'),\n            'deposit_amount': 1000,\n            'source_url': county_config['url'],\n            'created_at': datetime.utcnow().isoformat(),\n            'updated_at': datetime.utcnow().isoformat()\n        })\n\n# Create extraction log\nsupabase_data['extraction_logs'].append({\n    'id': hashlib.md5(f\"{datetime.utcnow().isoformat()}_{county_config['name']}\".encode()).hexdigest()[:12],\n    'county': county_config['name'],\n    'state': county_config['state'],\n    'extraction_method': 'super_smart_hybrid',\n    'auctions_found': len(processed_data['auctions']),\n    'confidence_score': processed_data['summary']['average_confidence'],\n    'extraction_details': json.dumps(processed_data['summary']),\n    'created_at': datetime.utcnow().isoformat()\n})\n\n# Create learning record for vector store\nif processed_data['learning']['patterns_found']:\n    supabase_data['learning_records'].append({\n        'county_id': county_config['county_id'],\n        'patterns': json.dumps(processed_data['learning']['patterns_found']),\n        'successful_strategies': json.dumps(processed_data['learning']['successful_strategies']),\n        'confidence_stats': json.dumps(processed_data['learning']['confidence_distribution']),\n        'created_at': datetime.utcnow().isoformat()\n    })\n\nreturn supabase_data"
+      },
+      "id": "python_intelligent_processor",
+      "name": "Python Intelligent Processor",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [950, 500]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-opus",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a quality assurance specialist for auction data extraction. Review the extracted data and provide:\n\n1. **Validation**: Confirm dates are correct and in proper format\n2. **Enhancement**: Add any missing information you can infer\n3. **Risk Assessment**: Identify potential issues or anomalies\n4. **Recommendations**: Suggest improvements for future extractions\n5. **Confidence Adjustment**: Adjust confidence scores based on data quality\n\nBe extremely thorough and catch any potential issues."
+            },
+            {
+              "role": "user",
+              "content": "Review extraction results:\n\nCounty: {{ $('Python Intelligent Configuration').item.json.name }}\nAuctions Found: {{ $json.auctions.length }}\nAverage Confidence: {{ $json.extraction_logs[0].confidence_score }}\n\nData: {{ JSON.stringify($json.auctions) }}\n\nProvide validation and enhancement."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "claude_validator",
+      "name": "Claude Quality Validator",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1.2,
+      "position": [1150, 500],
+      "credentials": {
+        "anthropicApi": {
+          "id": "3",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "schema": "public",
+        "table": "auctions",
+        "columns": "id,county,state,auction_date,auction_type,status,confidence_score,extraction_sources,registration_deadline,deposit_deadline,deposit_amount,source_url,created_at,updated_at",
+        "upsertColumns": "id",
+        "additionalFields": {}
+      },
+      "id": "upsert_auctions_super",
+      "name": "Upsert Auctions (Super Smart)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1350, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "extraction_logs",
+        "columns": "id,county,state,extraction_method,auctions_found,confidence_score,extraction_details,created_at",
+        "additionalFields": {}
+      },
+      "id": "log_extraction_super",
+      "name": "Log Extraction (Super Smart)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1350, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "learning_patterns",
+        "columns": "county_id,patterns,successful_strategies,confidence_stats,created_at",
+        "additionalFields": {}
+      },
+      "id": "save_learning",
+      "name": "Save Learning Patterns",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1350, 600],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport numpy as np\nfrom datetime import datetime\nimport matplotlib.pyplot as plt\nimport io\nimport base64\n\n# Collect all results\nall_results = []\nfor item in _input:\n    if 'auctions' in item['json']:\n        all_results.append(item['json'])\n\n# Generate comprehensive report\nreport = {\n    'execution_id': datetime.utcnow().strftime('%Y%m%d_%H%M%S'),\n    'timestamp': datetime.utcnow().isoformat(),\n    'workflow': 'super_smart_calendar_scraper',\n    \n    'statistics': {\n        'counties_processed': len(all_results),\n        'total_auctions_found': sum(len(r['auctions']) for r in all_results),\n        'high_confidence_auctions': sum(\n            len([a for a in r['auctions'] if a.get('confidence_score', 0) > 0.9]) \n            for r in all_results\n        ),\n        'average_confidence': np.mean([\n            a.get('confidence_score', 0) \n            for r in all_results \n            for a in r['auctions']\n        ]) if all_results else 0\n    },\n    \n    'county_breakdown': [],\n    'extraction_methods': {},\n    'learning_insights': [],\n    'visualizations': {}\n}\n\n# County breakdown\nfor result in all_results:\n    county_data = {\n        'county': result.get('county', 'Unknown'),\n        'auctions_found': len(result.get('auctions', [])),\n        'avg_confidence': np.mean([a.get('confidence_score', 0) for a in result.get('auctions', [])]) if result.get('auctions') else 0,\n        'extraction_sources': list(set(\n            source \n            for a in result.get('auctions', []) \n            for source in json.loads(a.get('extraction_sources', '[]'))\n        ))\n    }\n    report['county_breakdown'].append(county_data)\n\n# Extraction method effectiveness\nmethod_counts = {}\nmethod_confidences = {}\n\nfor result in all_results:\n    for auction in result.get('auctions', []):\n        sources = json.loads(auction.get('extraction_sources', '[]'))\n        for source in sources:\n            method_counts[source] = method_counts.get(source, 0) + 1\n            if source not in method_confidences:\n                method_confidences[source] = []\n            method_confidences[source].append(auction.get('confidence_score', 0))\n\nfor method in method_counts:\n    report['extraction_methods'][method] = {\n        'count': method_counts[method],\n        'avg_confidence': np.mean(method_confidences[method]) if method_confidences[method] else 0,\n        'success_rate': method_counts[method] / max(sum(method_counts.values()), 1)\n    }\n\n# Learning insights\nif len(all_results) > 0:\n    report['learning_insights'] = [\n        f\"Most effective extraction method: {max(report['extraction_methods'].items(), key=lambda x: x[1]['avg_confidence'])[0] if report['extraction_methods'] else 'None'}\",\n        f\"Counties with low confidence: {[c['county'] for c in report['county_breakdown'] if c['avg_confidence'] < 0.7]}\",\n        f\"Average auctions per county: {report['statistics']['total_auctions_found'] / len(all_results):.1f}\",\n        f\"Extraction methods used: {len(report['extraction_methods'])}\"\n    ]\n\n# Generate visualization (confidence distribution)\ntry:\n    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))\n    \n    # Confidence distribution\n    confidences = [\n        a.get('confidence_score', 0) \n        for r in all_results \n        for a in r.get('auctions', [])\n    ]\n    \n    if confidences:\n        ax1.hist(confidences, bins=20, edgecolor='black')\n        ax1.set_xlabel('Confidence Score')\n        ax1.set_ylabel('Number of Auctions')\n        ax1.set_title('Confidence Score Distribution')\n        ax1.axvline(x=0.8, color='r', linestyle='--', label='Threshold')\n        ax1.legend()\n    \n    # Counties performance\n    counties = [c['county'] for c in report['county_breakdown']]\n    auctions = [c['auctions_found'] for c in report['county_breakdown']]\n    \n    if counties and auctions:\n        ax2.bar(counties, auctions)\n        ax2.set_xlabel('County')\n        ax2.set_ylabel('Auctions Found')\n        ax2.set_title('Auctions by County')\n        ax2.tick_params(axis='x', rotation=45)\n    \n    plt.tight_layout()\n    \n    # Convert to base64\n    buffer = io.BytesIO()\n    plt.savefig(buffer, format='png')\n    buffer.seek(0)\n    image_base64 = base64.b64encode(buffer.read()).decode()\n    plt.close()\n    \n    report['visualizations']['confidence_distribution'] = f\"data:image/png;base64,{image_base64}\"\nexcept Exception as e:\n    report['visualizations']['error'] = str(e)\n\n# Add recommendations\nreport['recommendations'] = []\n\nif report['statistics']['average_confidence'] < 0.8:\n    report['recommendations'].append(\n        \"Overall confidence is below threshold. Consider adding more extraction strategies.\"\n    )\n\nlow_performing = [m for m, d in report['extraction_methods'].items() if d['avg_confidence'] < 0.7]\nif low_performing:\n    report['recommendations'].append(\n        f\"Consider removing or improving these methods: {', '.join(low_performing)}\"\n    )\n\nif report['statistics']['total_auctions_found'] < len(all_results) * 0.5:\n    report['recommendations'].append(\n        \"Few auctions found. Counties may not have upcoming sales or extraction needs improvement.\"\n    )\n\n# Success metrics\nreport['success_metrics'] = {\n    'extraction_success': report['statistics']['total_auctions_found'] > 0,\n    'confidence_success': report['statistics']['average_confidence'] > 0.8,\n    'coverage_success': len([c for c in report['county_breakdown'] if c['auctions_found'] > 0]) / max(len(report['county_breakdown']), 1),\n    'overall_success': all([\n        report['statistics']['total_auctions_found'] > 0,\n        report['statistics']['average_confidence'] > 0.75,\n        len(report['county_breakdown']) > 0\n    ])\n}\n\nreturn report"
+      },
+      "id": "python_report_visualizer",
+      "name": "Python Report & Visualizer",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [1550, 500]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "workflow_reports",
+        "columns": "execution_id,workflow_name,report_type,report_data,visualizations,success_metrics,recommendations,created_at",
+        "additionalFields": {}
+      },
+      "id": "save_report_super",
+      "name": "Save Super Smart Report",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1750, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Python Intelligent Configuration", "type": "main", "index": 0 }]]
+    },
+    "Python Intelligent Configuration": {
+      "main": [[{ "node": "HTTP Fetch", "type": "main", "index": 0 }]]
+    },
+    "HTTP Fetch": {
+      "main": [[{ "node": "Orchestration Prompt", "type": "main", "index": 0 }]]
+    },
+    "Master Orchestrator Instructions": {
+      "main": [[{ "node": "Master Orchestrator Agent", "type": "main", "index": 0 }]]
+    },
+    "Orchestration Prompt": {
+      "main": [[{ "node": "Master Orchestrator Agent", "type": "main", "index": 0 }]]
+    },
+    "Master Orchestrator Agent": {
+      "main": [[{ "node": "Python Intelligent Processor", "type": "main", "index": 0 }]]
+    },
+    "Python Extraction Specialist": {
+      "ai_tool": [[{ "node": "Master Orchestrator Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Visual Understanding Agent": {
+      "ai_tool": [[{ "node": "Master Orchestrator Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [[{ "node": "Pattern Learning Vector Store", "type": "ai_embedding", "index": 0 }]]
+    },
+    "Pattern Learning Vector Store": {
+      "ai_vectorStore": [[{ "node": "Master Orchestrator Agent", "type": "ai_vectorStore", "index": 0 }]]
+    },
+    "Python Intelligent Processor": {
+      "main": [[{ "node": "Claude Quality Validator", "type": "main", "index": 0 }]]
+    },
+    "Claude Quality Validator": {
+      "main": [
+        [
+          { "node": "Upsert Auctions (Super Smart)", "type": "main", "index": 0 },
+          { "node": "Log Extraction (Super Smart)", "type": "main", "index": 0 },
+          { "node": "Save Learning Patterns", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Upsert Auctions (Super Smart)": {
+      "main": [[{ "node": "Python Report & Visualizer", "type": "main", "index": 0 }]]
+    },
+    "Log Extraction (Super Smart)": {
+      "main": [[{ "node": "Python Report & Visualizer", "type": "main", "index": 0 }]]
+    },
+    "Save Learning Patterns": {
+      "main": [[{ "node": "Python Report & Visualizer", "type": "main", "index": 0 }]]
+    },
+    "Python Report & Visualizer": {
+      "main": [[{ "node": "Save Super Smart Report", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["super-smart", "ai-agents", "python", "self-learning", "calendar"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

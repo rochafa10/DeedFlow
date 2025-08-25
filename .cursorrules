@@ -1,0 +1,97 @@
+# Cursor Rules for Tax Deed Platform
+
+## ⚠️ CRITICAL: n8n-MCP Dependency
+**THIS PROJECT REQUIRES n8n-MCP** located at `../n8n-mcp` for ALL n8n workflow automation.
+- **NEVER** edit n8n workflows directly in n8n UI
+- **ALWAYS** use n8n-MCP client: `lib/n8n-mcp-client.ts`
+- **ALWAYS** deploy via: `npm run n8n:deploy`
+- **READ**: `AI_ASSISTANT_INSTRUCTIONS.md` and `n8n/N8N_MCP_INTEGRATION.md`
+
+## Project Context
+This is a Next.js 15 tax deed investment platform with TypeScript, Tailwind CSS, Supabase, and n8n automation managed through n8n-MCP.
+
+## Code Style Rules
+- Use TypeScript with explicit types
+- Prefer async/await over promises
+- Use functional React components with hooks
+- Follow Next.js 15 App Router patterns
+- Use Tailwind CSS for styling (no inline styles)
+- Import order: React, Next, External libs, Internal components, Utils, Types
+
+## Component Patterns
+```tsx
+// Always use this pattern for components
+export default function ComponentName({ prop }: { prop: Type }) {
+  return <div className="tailwind-classes">{content}</div>
+}
+```
+
+## API Route Pattern
+```typescript
+// app/api/*/route.ts
+export async function GET(request: Request) {
+  try {
+    // Implementation
+    return Response.json({ data });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+}
+```
+
+## Database Queries
+- Always use Supabase client from @/lib/supabase
+- Include error handling
+- Use proper TypeScript types
+
+## File Naming
+- Components: PascalCase.tsx
+- Utils: camelCase.ts
+- Pages: page.tsx
+- API: route.ts
+
+## Common Tasks
+- To add a new page: Create app/[feature]/page.tsx
+- To add an API: Create app/api/[endpoint]/route.ts
+- To add a component: Create components/[ComponentName].tsx
+- To add types: Update lib/types.ts
+
+## Testing
+- Write tests for new features
+- Use @testing-library/react for components
+- Test file pattern: __tests__/[name].test.tsx
+
+## Important Files
+- Database schema: /supabase/migrations/001_initial_schema.sql
+- API docs: /docs/API_DOCUMENTATION.md
+- Types: /lib/types.ts
+- Utils: /lib/utils.ts
+
+## Do NOT
+- Use console.log in production code
+- Commit .env.local
+- Use any type unless absolutely necessary
+- Create files outside established structure
+- Use var (use const/let)
+
+## Dependencies
+Main packages: next@15, react@19, typescript, tailwindcss@4, @supabase/supabase-js, lucide-react, @radix-ui/*
+
+## Environment Variables Required
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+N8N_WEBHOOK_URL
+N8N_API_KEY (for n8n-MCP integration)
+N8N_API_URL (http://localhost:5678)
+
+## n8n Automation Commands
+- `npm run n8n:list` - List all workflows
+- `npm run n8n:deploy` - Deploy workflows from files
+- `npm run n8n:validate` - Validate workflow files
+- `npm run n8n:export` - Export workflows from n8n
+- `npm run n8n:manage <cmd>` - Workflow management
+
+## n8n Workflow Files
+- Location: `n8n/workflows/*.json`
+- Edit these files, then run `npm run n8n:deploy`
+- NEVER edit directly in n8n UI

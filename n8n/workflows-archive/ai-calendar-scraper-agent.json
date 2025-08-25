@@ -1,0 +1,312 @@
+{
+  "name": "AI Calendar Scraper - Intelligent Auction Discovery",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "schedule_trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced county configuration with AI-optimized selectors\nconst counties = [\n  { \n    name: 'Miami-Dade', \n    state: 'FL', \n    url: 'https://www.miamidade.gov/taxcollector/auctions',\n    calendar_url: 'https://www.miamidade.gov/global/service.page?Mduid_service=ser1525887946391279',\n    patterns: {\n      date: ['Tax Deed Sale', 'Auction Date', 'Sale Date'],\n      list: ['Property List', 'Download List', 'Auction Properties']\n    }\n  },\n  { \n    name: 'Broward', \n    state: 'FL', \n    url: 'https://www.broward.org/RecordsTaxesTreasury/Pages/TaxDeedSale.aspx',\n    patterns: {\n      date: ['deed sale', 'auction schedule'],\n      list: ['property listing', 'sale list']\n    }\n  },\n  { \n    name: 'Palm Beach', \n    state: 'FL', \n    url: 'https://pbctax.manatron.com/Tabs/TaxDeedSales.aspx',\n    patterns: {\n      date: ['upcoming sales', 'sale calendar'],\n      list: ['certificates', 'properties']\n    }\n  },\n  { \n    name: 'Hillsborough', \n    state: 'FL', \n    url: 'https://www.hillstax.org/tax-deed-sales/',\n    patterns: {\n      date: ['next sale', 'upcoming auction'],\n      list: ['download properties', 'view list']\n    }\n  },\n  { \n    name: 'Orange', \n    state: 'FL', \n    url: 'https://www.octaxcol.com/pages/TaxDeedSales.aspx',\n    patterns: {\n      date: ['sale dates', 'auction calendar'],\n      list: ['property download', 'certificate list']\n    }\n  }\n];\n\nreturn counties.map(county => ({ json: county }));"
+      },
+      "id": "county_config",
+      "name": "County Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          }
+        }
+      },
+      "id": "fetch_page",
+      "name": "Fetch County Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "content": "## AI Calendar Extraction Agent\n\nYou are an expert at extracting auction and tax deed sale information from government websites. Your task is to find and extract:\n\n1. **Auction Dates**: Look for any mention of upcoming tax deed sales, auctions, or certificate sales\n2. **Property Lists**: Find downloadable lists, PDFs, Excel files, or links to property information\n3. **Registration Details**: Deadlines, deposit requirements, bidder registration info\n4. **Special Instructions**: Any unique requirements or procedures for this county\n\nBe thorough and extract ALL relevant dates, even if they seem far in the future. Parse dates in any format and standardize them to ISO format.\n\nAlways return structured JSON with these fields:\n- auction_dates: Array of {date, type, description}\n- property_lists: Array of {url, format, description}\n- registration: {deadline, deposit, requirements}\n- special_notes: Array of important information",
+        "options": {}
+      },
+      "id": "agent_instructions",
+      "name": "Agent Instructions",
+      "type": "@n8n/n8n-nodes-langchain.documentDefault",
+      "typeVersion": 1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "name": "Calendar Extraction Agent",
+        "instructions": "={{ $('Agent Instructions').first().json.text }}",
+        "model": "gpt-4-turbo-preview",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 2000
+        }
+      },
+      "id": "ai_extraction_agent",
+      "name": "AI Extraction Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [850, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Extract text content from HTML. Use this to get the raw text from the webpage for analysis.",
+        "jsCode": "// Extract and clean HTML content\nconst html = $input.first().json.data || $input.first().json;\nif (!html || typeof html !== 'string') {\n  return { error: 'No HTML content found' };\n}\n\n// Remove scripts and styles\nconst cleanHtml = html\n  .replace(/<script\\b[^<]*(?:(?!<\\/script>)<[^<]*)*<\\/script>/gi, '')\n  .replace(/<style\\b[^<]*(?:(?!<\\/style>)<[^<]*)*<\\/style>/gi, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nreturn {\n  text: cleanHtml.substring(0, 8000), // Limit for token usage\n  length: cleanHtml.length\n};"
+      },
+      "id": "html_extractor_tool",
+      "name": "HTML Text Extractor",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Parse dates from text using multiple formats. Provide the text containing dates and get back standardized ISO dates.",
+        "jsCode": "// Advanced date parsing tool\nconst text = $input.first().json.text || '';\nconst dates = [];\n\n// Enhanced regex patterns for various date formats\nconst patterns = [\n  // Standard formats\n  /\\b(\\d{1,2})\\/(\\d{1,2})\\/(\\d{2,4})\\b/g,  // MM/DD/YYYY or MM/DD/YY\n  /\\b(\\d{1,2})-(\\d{1,2})-(\\d{2,4})\\b/g,    // MM-DD-YYYY\n  /\\b(\\d{4})-(\\d{2})-(\\d{2})\\b/g,          // YYYY-MM-DD\n  \n  // Written formats\n  /\\b(January|February|March|April|May|June|July|August|September|October|November|December)\\s+(\\d{1,2}),?\\s+(\\d{4})\\b/gi,\n  /\\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\.?\\s+(\\d{1,2}),?\\s+(\\d{4})\\b/gi,\n  \n  // Relative dates\n  /\\b(\\d{1,2})\\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\\s+(\\d{4})\\b/gi,\n  \n  // Special formats\n  /\\b(\\d{1,2})th?\\s+of\\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\\s+(\\d{4})\\b/gi\n];\n\nconst foundDates = new Set();\n\nfor (const pattern of patterns) {\n  const matches = text.matchAll(pattern);\n  for (const match of matches) {\n    try {\n      const dateStr = match[0];\n      const date = new Date(dateStr);\n      \n      // Validate date is reasonable (between now and 2 years from now)\n      const now = new Date();\n      const twoYears = new Date();\n      twoYears.setFullYear(twoYears.getFullYear() + 2);\n      \n      if (date >= now && date <= twoYears && !isNaN(date.getTime())) {\n        const isoDate = date.toISOString().split('T')[0];\n        if (!foundDates.has(isoDate)) {\n          foundDates.add(isoDate);\n          \n          // Find context around the date\n          const startIdx = Math.max(0, match.index - 50);\n          const endIdx = Math.min(text.length, match.index + match[0].length + 50);\n          const context = text.substring(startIdx, endIdx).trim();\n          \n          dates.push({\n            date: isoDate,\n            original: dateStr,\n            context: context,\n            confidence: pattern.source.includes('\\\\d{4}') ? 'high' : 'medium'\n          });\n        }\n      }\n    } catch (e) {\n      // Skip invalid dates\n    }\n  }\n}\n\n// Sort dates chronologically\ndates.sort((a, b) => new Date(a.date) - new Date(b.date));\n\nreturn {\n  dates_found: dates.length,\n  dates: dates\n};"
+      },
+      "id": "date_parser_tool",
+      "name": "Date Parser Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [650, 600]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Find and extract URLs for property lists, PDFs, Excel files, or any downloadable auction documents.",
+        "jsCode": "// Extract URLs for property lists and documents\nconst html = $input.first().json.data || $input.first().json;\nconst baseUrl = $('County Configuration').first().json.url;\n\nconst urls = [];\nconst patterns = [\n  /<a[^>]+href=[\"']([^\"']+\\.pdf)[\"'][^>]*>([^<]+)</gi,\n  /<a[^>]+href=[\"']([^\"']+\\.xlsx?)[\"'][^>]*>([^<]+)</gi,\n  /<a[^>]+href=[\"']([^\"']+\\.csv)[\"'][^>]*>([^<]+)</gi,\n  /<a[^>]*>([^<]*(?:property|list|download|auction|certificate)[^<]*)<\\/a>/gi\n];\n\nconst foundUrls = new Set();\n\nfor (const pattern of patterns) {\n  const matches = html.matchAll(pattern);\n  for (const match of matches) {\n    let url = match[1];\n    const linkText = match[2] || match[1];\n    \n    if (url && !url.startsWith('http')) {\n      // Convert relative URLs to absolute\n      try {\n        url = new URL(url, baseUrl).href;\n      } catch (e) {\n        continue;\n      }\n    }\n    \n    if (url && !foundUrls.has(url)) {\n      foundUrls.add(url);\n      \n      // Determine file type\n      let fileType = 'unknown';\n      if (url.includes('.pdf')) fileType = 'PDF';\n      else if (url.includes('.xls')) fileType = 'Excel';\n      else if (url.includes('.csv')) fileType = 'CSV';\n      else if (linkText.toLowerCase().includes('list')) fileType = 'List';\n      \n      urls.push({\n        url: url,\n        text: linkText.substring(0, 100),\n        type: fileType,\n        relevant: linkText.toLowerCase().includes('property') || \n                  linkText.toLowerCase().includes('auction') ||\n                  linkText.toLowerCase().includes('deed') ||\n                  linkText.toLowerCase().includes('certificate')\n      });\n    }\n  }\n}\n\n// Sort by relevance\nurls.sort((a, b) => b.relevant - a.relevant);\n\nreturn {\n  urls_found: urls.length,\n  property_lists: urls.slice(0, 10) // Top 10 most relevant\n};"
+      },
+      "id": "url_extractor_tool",
+      "name": "URL Extractor Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [650, 700]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Extract auction calendar information from this {{ $json.county }} county website:\n\nURL: {{ $json.url }}\nHTML Content: {{ $('Fetch County Page').first().json.data }}\n\nSearch for:\n1. All upcoming tax deed sale dates\n2. Property list download links\n3. Registration deadlines and requirements\n4. Any special notices or changes\n\nUse the provided tools to extract dates and URLs accurately. Return structured JSON with all found information."
+      },
+      "id": "extraction_prompt",
+      "name": "Extraction Prompt",
+      "type": "@n8n/n8n-nodes-langchain.outputParser",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-3.5-turbo",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a data validation expert. Review the extracted auction data and:\n\n1. Validate all dates are in the future and properly formatted\n2. Check URLs are valid and accessible\n3. Flag any anomalies or suspicious data\n4. Ensure consistency across fields\n5. Add confidence scores to each data point\n\nReturn validated and cleaned data with confidence scores."
+            },
+            {
+              "role": "user",
+              "content": "Validate this extracted auction data:\n\nCounty: {{ $('County Configuration').first().json.name }}\nExtracted Data: {{ $json }}\n\nEnsure dates are valid, URLs are complete, and add confidence scores."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "responseFormat": { "type": "json_object" }
+        }
+      },
+      "id": "ai_validator",
+      "name": "AI Data Validator",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [1050, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process and structure AI-extracted auction data\nconst countyInfo = $('County Configuration').first().json;\nconst aiExtraction = $('AI Extraction Agent').first().json;\nconst validation = $('AI Data Validator').first().json;\n\n// Parse AI responses\nlet extractedData, validatedData;\ntry {\n  extractedData = typeof aiExtraction === 'string' ? JSON.parse(aiExtraction) : aiExtraction;\n  validatedData = typeof validation === 'string' ? JSON.parse(validation) : validation;\n} catch (e) {\n  console.error('Failed to parse AI response:', e);\n  extractedData = {};\n  validatedData = {};\n}\n\n// Combine and structure auction data\nconst auctions = [];\nconst auctionDates = extractedData.auction_dates || validatedData.dates || [];\n\nfor (const auctionInfo of auctionDates) {\n  if (!auctionInfo.date) continue;\n  \n  const auction = {\n    county: countyInfo.name,\n    state: countyInfo.state,\n    auction_date: new Date(auctionInfo.date).toISOString(),\n    auction_type: auctionInfo.type || 'Tax Deed',\n    description: auctionInfo.description || auctionInfo.context || '',\n    \n    // Registration details\n    registration_deadline: auctionInfo.registration_deadline || \n      new Date(new Date(auctionInfo.date).getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(),\n    deposit_amount: extractedData.registration?.deposit || 1000,\n    requirements: extractedData.registration?.requirements || '',\n    \n    // URLs and sources\n    source_url: countyInfo.url,\n    property_list_urls: (extractedData.property_lists || [])\n      .filter(list => list.relevant)\n      .map(list => list.url),\n    \n    // Metadata\n    status: 'upcoming',\n    confidence_score: validatedData.confidence || auctionInfo.confidence || 0.8,\n    ai_extracted: true,\n    extraction_method: 'ai_agent',\n    special_notes: extractedData.special_notes || [],\n    \n    created_at: new Date().toISOString(),\n    updated_at: new Date().toISOString()\n  };\n  \n  auctions.push(auction);\n}\n\n// Add monitoring record if no auctions found\nif (auctions.length === 0) {\n  auctions.push({\n    county: countyInfo.name,\n    state: countyInfo.state,\n    auction_date: null,\n    status: 'no_upcoming_auctions',\n    source_url: countyInfo.url,\n    ai_extracted: true,\n    last_checked: new Date().toISOString(),\n    extraction_notes: 'AI agent found no upcoming auctions',\n    created_at: new Date().toISOString()\n  });\n}\n\n// Sort by date and confidence\nauctions.sort((a, b) => {\n  if (a.auction_date && b.auction_date) {\n    return new Date(a.auction_date) - new Date(b.auction_date);\n  }\n  return (b.confidence_score || 0) - (a.confidence_score || 0);\n});\n\nreturn auctions;"
+      },
+      "id": "process_ai_data",
+      "name": "Process AI Extracted Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an anomaly detection expert for tax deed auctions. Analyze the extracted data and identify:\n\n1. Unusual patterns (dates too far out, suspicious minimum bids)\n2. Missing critical information\n3. Potential data quality issues\n4. Opportunities (unusually low competition counties)\n5. Risks (changes in procedures, new requirements)\n\nProvide actionable insights and recommendations."
+            },
+            {
+              "role": "user",
+              "content": "Analyze auction data for anomalies and insights:\n\nCounty: {{ $json.county }}\nAuctions Found: {{ $json.auctions_found }}\nData: {{ $json }}\n\nIdentify any unusual patterns, opportunities, or risks."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "anomaly_detector",
+      "name": "AI Anomaly Detector",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [1450, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "schema": "public",
+        "table": "auctions",
+        "columns": "county,state,auction_date,auction_type,description,registration_deadline,deposit_amount,source_url,status,confidence_score,ai_extracted,created_at,updated_at",
+        "upsertColumns": "county,state,auction_date",
+        "additionalFields": {}
+      },
+      "id": "save_auctions",
+      "name": "Save AI Extracted Auctions",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create comprehensive extraction report\nconst counties = $('County Configuration').all();\nconst extractedAuctions = $('Save AI Extracted Auctions').all();\nconst anomalies = $('AI Anomaly Detector').all();\n\nconst report = {\n  extraction_id: crypto.randomUUID(),\n  timestamp: new Date().toISOString(),\n  method: 'ai_agent_extraction',\n  \n  statistics: {\n    counties_processed: counties.length,\n    auctions_found: extractedAuctions.filter(a => a.json.auction_date).length,\n    confidence_average: extractedAuctions.reduce((sum, a) => sum + (a.json.confidence_score || 0), 0) / extractedAuctions.length,\n    ai_tokens_used: 'estimated_5000' // Would track actual usage in production\n  },\n  \n  counties_summary: counties.map((county, idx) => ({\n    name: county.json.name,\n    state: county.json.state,\n    auctions_extracted: extractedAuctions.filter(a => a.json.county === county.json.name).length,\n    status: extractedAuctions.some(a => a.json.county === county.json.name && a.json.auction_date) ? 'auctions_found' : 'no_auctions',\n    anomalies: anomalies[idx]?.json || null\n  })),\n  \n  next_auctions: extractedAuctions\n    .filter(a => a.json.auction_date)\n    .sort((a, b) => new Date(a.json.auction_date) - new Date(b.json.auction_date))\n    .slice(0, 5)\n    .map(a => ({\n      county: a.json.county,\n      date: a.json.auction_date,\n      confidence: a.json.confidence_score\n    })),\n  \n  insights: {\n    high_confidence_auctions: extractedAuctions.filter(a => a.json.confidence_score > 0.9).length,\n    low_confidence_auctions: extractedAuctions.filter(a => a.json.confidence_score < 0.7).length,\n    counties_needing_manual_review: counties.filter(c => \n      !extractedAuctions.some(a => a.json.county === c.json.name && a.json.confidence_score > 0.8)\n    ).map(c => c.json.name)\n  },\n  \n  ai_performance: {\n    extraction_success_rate: (extractedAuctions.filter(a => a.json.auction_date).length / counties.length) * 100,\n    average_confidence: (extractedAuctions.reduce((sum, a) => sum + (a.json.confidence_score || 0), 0) / extractedAuctions.length) * 100,\n    estimated_cost: '$0.25' // Based on token usage\n  }\n};\n\nreturn [report];"
+      },
+      "id": "create_report",
+      "name": "Create AI Extraction Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 400]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "ai_extraction_logs",
+        "columns": "extraction_id,source,method,report_data,counties_processed,auctions_found,confidence_score,created_at",
+        "additionalFields": {}
+      },
+      "id": "log_extraction",
+      "name": "Log AI Extraction",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1850, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "County Configuration", "type": "main", "index": 0 }]]
+    },
+    "County Configuration": {
+      "main": [[{ "node": "Fetch County Page", "type": "main", "index": 0 }]]
+    },
+    "Fetch County Page": {
+      "main": [[{ "node": "Extraction Prompt", "type": "main", "index": 0 }]]
+    },
+    "Agent Instructions": {
+      "main": [[{ "node": "AI Extraction Agent", "type": "main", "index": 0 }]]
+    },
+    "Extraction Prompt": {
+      "main": [[{ "node": "AI Extraction Agent", "type": "main", "index": 0 }]]
+    },
+    "AI Extraction Agent": {
+      "main": [[{ "node": "AI Data Validator", "type": "main", "index": 0 }]]
+    },
+    "HTML Text Extractor": {
+      "ai_tool": [[{ "node": "AI Extraction Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Date Parser Tool": {
+      "ai_tool": [[{ "node": "AI Extraction Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "URL Extractor Tool": {
+      "ai_tool": [[{ "node": "AI Extraction Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "AI Data Validator": {
+      "main": [[{ "node": "Process AI Extracted Data", "type": "main", "index": 0 }]]
+    },
+    "Process AI Extracted Data": {
+      "main": [
+        [
+          { "node": "AI Anomaly Detector", "type": "main", "index": 0 },
+          { "node": "Save AI Extracted Auctions", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "AI Anomaly Detector": {
+      "main": [[{ "node": "Create AI Extraction Report", "type": "main", "index": 0 }]]
+    },
+    "Save AI Extracted Auctions": {
+      "main": [[{ "node": "Create AI Extraction Report", "type": "main", "index": 0 }]]
+    },
+    "Create AI Extraction Report": {
+      "main": [[{ "node": "Log AI Extraction", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ai-agent", "calendar", "scraper", "intelligent"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

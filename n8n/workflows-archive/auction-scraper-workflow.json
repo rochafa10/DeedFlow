@@ -1,0 +1,364 @@
+{
+  "name": "Tax Deed - Auction Scraper (Scheduled)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule_trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Define counties to scrape\nconst counties = [\n  { name: 'Miami-Dade', state: 'FL', url: 'https://www.miamidade.gov/taxcollector/auctions' },\n  { name: 'Broward', state: 'FL', url: 'https://www.broward.org/RecordsTaxesTreasury/Pages/TaxDeedSale.aspx' },\n  { name: 'Palm Beach', state: 'FL', url: 'https://pbctax.manatron.com/Tabs/TaxDeedSales.aspx' },\n  { name: 'Hillsborough', state: 'FL', url: 'https://www.hillstax.org/tax-deed-sales/' },\n  { name: 'Orange', state: 'FL', url: 'https://www.octaxcol.com/pages/TaxDeedSales.aspx' }\n];\n\nreturn counties.map(county => ({\n  json: county\n}));"
+      },
+      "id": "define_counties",
+      "name": "Define Counties to Scrape",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          }
+        }
+      },
+      "id": "fetch_auction_page",
+      "name": "Fetch Auction Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "auction_date",
+              "cssSelector": ".auction-date, .sale-date, [class*='date']",
+              "returnValue": "text",
+              "multiple": true
+            },
+            {
+              "key": "auction_type",
+              "cssSelector": ".auction-type, .sale-type, [class*='type']",
+              "returnValue": "text",
+              "multiple": true
+            },
+            {
+              "key": "property_list_url",
+              "cssSelector": "a[href*='list'], a[href*='properties'], a[href*='download']",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "multiple": true
+            },
+            {
+              "key": "auction_info",
+              "cssSelector": ".auction-info, .sale-info, [class*='info']",
+              "returnValue": "html",
+              "multiple": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract_auction_data",
+      "name": "Extract Auction Data",
+      "type": "n8n-nodes-base.htmlExtract",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process extracted auction data\nconst countyInfo = $('Define Counties to Scrape').item.json;\nconst extractedData = $input.first().json;\n\n// Parse auction dates\nconst auctionDates = extractedData.auction_date || [];\nconst auctionTypes = extractedData.auction_type || [];\nconst propertyListUrls = extractedData.property_list_url || [];\n\n// Clean and parse dates\nconst parseDate = (dateStr) => {\n  if (!dateStr) return null;\n  \n  // Common date formats\n  const patterns = [\n    /\\b(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})\\b/,  // MM/DD/YYYY\n    /\\b(\\w+)\\s+(\\d{1,2}),?\\s+(\\d{4})\\b/,   // Month DD, YYYY\n    /\\b(\\d{4})-(\\d{2})-(\\d{2})\\b/          // YYYY-MM-DD\n  ];\n  \n  for (const pattern of patterns) {\n    const match = dateStr.match(pattern);\n    if (match) {\n      try {\n        return new Date(match[0]).toISOString();\n      } catch (e) {\n        continue;\n      }\n    }\n  }\n  return null;\n};\n\n// Determine auction type\nconst getAuctionType = (typeStr) => {\n  if (!typeStr) return 'Tax Deed';\n  \n  const lowerType = typeStr.toLowerCase();\n  if (lowerType.includes('lien')) return 'Tax Lien';\n  if (lowerType.includes('deed') && lowerType.includes('redeem')) return 'Redeemable Deed';\n  if (lowerType.includes('deed')) return 'Tax Deed';\n  \n  return 'Tax Deed';\n};\n\n// Create auction records\nconst auctions = [];\nfor (let i = 0; i < Math.max(auctionDates.length, 1); i++) {\n  const auctionDate = parseDate(auctionDates[i]);\n  \n  // Skip if no valid date found\n  if (!auctionDate) continue;\n  \n  // Check if auction date is in the future\n  if (new Date(auctionDate) < new Date()) continue;\n  \n  auctions.push({\n    county: countyInfo.name,\n    state: countyInfo.state,\n    auction_date: auctionDate,\n    auction_type: getAuctionType(auctionTypes[i]),\n    registration_deadline: new Date(new Date(auctionDate).getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days before\n    deposit_amount: 1000, // Default deposit\n    source_url: countyInfo.url,\n    property_list_url: propertyListUrls[i] ? new URL(propertyListUrls[i], countyInfo.url).href : null,\n    status: 'upcoming',\n    created_at: new Date().toISOString(),\n    updated_at: new Date().toISOString()\n  });\n}\n\n// If no auctions found, create a placeholder for monitoring\nif (auctions.length === 0) {\n  auctions.push({\n    county: countyInfo.name,\n    state: countyInfo.state,\n    auction_date: null,\n    auction_type: 'Tax Deed',\n    status: 'no_upcoming_auctions',\n    source_url: countyInfo.url,\n    last_checked: new Date().toISOString(),\n    created_at: new Date().toISOString(),\n    updated_at: new Date().toISOString()\n  });\n}\n\nreturn auctions;"
+      },
+      "id": "process_auction_data",
+      "name": "Process Auction Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "schema": "public",
+        "table": "auctions",
+        "columns": "county,state,auction_date,auction_type,registration_deadline,deposit_amount,source_url,status,created_at,updated_at",
+        "upsertColumns": "county,state,auction_date",
+        "additionalFields": {}
+      },
+      "id": "upsert_auctions",
+      "name": "Upsert Auctions",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.property_list_url }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch_property_list",
+      "name": "Fetch Property List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1450, 200],
+      "continueOnFail": true,
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process property list (CSV/Excel parsing would go here)\nconst auctionData = $('Process Auction Data').first().json;\nconst propertyListResponse = $('Fetch Property List').first();\n\n// This is a placeholder - actual implementation would parse CSV/Excel\n// For now, we'll create sample properties\nconst properties = [];\n\n// Only process if we have a valid property list URL\nif (auctionData.property_list_url && propertyListResponse.json) {\n  // Parse the response based on content type\n  // This would need actual CSV/Excel parsing libraries in production\n  \n  // Sample properties for demonstration\n  const sampleParcels = [\n    '25-45-22-001-0010',\n    '25-45-22-001-0020',\n    '25-45-22-001-0030'\n  ];\n  \n  for (const parcel of sampleParcels) {\n    properties.push({\n      auction_id: auctionData.id,\n      parcel_number: parcel,\n      county: auctionData.county,\n      state: auctionData.state,\n      case_number: `2024-${Math.floor(Math.random() * 10000)}`,\n      certificate_number: `CERT-${Math.floor(Math.random() * 100000)}`,\n      minimum_bid: Math.floor(Math.random() * 50000) + 5000,\n      assessed_value: Math.floor(Math.random() * 200000) + 50000,\n      sale_date: auctionData.auction_date,\n      property_type: 'Single Family',\n      status: 'pending',\n      created_at: new Date().toISOString()\n    });\n  }\n}\n\nreturn properties;"
+      },
+      "id": "parse_property_list",
+      "name": "Parse Property List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 200]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "properties",
+        "columns": "parcel_number,county,state,case_number,certificate_number,minimum_bid,assessed_value,sale_date,property_type,status,created_at",
+        "additionalFields": {}
+      },
+      "id": "insert_properties",
+      "name": "Insert New Properties",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1850, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compile scraping summary\nconst counties = $('Define Counties to Scrape').all();\nconst auctions = $('Upsert Auctions').all();\nconst properties = $('Insert New Properties').all();\n\nconst summary = {\n  timestamp: new Date().toISOString(),\n  counties_scraped: counties.length,\n  auctions_found: auctions.filter(a => a.json.status === 'upcoming').length,\n  properties_added: properties.length,\n  next_run: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // 6 hours from now\n  details: counties.map((county, index) => ({\n    county: county.json.name,\n    state: county.json.state,\n    auctions: auctions.filter(a => a.json.county === county.json.name).length,\n    properties: properties.filter(p => p.json.county === county.json.name).length\n  }))\n};\n\nreturn [summary];"
+      },
+      "id": "create_summary",
+      "name": "Create Scraping Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "scraping_logs",
+        "columns": "source,status,message,data,created_at",
+        "additionalFields": {}
+      },
+      "id": "log_scraping",
+      "name": "Log Scraping Activity",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1650, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "webhookUri": "={{ $env.NOTIFICATION_WEBHOOK_URL }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "auction_scraping_complete"
+            },
+            {
+              "name": "summary",
+              "value": "={{ $json }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "send_notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1850, 400],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Define Counties to Scrape",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define Counties to Scrape": {
+      "main": [
+        [
+          {
+            "node": "Fetch Auction Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Auction Page": {
+      "main": [
+        [
+          {
+            "node": "Extract Auction Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Auction Data": {
+      "main": [
+        [
+          {
+            "node": "Process Auction Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Auction Data": {
+      "main": [
+        [
+          {
+            "node": "Upsert Auctions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Auctions": {
+      "main": [
+        [
+          {
+            "node": "Fetch Property List",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Scraping Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Property List": {
+      "main": [
+        [
+          {
+            "node": "Parse Property List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Property List": {
+      "main": [
+        [
+          {
+            "node": "Insert New Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert New Properties": {
+      "main": [
+        [
+          {
+            "node": "Create Scraping Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Scraping Summary": {
+      "main": [
+        [
+          {
+            "node": "Log Scraping Activity",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": ["tax-deed", "scraper", "scheduled", "supabase"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

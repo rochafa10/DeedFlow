@@ -1,0 +1,284 @@
+{
+  "name": "AI-Enhanced Property Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-property-analysis",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "ai-property-analysis"
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "select",
+        "schema": "public",
+        "table": "properties",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "string",
+        "filters": {
+          "conditions": [
+            {
+              "field": "id",
+              "condition": "equals",
+              "value": "={{ $json.propertyId }}"
+            }
+          ]
+        }
+      },
+      "id": "fetch_property",
+      "name": "Fetch Property Data",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert real estate investment analyst specializing in tax deed properties. Analyze the property data and provide a comprehensive investment assessment including:\n\n1. Investment Grade (A, B, C, D, F)\n2. Key Opportunities\n3. Major Risks\n4. Recommended Exit Strategy\n5. Estimated Profit Potential\n6. Action Items for Due Diligence\n\nBe specific and data-driven in your analysis."
+            },
+            {
+              "role": "user",
+              "content": "Analyze this tax deed property:\n\nAddress: {{ $json.address }}\nCounty: {{ $json.county }}, {{ $json.state }}\nMinimum Bid: ${{ $json.minimum_bid }}\nAssessed Value: ${{ $json.assessed_value }}\nYear Built: {{ $json.year_built }}\nLiving Area: {{ $json.living_area }} sq ft\nLot Size: {{ $json.lot_size }} sq ft\nBedrooms: {{ $json.bedrooms }}\nBathrooms: {{ $json.bathrooms }}\nProperty Type: {{ $json.property_type }}\nFlood Zone: {{ $json.flood_zone }}\nCurrent Score: {{ $json.score }}\n\nProvide a detailed investment analysis."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1500
+        }
+      },
+      "id": "openai_analysis",
+      "name": "AI Investment Analysis",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [650, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-vision-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a property condition assessment expert. Based on the property details and typical conditions for properties of this age and type, estimate:\n\n1. Major repair categories needed\n2. Estimated repair costs for each category\n3. Total renovation budget\n4. Timeline for repairs\n5. Priority of repairs (Critical, High, Medium, Low)\n\nBe conservative in your estimates."
+            },
+            {
+              "role": "user",
+              "content": "Property Details:\nYear Built: {{ $json.year_built }}\nProperty Type: {{ $json.property_type }}\nSquare Feet: {{ $json.living_area }}\nAge: {{ 2024 - $json.year_built }} years\n\nEstimate repair costs and priorities."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "repair_estimator",
+      "name": "AI Repair Cost Estimator",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [650, 350],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-3.5-turbo",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a real estate market analyst. Based on the property location and characteristics, research and provide:\n\n1. Comparable property sales (estimate 3-5 comps)\n2. Average price per square foot in the area\n3. Rental market analysis (average rent for similar properties)\n4. Days on market for similar properties\n5. Market trend (appreciating, stable, declining)\n6. Best exit strategy for this market\n\nProvide specific numbers and percentages."
+            },
+            {
+              "role": "user",
+              "content": "Analyze the market for:\nLocation: {{ $json.county }}, {{ $json.state }}\nProperty Type: {{ $json.property_type }}\nBedrooms: {{ $json.bedrooms }}\nBathrooms: {{ $json.bathrooms }}\nSquare Feet: {{ $json.living_area }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "market_analysis",
+      "name": "AI Market Analysis",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [650, 500],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-opus",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a tax deed investment risk assessor. Analyze all available data and provide a comprehensive risk assessment including:\n\n1. Legal Risks (title issues, liens, redemption rights)\n2. Financial Risks (over-bidding, repair costs, market conditions)\n3. Environmental Risks (flood zone, contamination, natural disasters)\n4. Market Risks (neighborhood decline, oversupply, economic factors)\n5. Execution Risks (renovation delays, contractor issues, permitting)\n\nRate each risk category as: Low, Medium, High, or Critical\nProvide mitigation strategies for each identified risk."
+            },
+            {
+              "role": "user",
+              "content": "Property: {{ $json.address }}\nFlood Zone: {{ $json.flood_zone }}\nMinimum Bid: ${{ $json.minimum_bid }}\nEstimated Value: ${{ $json.assessed_value }}\nCounty: {{ $json.county }}"
+            }
+          ]
+        }
+      },
+      "id": "risk_assessment",
+      "name": "AI Risk Assessment",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1.2,
+      "position": [650, 650],
+      "credentials": {
+        "anthropicApi": {
+          "id": "3",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all AI analyses\nconst property = $('Fetch Property Data').first().json;\nconst investmentAnalysis = $('AI Investment Analysis').first().json;\nconst repairEstimate = $('AI Repair Cost Estimator').first().json;\nconst marketAnalysis = $('AI Market Analysis').first().json;\nconst riskAssessment = $('AI Risk Assessment').first().json;\n\n// Parse AI responses\nconst parseAIResponse = (response) => {\n  if (typeof response === 'string') return response;\n  if (response.message?.content) return response.message.content;\n  if (response.text) return response.text;\n  return JSON.stringify(response);\n};\n\n// Calculate AI-enhanced score\nlet aiScore = property.score || 50;\n\n// Adjust based on AI insights\nif (investmentAnalysis.message?.content?.includes('Grade: A')) aiScore += 20;\nif (investmentAnalysis.message?.content?.includes('Grade: B')) aiScore += 10;\nif (investmentAnalysis.message?.content?.includes('Grade: C')) aiScore += 0;\nif (investmentAnalysis.message?.content?.includes('Grade: D')) aiScore -= 10;\nif (investmentAnalysis.message?.content?.includes('Grade: F')) aiScore -= 20;\n\n// Ensure score is between 0-100\naiScore = Math.max(0, Math.min(100, aiScore));\n\n// Determine recommendation\nlet recommendation = 'ANALYZE_FURTHER';\nif (aiScore >= 80) recommendation = 'STRONG_BUY';\nelse if (aiScore >= 65) recommendation = 'BUY';\nelse if (aiScore >= 50) recommendation = 'CONDITIONAL_BUY';\nelse if (aiScore < 35) recommendation = 'PASS';\n\nreturn [{\n  propertyId: property.id,\n  originalScore: property.score,\n  aiEnhancedScore: aiScore,\n  recommendation: recommendation,\n  \n  investmentAnalysis: {\n    summary: parseAIResponse(investmentAnalysis),\n    timestamp: new Date().toISOString()\n  },\n  \n  repairEstimate: {\n    summary: parseAIResponse(repairEstimate),\n    timestamp: new Date().toISOString()\n  },\n  \n  marketAnalysis: {\n    summary: parseAIResponse(marketAnalysis),\n    timestamp: new Date().toISOString()\n  },\n  \n  riskAssessment: {\n    summary: parseAIResponse(riskAssessment),\n    timestamp: new Date().toISOString()\n  },\n  \n  keyInsights: [\n    'Investment Analysis Complete',\n    `AI Score: ${aiScore}/100`,\n    `Recommendation: ${recommendation}`\n  ],\n  \n  metadata: {\n    workflowId: 'ai-enhanced-property-analyzer',\n    version: '1.0.0',\n    models: ['gpt-4-turbo', 'gpt-3.5-turbo', 'claude-3-opus'],\n    analyzedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "aggregate_insights",
+      "name": "Aggregate AI Insights",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "ai_analyses",
+        "columns": "property_id,ai_score,recommendation,investment_analysis,repair_estimate,market_analysis,risk_assessment,created_at",
+        "additionalFields": {}
+      },
+      "id": "save_analysis",
+      "name": "Save AI Analysis",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "update",
+        "schema": "public",
+        "table": "properties",
+        "updateKey": "id",
+        "columns": "ai_score,ai_recommendation,updated_at",
+        "additionalFields": {}
+      },
+      "id": "update_property",
+      "name": "Update Property with AI Score",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1050, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Fetch Property Data", "type": "main", "index": 0 }]]
+    },
+    "Fetch Property Data": {
+      "main": [
+        [
+          { "node": "AI Investment Analysis", "type": "main", "index": 0 },
+          { "node": "AI Repair Cost Estimator", "type": "main", "index": 0 },
+          { "node": "AI Market Analysis", "type": "main", "index": 0 },
+          { "node": "AI Risk Assessment", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "AI Investment Analysis": {
+      "main": [[{ "node": "Aggregate AI Insights", "type": "main", "index": 0 }]]
+    },
+    "AI Repair Cost Estimator": {
+      "main": [[{ "node": "Aggregate AI Insights", "type": "main", "index": 0 }]]
+    },
+    "AI Market Analysis": {
+      "main": [[{ "node": "Aggregate AI Insights", "type": "main", "index": 0 }]]
+    },
+    "AI Risk Assessment": {
+      "main": [[{ "node": "Aggregate AI Insights", "type": "main", "index": 0 }]]
+    },
+    "Aggregate AI Insights": {
+      "main": [
+        [
+          { "node": "Save AI Analysis", "type": "main", "index": 0 },
+          { "node": "Update Property with AI Score", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save AI Analysis": {
+      "main": [[{ "node": "Send Response", "type": "main", "index": 0 }]]
+    },
+    "Update Property with AI Score": {
+      "main": [[{ "node": "Send Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ai", "tax-deed", "analysis", "gpt-4", "claude"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

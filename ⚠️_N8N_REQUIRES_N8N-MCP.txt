@@ -1,0 +1,33 @@
+⚠️⚠️⚠️ CRITICAL DEPENDENCY ⚠️⚠️⚠️
+
+This project REQUIRES the n8n-MCP project for ALL n8n workflow automation!
+
+n8n-MCP Location: ../n8n-mcp (parent directory)
+
+❌ NEVER:
+- Edit n8n workflows directly in n8n UI
+- Use n8n API directly
+- Import/export workflows manually
+
+✅ ALWAYS:
+- Use n8n-MCP client: lib/n8n-mcp-client.ts
+- Run: npm run n8n:deploy
+- Edit files in: n8n/workflows/
+
+📚 MUST READ:
+- AI_ASSISTANT_INSTRUCTIONS.md
+- n8n/N8N_MCP_INTEGRATION.md
+- n8n/QUICK_REFERENCE.md
+
+🔧 Commands:
+npm run n8n:list      # List workflows
+npm run n8n:deploy    # Deploy workflows
+npm run n8n:validate  # Validate workflows
+npm run n8n:export    # Export workflows
+
+If n8n-MCP is missing:
+cd ..
+git clone https://github.com/czlonkowski/n8n-mcp.git
+cd n8n-mcp
+npm install
+npm run build

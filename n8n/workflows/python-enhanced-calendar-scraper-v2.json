@@ -1,0 +1,107 @@
+{
+  "name": "Python-Enhanced Calendar Scraper v2",
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fetch-calendar",
+      "name": "Fetch Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.miamidadeclerk.gov/public-records/foreclosure-sales",
+        "responseFormat": "text"
+      }
+    },
+    {
+      "id": "python-extractor",
+      "name": "Python HTML Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "language": "python",
+        "pythonCode": "\nfrom bs4 import BeautifulSoup\nimport re\nfrom datetime import datetime\nimport json\n\n# Parse HTML\nhtml_content = items[0]['json']['data']\nsoup = BeautifulSoup(html_content, 'html.parser')\n\nauctions = []\n\n# Strategy 1: Find tables\ntables = soup.find_all('table')\nfor table in tables:\n    rows = table.find_all('tr')\n    for row in rows[1:]:  # Skip header\n        cells = row.find_all(['td', 'th'])\n        if len(cells) >= 3:\n            case_match = re.search(r'\\d{4}-\\d+', str(cells[0]))\n            if case_match:\n                auction = {\n                    'case_number': case_match.group(),\n                    'sale_date': cells[1].get_text(strip=True) if len(cells) > 1 else '',\n                    'property_address': cells[2].get_text(strip=True) if len(cells) > 2 else '',\n                    'extraction_method': 'table_parser'\n                }\n                auctions.append(auction)\n\n# Strategy 2: Find divs with calendar class\ncalendar_divs = soup.find_all('div', class_=re.compile('calendar|auction|sale'))\nfor div in calendar_divs:\n    text = div.get_text()\n    case_matches = re.findall(r'\\d{4}-\\d+', text)\n    for case in case_matches:\n        auction = {\n            'case_number': case,\n            'extraction_method': 'div_parser'\n        }\n        auctions.append(auction)\n\n# Deduplicate by case number\nunique_auctions = {a['case_number']: a for a in auctions}.values()\n\nreturn [{\n    'auctions': list(unique_auctions),\n    'total_found': len(unique_auctions),\n    'extraction_time': datetime.now().isoformat()\n}]\n"
+      }
+    },
+    {
+      "id": "save-results",
+      "name": "Save to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "operation": "create",
+        "tableId": "auctions",
+        "dataToSend": "autoMapInputData"
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "fetch-calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch-calendar": {
+      "main": [
+        [
+          {
+            "node": "python-extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "python-extractor": {
+      "main": [
+        [
+          {
+            "node": "save-results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

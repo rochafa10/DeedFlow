@@ -1,0 +1,261 @@
+{
+  "name": "Tax Deed - Inspection Report Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inspection-report",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "inspection-report"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate input\nconst input = $input.first().json;\n\nif (!input.propertyId) {\n  throw new Error('Property ID is required');\n}\n\nreturn [{\n  propertyId: input.propertyId,\n  inspectorName: input.inspectorName || 'System Generated',\n  inspectionDate: input.inspectionDate || new Date().toISOString(),\n  propertyAccess: input.propertyAccess || 'exterior',\n  run_id: input.run_id || crypto.randomUUID()\n}];"
+      },
+      "id": "parse_input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "select",
+        "schema": "public",
+        "table": "properties",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "string",
+        "filters": {
+          "conditions": [
+            {
+              "field": "id",
+              "condition": "equals",
+              "value": "={{ $json.propertyId }}"
+            }
+          ]
+        }
+      },
+      "id": "fetch_property",
+      "name": "Fetch Property Details",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate comprehensive inspection checklist\nconst property = $('Fetch Property Details').first().json;\nconst input = $('Parse Input').first().json;\n\n// Define inspection categories and items\nconst inspectionCategories = [\n  {\n    category: 'Exterior',\n    items: [\n      { name: 'Roof Condition', description: 'Check for missing shingles, leaks, sagging' },\n      { name: 'Siding/Stucco', description: 'Check for cracks, damage, paint condition' },\n      { name: 'Windows', description: 'Check for broken glass, frame damage, seals' },\n      { name: 'Doors', description: 'Check operation, locks, weatherstripping' },\n      { name: 'Foundation', description: 'Check for cracks, settling, water damage' },\n      { name: 'Driveway/Walkways', description: 'Check for cracks, trip hazards' },\n      { name: 'Landscaping', description: 'Check overgrowth, tree hazards, drainage' },\n      { name: 'Fence/Gates', description: 'Check condition, operation, security' }\n    ]\n  },\n  {\n    category: 'Interior',\n    items: [\n      { name: 'Flooring', description: 'Check for damage, levelness, water stains' },\n      { name: 'Walls', description: 'Check for cracks, holes, water damage' },\n      { name: 'Ceilings', description: 'Check for stains, cracks, sagging' },\n      { name: 'Kitchen Cabinets', description: 'Check condition, operation, hardware' },\n      { name: 'Kitchen Appliances', description: 'Check presence and condition' },\n      { name: 'Bathrooms', description: 'Check fixtures, tiles, plumbing' },\n      { name: 'Bedrooms', description: 'Check condition, closets, windows' },\n      { name: 'Stairs/Railings', description: 'Check safety, code compliance' }\n    ]\n  },\n  {\n    category: 'Systems',\n    items: [\n      { name: 'Electrical System', description: 'Check panel, outlets, switches, wiring' },\n      { name: 'Plumbing System', description: 'Check pipes, fixtures, water pressure' },\n      { name: 'HVAC System', description: 'Check operation, age, maintenance' },\n      { name: 'Water Heater', description: 'Check age, operation, capacity' },\n      { name: 'Septic/Sewer', description: 'Check connection, condition' },\n      { name: 'Insulation', description: 'Check attic, walls, crawlspace' },\n      { name: 'Ventilation', description: 'Check bathroom fans, kitchen exhaust' }\n    ]\n  },\n  {\n    category: 'Safety & Compliance',\n    items: [\n      { name: 'Smoke Detectors', description: 'Check presence and operation' },\n      { name: 'Carbon Monoxide Detectors', description: 'Check presence and operation' },\n      { name: 'Fire Extinguisher', description: 'Check presence and expiration' },\n      { name: 'GFCIs', description: 'Check bathroom and kitchen outlets' },\n      { name: 'Handrails', description: 'Check stairs and elevated areas' },\n      { name: 'Permits', description: 'Check for unpermitted additions' },\n      { name: 'Code Violations', description: 'Check county records' }\n    ]\n  }\n];\n\n// Generate inspection items with estimated costs\nconst inspectionItems = [];\nlet totalRepairEstimate = 0;\n\nfor (const category of inspectionCategories) {\n  for (const item of category.items) {\n    // Simulate inspection results based on property age\n    const propertyAge = property.year_built ? (2024 - property.year_built) : 30;\n    const conditionProbability = Math.max(0.1, Math.min(0.9, propertyAge / 50));\n    const needsRepair = Math.random() < conditionProbability;\n    \n    let condition = 'Good';\n    let repairCost = 0;\n    let priority = 'Low';\n    let notes = '';\n    \n    if (needsRepair) {\n      const severity = Math.random();\n      if (severity < 0.3) {\n        condition = 'Fair';\n        repairCost = Math.floor(Math.random() * 1000) + 500;\n        priority = 'Medium';\n        notes = 'Minor repairs needed';\n      } else if (severity < 0.7) {\n        condition = 'Poor';\n        repairCost = Math.floor(Math.random() * 5000) + 1000;\n        priority = 'High';\n        notes = 'Significant repairs required';\n      } else {\n        condition = 'Replace';\n        repairCost = Math.floor(Math.random() * 10000) + 5000;\n        priority = 'Critical';\n        notes = 'Full replacement recommended';\n      }\n    }\n    \n    totalRepairEstimate += repairCost;\n    \n    inspectionItems.push({\n      inspection_id: null, // Will be set after creating inspection record\n      category: category.category,\n      item_name: item.name,\n      description: item.description,\n      condition: condition,\n      repair_cost_estimate: repairCost,\n      priority: priority,\n      notes: notes,\n      photo_urls: [],\n      created_at: new Date().toISOString()\n    });\n  }\n}\n\n// Calculate property condition score\nconst goodItems = inspectionItems.filter(i => i.condition === 'Good').length;\nconst totalItems = inspectionItems.length;\nconst conditionScore = Math.round((goodItems / totalItems) * 100);\n\n// Determine overall condition\nlet overallCondition = 'Good';\nif (conditionScore < 40) overallCondition = 'Poor';\nelse if (conditionScore < 70) overallCondition = 'Fair';\n\nreturn [{\n  propertyId: input.propertyId,\n  inspection: {\n    property_id: input.propertyId,\n    inspector_name: input.inspectorName,\n    inspection_date: input.inspectionDate,\n    property_access: input.propertyAccess,\n    overall_condition: overallCondition,\n    total_repair_estimate: totalRepairEstimate,\n    condition_score: conditionScore,\n    major_issues: inspectionItems.filter(i => i.priority === 'Critical').map(i => i.item_name).join(', ') || 'None',\n    recommendations: totalRepairEstimate > 50000 ? 'Major renovation required' : 'Property is a good investment opportunity',\n    report_url: null, // Will be set after generating PDF\n    status: 'completed',\n    created_at: new Date().toISOString()\n  },\n  items: inspectionItems,\n  summary: {\n    totalItems: totalItems,\n    goodCondition: goodItems,\n    needsRepair: totalItems - goodItems,\n    criticalIssues: inspectionItems.filter(i => i.priority === 'Critical').length,\n    estimatedRepairs: totalRepairEstimate,\n    conditionScore: conditionScore\n  },\n  run_id: input.run_id\n}];"
+      },
+      "id": "generate_inspection",
+      "name": "Generate Inspection Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "inspections",
+        "columns": "property_id,inspector_name,inspection_date,property_access,overall_condition,total_repair_estimate,condition_score,major_issues,recommendations,status,created_at",
+        "additionalFields": {}
+      },
+      "id": "create_inspection",
+      "name": "Create Inspection Record",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare inspection items for bulk insert\nconst inspectionData = $('Generate Inspection Data').first().json;\nconst inspectionRecord = $('Create Inspection Record').first().json;\n\n// Add inspection_id to all items\nconst itemsToInsert = inspectionData.items.map(item => ({\n  ...item,\n  inspection_id: inspectionRecord.id\n}));\n\nreturn itemsToInsert;"
+      },
+      "id": "prepare_items",
+      "name": "Prepare Inspection Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "inspection_items",
+        "columns": "inspection_id,category,item_name,description,condition,repair_cost_estimate,priority,notes,created_at",
+        "additionalFields": {}
+      },
+      "id": "insert_items",
+      "name": "Insert Inspection Items",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate HTML report\nconst property = $('Fetch Property Details').first().json;\nconst inspectionData = $('Generate Inspection Data').first().json;\nconst inspection = inspectionData.inspection;\nconst items = inspectionData.items;\n\n// Group items by category\nconst itemsByCategory = {};\nitems.forEach(item => {\n  if (!itemsByCategory[item.category]) {\n    itemsByCategory[item.category] = [];\n  }\n  itemsByCategory[item.category].push(item);\n});\n\n// Generate HTML\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <title>Property Inspection Report - ${property.parcel_number}</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 40px; }\n    h1 { color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px; }\n    h2 { color: #555; margin-top: 30px; }\n    .header { background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 30px; }\n    .summary { display: flex; justify-content: space-around; margin: 20px 0; }\n    .summary-item { text-align: center; padding: 15px; background: #fff; border: 1px solid #dee2e6; border-radius: 5px; }\n    .summary-value { font-size: 24px; font-weight: bold; color: #007bff; }\n    .category { margin: 30px 0; }\n    table { width: 100%; border-collapse: collapse; margin: 15px 0; }\n    th { background: #007bff; color: white; padding: 10px; text-align: left; }\n    td { padding: 10px; border-bottom: 1px solid #dee2e6; }\n    .condition-good { color: green; font-weight: bold; }\n    .condition-fair { color: orange; font-weight: bold; }\n    .condition-poor { color: red; font-weight: bold; }\n    .condition-replace { color: darkred; font-weight: bold; }\n    .priority-critical { background: #ffebee; }\n    .priority-high { background: #fff3e0; }\n    .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #dee2e6; text-align: center; color: #6c757d; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>Property Inspection Report</h1>\n    <p><strong>Property:</strong> ${property.parcel_number}</p>\n    <p><strong>Address:</strong> ${property.address || 'N/A'}, ${property.county}, ${property.state}</p>\n    <p><strong>Inspection Date:</strong> ${new Date(inspection.inspection_date).toLocaleDateString()}</p>\n    <p><strong>Inspector:</strong> ${inspection.inspector_name}</p>\n    <p><strong>Property Access:</strong> ${inspection.property_access}</p>\n  </div>\n  \n  <h2>Executive Summary</h2>\n  <div class=\"summary\">\n    <div class=\"summary-item\">\n      <div class=\"summary-value\">${inspection.overall_condition}</div>\n      <div>Overall Condition</div>\n    </div>\n    <div class=\"summary-item\">\n      <div class=\"summary-value\">${inspection.condition_score}%</div>\n      <div>Condition Score</div>\n    </div>\n    <div class=\"summary-item\">\n      <div class=\"summary-value\">$${inspection.total_repair_estimate.toLocaleString()}</div>\n      <div>Est. Repairs</div>\n    </div>\n    <div class=\"summary-item\">\n      <div class=\"summary-value\">${inspectionData.summary.criticalIssues}</div>\n      <div>Critical Issues</div>\n    </div>\n  </div>\n  \n  <h2>Recommendations</h2>\n  <p>${inspection.recommendations}</p>\n  ${inspection.major_issues !== 'None' ? `<p><strong>Major Issues Found:</strong> ${inspection.major_issues}</p>` : ''}\n  \n  <h2>Detailed Inspection Results</h2>\n  ${Object.entries(itemsByCategory).map(([category, categoryItems]) => `\n    <div class=\"category\">\n      <h3>${category}</h3>\n      <table>\n        <thead>\n          <tr>\n            <th>Item</th>\n            <th>Condition</th>\n            <th>Priority</th>\n            <th>Est. Cost</th>\n            <th>Notes</th>\n          </tr>\n        </thead>\n        <tbody>\n          ${categoryItems.map(item => `\n            <tr class=\"priority-${item.priority.toLowerCase()}\">\n              <td>${item.item_name}</td>\n              <td class=\"condition-${item.condition.toLowerCase()}\">${item.condition}</td>\n              <td>${item.priority}</td>\n              <td>$${item.repair_cost_estimate.toLocaleString()}</td>\n              <td>${item.notes}</td>\n            </tr>\n          `).join('')}\n        </tbody>\n      </table>\n    </div>\n  `).join('')}\n  \n  <div class=\"footer\">\n    <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>\n    <p>Tax Deed Platform - Property Inspection Report</p>\n  </div>\n</body>\n</html>\n`;\n\nreturn [{\n  html: html,\n  filename: `inspection_${property.parcel_number}_${new Date().toISOString().split('T')[0]}.html`,\n  inspection_id: $('Create Inspection Record').first().json.id\n}];"
+      },
+      "id": "generate_html",
+      "name": "Generate HTML Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare response\nconst inspectionRecord = $('Create Inspection Record').first().json;\nconst inspectionData = $('Generate Inspection Data').first().json;\nconst htmlReport = $('Generate HTML Report').first().json;\n\nreturn [{\n  status: 'success',\n  message: 'Inspection report generated successfully',\n  data: {\n    inspectionId: inspectionRecord.id,\n    propertyId: inspectionData.propertyId,\n    overallCondition: inspectionData.inspection.overall_condition,\n    conditionScore: inspectionData.inspection.condition_score,\n    totalRepairEstimate: inspectionData.inspection.total_repair_estimate,\n    criticalIssues: inspectionData.summary.criticalIssues,\n    itemsInspected: inspectionData.summary.totalItems,\n    reportHtml: htmlReport.html,\n    filename: htmlReport.filename\n  },\n  run_id: inspectionData.run_id,\n  timestamp: new Date().toISOString()\n}];"
+      },
+      "id": "prepare_response",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Fetch Property Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Property Details": {
+      "main": [
+        [
+          {
+            "node": "Generate Inspection Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Inspection Data": {
+      "main": [
+        [
+          {
+            "node": "Create Inspection Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Inspection Record": {
+      "main": [
+        [
+          {
+            "node": "Prepare Inspection Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Inspection Items": {
+      "main": [
+        [
+          {
+            "node": "Insert Inspection Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Inspection Items": {
+      "main": [
+        [
+          {
+            "node": "Generate HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate HTML Report": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["tax-deed", "inspection", "report", "supabase"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

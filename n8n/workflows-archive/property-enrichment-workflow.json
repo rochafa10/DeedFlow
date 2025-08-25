@@ -1,0 +1,348 @@
+{
+  "name": "Property Enrichment Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "FeFSVjsO91L2hEkL/property-enrichment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "FeFSVjsO91L2hEkL"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "parse_input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "select",
+        "table": "properties",
+        "returnAll": false,
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "field": "parcel_number",
+              "operation": "equals",
+              "value": "={{ $json.parcelNumber }}"
+            }
+          ]
+        }
+      },
+      "id": "check_property",
+      "name": "Check Property Exists",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.example.com/county/{{ $json.county }}/parcel/{{ $json.parcelNumber }}",
+        "method": "GET",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch_county_data",
+      "name": "Fetch County Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://api.zillow.com/property",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "address",
+              "value": "={{ $json.address }}"
+            },
+            {
+              "name": "citystatezip",
+              "value": "={{ $json.county }}, {{ $json.state }}"
+            }
+          ]
+        }
+      },
+      "id": "fetch_zillow",
+      "name": "Fetch Zillow Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 350],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "functionCode": "// Combine and process all enrichment data\nconst countyData = items[0].json;\nconst zillowData = items[1].json;\nconst originalData = $input.first().json;\n\n// Calculate property score\nlet score = 70; // Base score\n\nif (countyData.yearBuilt > 2000) score += 10;\nif (countyData.squareFeet > 1500) score += 5;\nif (zillowData.zestimate && zillowData.zestimate > originalData.amountDue * 5) score += 15;\n\n// Determine classification\nlet classification = 'B';\nif (score >= 85) classification = 'A';\nelse if (score < 60) classification = 'C';\n\n// Process enrichment data\nconst enrichedData = {\n  propertyId: originalData.propertyId,\n  yearBuilt: countyData.yearBuilt || zillowData.yearBuilt || null,\n  livingArea: countyData.squareFeet || zillowData.livingArea || null,\n  lotSize: countyData.lotSize || null,\n  bedrooms: countyData.bedrooms || zillowData.bedrooms || null,\n  bathrooms: countyData.bathrooms || zillowData.bathrooms || null,\n  propertyType: countyData.propertyType || 'Single Family Residential',\n  roofType: countyData.roofType || null,\n  roofAge: countyData.roofAge || null,\n  hvacType: countyData.hvacType || null,\n  pool: countyData.pool || false,\n  garage: countyData.garage || 0,\n  score: score,\n  classification: classification,\n  \n  // Valuation data\n  valuation: {\n    assessed_value: countyData.assessedValue || null,\n    market_value: zillowData.zestimate || countyData.marketValue || null,\n    land_value: countyData.landValue || null,\n    building_value: countyData.buildingValue || null,\n    last_sale_price: countyData.lastSalePrice || null,\n    last_sale_date: countyData.lastSaleDate || null,\n    estimated_rent_min: zillowData.rentZestimate ? zillowData.rentZestimate * 0.9 : 1500,\n    estimated_rent_max: zillowData.rentZestimate ? zillowData.rentZestimate * 1.1 : 2500,\n    arv_estimate: (zillowData.zestimate || countyData.marketValue || originalData.amountDue * 8),\n    rehab_estimate: 15000 + (2024 - (countyData.yearBuilt || 1990)) * 500\n  },\n  \n  // Owner data\n  owner: {\n    owner_name: countyData.ownerName || null,\n    owner_address: countyData.ownerAddress || null,\n    owner_occupied: countyData.ownerOccupied || false,\n    occupancy_status: countyData.ownerOccupied ? 'Owner Occupied' : 'Unknown'\n  },\n  \n  // Risk assessment\n  risk: {\n    flood_zone: countyData.floodZone || 'X',\n    code_violations: countyData.codeViolations || 0,\n    open_permits: countyData.openPermits || 0,\n    overall_risk_level: score >= 70 ? 'Low' : 'Medium'\n  },\n  \n  run_id: originalData.run_id,\n  enrichment_date: new Date().toISOString()\n};\n\nreturn enrichedData;"
+      },
+      "id": "process_data",
+      "name": "Process Enrichment Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "update",
+        "table": "properties",
+        "filters": {
+          "conditions": [
+            {
+              "field": "id",
+              "operation": "equals",
+              "value": "={{ $json.propertyId }}"
+            }
+          ]
+        },
+        "columns": "year_built,living_area,lot_size,bedrooms,bathrooms,property_type,roof_type,roof_age,hvac_type,pool,garage_spaces,score,classification",
+        "columnValues": "={{ $json.yearBuilt }},={{ $json.livingArea }},={{ $json.lotSize }},={{ $json.bedrooms }},={{ $json.bathrooms }},={{ $json.propertyType }},={{ $json.roofType }},={{ $json.roofAge }},={{ $json.hvacType }},={{ $json.pool }},={{ $json.garage }},={{ $json.score }},={{ $json.classification }}"
+      },
+      "id": "update_property",
+      "name": "Update Property",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "table": "property_valuations",
+        "columns": "property_id,assessed_value,market_value,land_value,building_value,last_sale_price,last_sale_date,estimated_rent_min,estimated_rent_max,arv_estimate,rehab_estimate",
+        "columnValues": "={{ $json.propertyId }},={{ $json.valuation.assessed_value }},={{ $json.valuation.market_value }},={{ $json.valuation.land_value }},={{ $json.valuation.building_value }},={{ $json.valuation.last_sale_price }},={{ $json.valuation.last_sale_date }},={{ $json.valuation.estimated_rent_min }},={{ $json.valuation.estimated_rent_max }},={{ $json.valuation.arv_estimate }},={{ $json.valuation.rehab_estimate }}"
+      },
+      "id": "update_valuation",
+      "name": "Update Valuation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 350]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "table": "property_owners",
+        "columns": "property_id,owner_name,owner_address,owner_occupied,occupancy_status",
+        "columnValues": "={{ $json.propertyId }},={{ $json.owner.owner_name }},={{ $json.owner.owner_address }},={{ $json.owner.owner_occupied }},={{ $json.owner.occupancy_status }}"
+      },
+      "id": "update_owner",
+      "name": "Update Owner",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "table": "enrichment_logs",
+        "columns": "property_id,source,status,data_retrieved,run_id",
+        "columnValues": "={{ $json.propertyId }},n8n,success,={{ JSON.stringify($json) }},={{ $json.run_id }}"
+      },
+      "id": "log_enrichment",
+      "name": "Log Enrichment",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 350]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "ok"
+            }
+          ],
+          "number": [
+            {
+              "name": "propertiesUpdated",
+              "value": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare_response",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1850, 300]
+    }
+  ],
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "parse_input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse_input": {
+      "main": [
+        [
+          {
+            "node": "check_property",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_property": {
+      "main": [
+        [
+          {
+            "node": "fetch_county_data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "fetch_zillow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch_county_data": {
+      "main": [
+        [
+          {
+            "node": "process_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch_zillow": {
+      "main": [
+        [
+          {
+            "node": "process_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process_data": {
+      "main": [
+        [
+          {
+            "node": "update_property",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "update_valuation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "update_owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_property": {
+      "main": [
+        [
+          {
+            "node": "log_enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_valuation": {
+      "main": [
+        [
+          {
+            "node": "log_enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_owner": {
+      "main": [
+        [
+          {
+            "node": "log_enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log_enrichment": {
+      "main": [
+        [
+          {
+            "node": "prepare_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare_response": {
+      "main": [
+        [
+          {
+            "node": "webhook_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

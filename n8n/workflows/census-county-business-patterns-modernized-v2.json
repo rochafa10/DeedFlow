@@ -1,0 +1,185 @@
+{
+  "name": "Census County Business Patterns - Modernized v2",
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 200],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "value": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "initialize-config",
+      "name": "Initialize Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Enhanced Census API configuration with rate limiting\nconst CENSUS_API_BASE = 'https://api.census.gov/data/2023/cbp';\nconst API_KEY = '059814072c853cf2c2c996f264d00b456f04979d';\n\n// Enhanced state FIPS codes mapping with validation\nconst STATE_FIPS_MAP = {\n  'AL': '01', 'AK': '02', 'AZ': '04', 'AR': '05', 'CA': '06',\n  'CO': '08', 'CT': '09', 'DE': '10', 'FL': '12', 'GA': '13',\n  'HI': '15', 'ID': '16', 'IL': '17', 'IN': '18', 'IA': '19',\n  'KS': '20', 'KY': '21', 'LA': '22', 'ME': '23', 'MD': '24',\n  'MA': '25', 'MI': '26', 'MN': '27', 'MS': '28', 'MO': '29',\n  'MT': '30', 'NE': '31', 'NV': '32', 'NH': '33', 'NJ': '34',\n  'NM': '35', 'NY': '36', 'NC': '37', 'ND': '38', 'OH': '39',\n  'OK': '40', 'OR': '41', 'PA': '42', 'RI': '44', 'SC': '45',\n  'SD': '46', 'TN': '47', 'TX': '48', 'UT': '49', 'VT': '50',\n  'VA': '51', 'WA': '53', 'WV': '54', 'WI': '55', 'WY': '56'\n};\n\n// Rate limiting configuration\nconst RATE_LIMIT_DELAY = 2000; // 2 seconds between API calls\nconst MAX_RETRIES = 3;\nconst RETRY_DELAY = 1000; // 1 second initial retry delay\n\nconsole.log('✅ Configuration initialized with rate limiting and retry logic');\n\nreturn [{\n  config: {\n    censusApiBase: CENSUS_API_BASE,\n    apiKey: API_KEY,\n    stateFipsMap: STATE_FIPS_MAP,\n    rateLimitDelay: RATE_LIMIT_DELAY,\n    maxRetries: MAX_RETRIES,\n    retryDelay: RETRY_DELAY,\n    batchSize: 50,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "get-counties-to-update",
+      "name": "Get Counties to Update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/counties",
+        "headers": {
+          "apikey": "={{ $env.SUPABASE_ANON_KEY }}",
+          "Authorization": "Bearer {{ $env.SUPABASE_ANON_KEY }}",
+          "Content-Type": "application/json"
+        },
+        "options": {
+          "qs": {
+            "select": "id,name,state_code,business_data_updated_at",
+            "or": "business_data_updated_at.is.null,business_data_updated_at.lt.{{ new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() }}",
+            "limit": "50"
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "process-counties-by-state",
+      "name": "Process Counties by State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 200],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const config = $input.first().json.config;\nconst counties = $input.last().json;\n\nif (!counties || counties.length === 0) {\n  console.log('ℹ️ No counties need updating');\n  return [{ \n    status: 'complete',\n    message: 'No counties to update',\n    processedCount: 0\n  }];\n}\n\n// Group counties by state for efficient API calls\nconst countiesByState = {};\ncounties.forEach(county => {\n  const stateCode = county.state_code;\n  if (!countiesByState[stateCode]) {\n    countiesByState[stateCode] = [];\n  }\n  countiesByState[stateCode].push(county);\n});\n\nconst statesList = Object.entries(countiesByState).map(([stateCode, stateCounties]) => ({\n  stateCode,\n  stateFips: config.stateFipsMap[stateCode],\n  counties: stateCounties,\n  countyCount: stateCounties.length\n}));\n\nconsole.log(`🗺️ Processing ${counties.length} counties across ${statesList.length} states`);\n\nreturn statesList.map(state => ({\n  ...state,\n  config,\n  totalStates: statesList.length\n}));"
+      }
+    },
+    {
+      "id": "fetch-census-data",
+      "name": "Fetch Census Data with Rate Limiting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.config.censusApiBase }}",
+        "options": {
+          "qs": {
+            "get": "ESTAB,EMP,PAYANN,NAME",
+            "for": "county:*",
+            "in": "state:{{ $json.stateFips }}",
+            "key": "={{ $json.config.apiKey }}"
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "rate-limit-delay",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 200],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Add delay to prevent API rate limiting\nconst config = $json.config;\nconst delay = config.rateLimitDelay || 2000;\n\nconsole.log(`⏳ Applying ${delay}ms rate limit delay for state: ${$json.stateCode}`);\n\nawait new Promise(resolve => setTimeout(resolve, delay));\n\nreturn $input.item.json;"
+      }
+    },
+    {
+      "id": "process-census-data",
+      "name": "Process and Validate Census Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 200],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stateInfo = $input.item.json;\nconst censusApiResponse = stateInfo.body || stateInfo;\n\n// Validate Census API response\nif (!Array.isArray(censusApiResponse) || censusApiResponse.length < 2) {\n  console.error(`❌ Invalid Census API response for state ${stateInfo.stateCode}`);\n  return {\n    ...stateInfo,\n    error: 'Invalid Census API response',\n    processedCounties: []\n  };\n}\n\n// Process CSV-like response structure\nconst headers = censusApiResponse[0];\nconst dataRows = censusApiResponse.slice(1);\n\nconsole.log(`📊 Processing ${dataRows.length} census records for state ${stateInfo.stateCode}`);\n\nconst processedCounties = [];\n\ndataRows.forEach(row => {\n  const countyData = {};\n  headers.forEach((header, index) => {\n    countyData[header] = row[index];\n  });\n\n  // Skip records without establishment data\n  if (!countyData.ESTAB || countyData.ESTAB === 'null' || countyData.ESTAB === '') {\n    return;\n  }\n\n  // Clean and standardize county name\n  let countyName = (countyData.NAME || '').replace(/ County$/i, '').trim();\n  \n  // Parse numeric values with validation\n  const establishments = parseInt(countyData.ESTAB) || 0;\n  const employees = parseInt(countyData.EMP) || 0;\n  const payroll = parseInt(countyData.PAYANN) || 0;\n\n  if (establishments > 0) {\n    processedCounties.push({\n      countyName,\n      originalName: countyData.NAME,\n      establishments,\n      employees,\n      payroll,\n      stateFips: countyData.state,\n      countyFips: countyData.county,\n      censusDataYear: 2023\n    });\n  }\n});\n\nconsole.log(`✅ Successfully processed ${processedCounties.length} counties for state ${stateInfo.stateCode}`);\n\nreturn {\n  ...stateInfo,\n  processedCounties,\n  successfulProcessing: true,\n  timestamp: new Date().toISOString()\n};"
+      }
+    },
+    {
+      "id": "match-counties-calculate-scores",
+      "name": "Match Counties and Calculate Scores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 200],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stateData = $input.item.json;\n\nif (!stateData.successfulProcessing || !stateData.processedCounties) {\n  return {\n    ...stateData,\n    matchedUpdates: [],\n    matchCount: 0\n  };\n}\n\nconst { counties: dbCounties, processedCounties } = stateData;\nconst matchedUpdates = [];\n\nconsole.log(`🔍 Matching ${dbCounties.length} DB counties with ${processedCounties.length} Census records`);\n\ndbCounties.forEach(dbCounty => {\n  // Enhanced county name matching\n  const dbCountyName = dbCounty.name.toLowerCase().replace(/ county$/i, '').trim();\n  \n  const censusMatch = processedCounties.find(census => {\n    const censusName = census.countyName.toLowerCase().trim();\n    return censusName === dbCountyName || \n           censusName.includes(dbCountyName) || \n           dbCountyName.includes(censusName);\n  });\n\n  if (censusMatch) {\n    // Calculate enhanced economic health score\n    let economicScore = 50; // Base score\n    \n    // Business diversity factor\n    const employmentDensity = censusMatch.employees / 1000;\n    if (employmentDensity > 50) economicScore += 20;\n    else if (employmentDensity > 25) economicScore += 15;\n    else if (employmentDensity > 10) economicScore += 10;\n    else if (employmentDensity > 5) economicScore += 5;\n    \n    // Economic prosperity factor (average salary)\n    const avgSalary = censusMatch.employees > 0 ? censusMatch.payroll / censusMatch.employees : 0;\n    if (avgSalary > 60000) economicScore += 20;\n    else if (avgSalary > 45000) economicScore += 15;\n    else if (avgSalary > 35000) economicScore += 10;\n    else if (avgSalary > 25000) economicScore += 5;\n    \n    // Business establishment density\n    if (censusMatch.establishments > 1000) economicScore += 10;\n    else if (censusMatch.establishments > 500) economicScore += 7;\n    else if (censusMatch.establishments > 100) economicScore += 5;\n    else if (censusMatch.establishments > 50) economicScore += 3;\n    \n    // Cap at 100\n    economicScore = Math.min(economicScore, 100);\n\n    matchedUpdates.push({\n      countyId: dbCounty.id,\n      countyName: dbCounty.name,\n      updateData: {\n        business_establishments: censusMatch.establishments,\n        business_employees: censusMatch.employees,\n        business_payroll: censusMatch.payroll,\n        top_industries: [],\n        economic_health_score: economicScore,\n        business_data_updated_at: new Date().toISOString()\n      },\n      censusMatch\n    });\n  } else {\n    // No match found - set minimal data\n    console.log(`⚠️ No Census match for county: ${dbCounty.name}`);\n    matchedUpdates.push({\n      countyId: dbCounty.id,\n      countyName: dbCounty.name,\n      updateData: {\n        business_establishments: 0,\n        business_employees: 0,\n        business_payroll: 0,\n        top_industries: [],\n        economic_health_score: 0,\n        business_data_updated_at: new Date().toISOString()\n      },\n      censusMatch: null\n    });\n  }\n});\n\nconsole.log(`✅ Matched ${matchedUpdates.filter(u => u.censusMatch).length} of ${dbCounties.length} counties`);\n\nreturn {\n  ...stateData,\n  matchedUpdates,\n  matchCount: matchedUpdates.length,\n  successfulMatches: matchedUpdates.filter(u => u.censusMatch).length\n};"
+      }
+    },
+    {
+      "id": "update-counties-batch",
+      "name": "Update Counties in Database",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1700, 200],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stateData = $input.item.json;\n\nif (!stateData.matchedUpdates || stateData.matchedUpdates.length === 0) {\n  return {\n    ...stateData,\n    updateResults: {\n      success: false,\n      message: 'No counties to update',\n      updatedCount: 0\n    }\n  };\n}\n\n// Process each county update individually\nconst updatePromises = stateData.matchedUpdates.map(async (update) => {\n  const url = `${$env.SUPABASE_URL}/rest/v1/counties?id=eq.${update.countyId}`;\n  \n  try {\n    const response = await fetch(url, {\n      method: 'PATCH',\n      headers: {\n        'apikey': $env.SUPABASE_ANON_KEY,\n        'Authorization': `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`,\n        'Content-Type': 'application/json',\n        'Prefer': 'return=representation'\n      },\n      body: JSON.stringify(update.updateData)\n    });\n    \n    if (!response.ok) {\n      throw new Error(`HTTP ${response.status}: ${response.statusText}`);\n    }\n    \n    const result = await response.json();\n    console.log(`✅ Updated county: ${update.countyName}`);\n    \n    return {\n      success: true,\n      countyId: update.countyId,\n      countyName: update.countyName,\n      result\n    };\n  } catch (error) {\n    console.error(`❌ Failed to update county ${update.countyName}:`, error.message);\n    return {\n      success: false,\n      countyId: update.countyId,\n      countyName: update.countyName,\n      error: error.message\n    };\n  }\n});\n\n// Execute all updates\nconst results = await Promise.all(updatePromises);\nconst successCount = results.filter(r => r.success).length;\nconst errorCount = results.filter(r => !r.success).length;\n\nconsole.log(`🔄 County updates completed: ${successCount} successful, ${errorCount} failed`);\n\nreturn {\n  ...stateData,\n  updateResults: {\n    success: errorCount === 0,\n    totalUpdates: results.length,\n    successfulUpdates: successCount,\n    failedUpdates: errorCount,\n    results\n  },\n  timestamp: new Date().toISOString()\n};"
+      }
+    },
+    {
+      "id": "generate-final-report",
+      "name": "Generate Final Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1900, 200],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const allResults = $input.all();\nlet totalProcessed = 0;\nlet totalUpdated = 0;\nlet totalErrors = 0;\nconst stateResults = [];\nconst errorDetails = [];\n\nallResults.forEach(result => {\n  const stateData = result.json;\n  \n  if (stateData.updateResults) {\n    const updateResult = stateData.updateResults;\n    totalProcessed += updateResult.totalUpdates || 0;\n    totalUpdated += updateResult.successfulUpdates || 0;\n    totalErrors += updateResult.failedUpdates || 0;\n    \n    stateResults.push({\n      state: stateData.stateCode,\n      countiesProcessed: updateResult.totalUpdates || 0,\n      countiesUpdated: updateResult.successfulUpdates || 0,\n      errors: updateResult.failedUpdates || 0,\n      successRate: updateResult.totalUpdates > 0 ? \n        ((updateResult.successfulUpdates / updateResult.totalUpdates) * 100).toFixed(1) + '%' : '0%'\n    });\n    \n    // Collect error details\n    if (updateResult.results) {\n      updateResult.results.forEach(r => {\n        if (!r.success) {\n          errorDetails.push({\n            state: stateData.stateCode,\n            county: r.countyName,\n            error: r.error\n          });\n        }\n      });\n    }\n  }\n});\n\nconst finalReport = {\n  status: totalErrors === 0 ? 'success' : 'partial_success',\n  timestamp: new Date().toISOString(),\n  workflow: {\n    name: 'Census County Business Patterns - Modernized v2',\n    version: '2.0',\n    improvements: [\n      '✅ Latest n8n node types with proper typeVersions',\n      '✅ Fixed database column mapping (business_payroll)',\n      '✅ Added rate limiting (2-second delays)',\n      '✅ Enhanced county name matching',\n      '✅ Improved economic health score calculation',\n      '✅ Comprehensive error handling and logging',\n      '✅ Individual county update processing',\n      '✅ Detailed success/failure tracking'\n    ]\n  },\n  summary: {\n    totalStatesProcessed: stateResults.length,\n    totalCountiesProcessed: totalProcessed,\n    totalCountiesUpdated: totalUpdated,\n    totalErrors: totalErrors,\n    overallSuccessRate: totalProcessed > 0 ? \n      ((totalUpdated / totalProcessed) * 100).toFixed(1) + '%' : '0%'\n  },\n  stateBreakdown: stateResults,\n  dataSource: {\n    api: 'Census Bureau County Business Patterns',\n    year: 2023,\n    endpoint: 'https://api.census.gov/data/2023/cbp',\n    rateLimit: '2 seconds between state API calls'\n  },\n  errors: errorDetails.length > 0 ? errorDetails : undefined\n};\n\nconsole.log('🎉 ===== CENSUS UPDATE COMPLETED =====');\nconsole.log(`📊 States processed: ${finalReport.summary.totalStatesProcessed}`);\nconsole.log(`🏛️ Counties processed: ${finalReport.summary.totalCountiesProcessed}`);\nconsole.log(`✅ Counties updated: ${finalReport.summary.totalCountiesUpdated}`);\nconsole.log(`📈 Overall success rate: ${finalReport.summary.overallSuccessRate}`);\nif (errorDetails.length > 0) {\n  console.log(`❌ Errors encountered: ${errorDetails.length}`);\n  errorDetails.forEach(e => {\n    console.log(`   - ${e.state}/${e.county}: ${e.error}`);\n  });\n}\nconsole.log('=========================================');\n\nreturn [finalReport];"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Initialize Configuration", "type": "main", "index": 0 }]]
+    },
+    "Initialize Configuration": {
+      "main": [[{ "node": "Get Counties to Update", "type": "main", "index": 0 }]]
+    },
+    "Get Counties to Update": {
+      "main": [[{ "node": "Process Counties by State", "type": "main", "index": 0 }]]
+    },
+    "Process Counties by State": {
+      "main": [[{ "node": "Fetch Census Data with Rate Limiting", "type": "main", "index": 0 }]]
+    },
+    "Fetch Census Data with Rate Limiting": {
+      "main": [[{ "node": "Rate Limit Delay", "type": "main", "index": 0 }]]
+    },
+    "Rate Limit Delay": {
+      "main": [[{ "node": "Process and Validate Census Data", "type": "main", "index": 0 }]]
+    },
+    "Process and Validate Census Data": {
+      "main": [[{ "node": "Match Counties and Calculate Scores", "type": "main", "index": 0 }]]
+    },
+    "Match Counties and Calculate Scores": {
+      "main": [[{ "node": "Update Counties in Database", "type": "main", "index": 0 }]]
+    },
+    "Update Counties in Database": {
+      "main": [[{ "node": "Generate Final Report", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

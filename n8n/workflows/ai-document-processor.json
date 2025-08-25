@@ -1,0 +1,203 @@
+{
+  "name": "AI Document Processor - Auction Lists",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-auction-document",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Document Upload Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "process-auction-document"
+    },
+    {
+      "parameters": {
+        "operation": "extractText",
+        "binaryPropertyName": "document",
+        "options": {
+          "keepOriginalDocument": true
+        }
+      },
+      "id": "extract_text",
+      "name": "Extract Text from PDF",
+      "type": "n8n-nodes-base.pdf",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert at extracting structured data from tax deed auction documents. Extract ALL properties from this document and return them in JSON format.\n\nFor each property, extract:\n- parcel_number\n- case_number\n- certificate_number (if available)\n- property_address\n- city\n- owner_name\n- minimum_bid\n- assessed_value (if available)\n- property_type (guess based on description)\n- auction_date\n- legal_description\n\nReturn as a JSON array. If a field is not found, use null.\n\nExample output:\n[\n  {\n    \"parcel_number\": \"30-1234-567-890\",\n    \"case_number\": \"2024-12345\",\n    \"property_address\": \"123 Main St\",\n    \"city\": \"Miami\",\n    \"minimum_bid\": 5000,\n    \"assessed_value\": 150000\n  }\n]"
+            },
+            {
+              "role": "user",
+              "content": "Extract all properties from this auction document:\n\n{{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 4000,
+          "responseFormat": { "type": "json_object" }
+        }
+      },
+      "id": "extract_properties",
+      "name": "AI Extract Properties",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [650, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-3.5-turbo",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a data validation expert. Review the extracted property data and:\n\n1. Validate parcel number formats (should match pattern like XX-XXXX-XXX-XXX)\n2. Ensure minimum bids are reasonable (typically $100-$100,000)\n3. Check that addresses are complete\n4. Flag any suspicious or incomplete entries\n5. Standardize property types to: 'Single Family', 'Condo', 'Townhouse', 'Vacant Land', 'Commercial', 'Multi-Family'\n\nReturn the validated data with a 'validation_issues' field for any problems found."
+            },
+            {
+              "role": "user",
+              "content": "Validate this extracted property data:\n\n{{ $json }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "validate_data",
+      "name": "AI Validate Data",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [850, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process validated properties\nconst extractedData = $('AI Extract Properties').first().json;\nconst validatedData = $('AI Validate Data').first().json;\n\n// Parse the AI responses\nlet properties = [];\ntry {\n  // Handle different response formats\n  if (typeof extractedData === 'string') {\n    properties = JSON.parse(extractedData);\n  } else if (extractedData.message?.content) {\n    properties = JSON.parse(extractedData.message.content);\n  } else if (extractedData.properties) {\n    properties = extractedData.properties;\n  } else if (Array.isArray(extractedData)) {\n    properties = extractedData;\n  }\n} catch (e) {\n  throw new Error('Failed to parse extracted properties: ' + e.message);\n}\n\n// Ensure properties is an array\nif (!Array.isArray(properties)) {\n  properties = [properties];\n}\n\n// Add metadata to each property\nconst processedProperties = properties.map((prop, index) => ({\n  ...prop,\n  // Ensure required fields\n  parcel_number: prop.parcel_number || `UNKNOWN-${index}`,\n  county: $json.county || 'Miami-Dade',\n  state: $json.state || 'FL',\n  \n  // Convert string numbers to actual numbers\n  minimum_bid: parseFloat(prop.minimum_bid) || 0,\n  assessed_value: parseFloat(prop.assessed_value) || 0,\n  \n  // Add processing metadata\n  source: 'ai_document_processor',\n  import_batch: new Date().toISOString(),\n  confidence_score: prop.validation_issues ? 0.7 : 0.95,\n  status: 'pending_review',\n  \n  // Auction information\n  sale_date: prop.auction_date || $json.auction_date || null,\n  auction_type: 'Tax Deed',\n  \n  created_at: new Date().toISOString()\n}));\n\nreturn processedProperties.map(prop => ({ json: prop }));"
+      },
+      "id": "process_properties",
+      "name": "Process Properties",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "schema": "public",
+        "table": "properties",
+        "columns": "parcel_number,county,state,case_number,certificate_number,address,minimum_bid,assessed_value,property_type,sale_date,status,created_at",
+        "upsertColumns": "parcel_number,county",
+        "additionalFields": {}
+      },
+      "id": "save_properties",
+      "name": "Save Properties to Database",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-3.5-turbo",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Generate a professional import summary report including:\n\n1. Total properties processed\n2. Properties by type breakdown\n3. Total minimum bid amount\n4. Average minimum bid\n5. Properties with issues that need review\n6. Key insights or anomalies noticed\n\nFormat as a clear, concise report."
+            },
+            {
+              "role": "user",
+              "content": "Generate import summary for {{ $items.length }} properties with total minimum bid of ${{ $items.reduce((sum, item) => sum + (item.json.minimum_bid || 0), 0) }}"
+            }
+          ]
+        }
+      },
+      "id": "generate_summary",
+      "name": "AI Generate Summary",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [1250, 500],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Document Upload Webhook": {
+      "main": [[{ "node": "Extract Text from PDF", "type": "main", "index": 0 }]]
+    },
+    "Extract Text from PDF": {
+      "main": [[{ "node": "AI Extract Properties", "type": "main", "index": 0 }]]
+    },
+    "AI Extract Properties": {
+      "main": [[{ "node": "AI Validate Data", "type": "main", "index": 0 }]]
+    },
+    "AI Validate Data": {
+      "main": [[{ "node": "Process Properties", "type": "main", "index": 0 }]]
+    },
+    "Process Properties": {
+      "main": [
+        [
+          { "node": "Save Properties to Database", "type": "main", "index": 0 },
+          { "node": "AI Generate Summary", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save Properties to Database": {
+      "main": [[{ "node": "Send Response", "type": "main", "index": 0 }]]
+    },
+    "AI Generate Summary": {
+      "main": [[{ "node": "Send Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ai", "document-processing", "pdf", "ocr"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

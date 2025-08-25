@@ -1,0 +1,293 @@
+{
+  "name": "AI Calendar Scraper - Python Enhanced with Supabase Updates",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule_trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport datetime\nfrom typing import List, Dict, Any\nimport re\nimport hashlib\n\n# Enhanced county configuration with scraping strategies\ncounties = [\n    {\n        'name': 'Miami-Dade',\n        'state': 'FL',\n        'url': 'https://www.miamidade.gov/taxcollector/auctions',\n        'calendar_api': 'https://www8.miamidade.gov/Apps/RER/TaxDeedSale/api/calendar',\n        'list_api': 'https://www8.miamidade.gov/Apps/RER/TaxDeedSale/api/properties',\n        'scraping_strategy': 'api_first',\n        'timezone': 'America/New_York',\n        'patterns': {\n            'date': [r'Sale Date[:\\s]*([\\d/]+)', r'Auction[:\\s]*([A-Za-z]+ \\d+, \\d{4})'],\n            'time': [r'(\\d{1,2}:\\d{2}\\s*[AP]M)', r'at (\\d{1,2}\\s*[ap]\\.?m\\.?)'],\n            'location': [r'Location[:\\s]*([^\\n]+)', r'held at[:\\s]*([^\\n]+)']\n        }\n    },\n    {\n        'name': 'Broward',\n        'state': 'FL',\n        'url': 'https://www.broward.org/RecordsTaxesTreasury/Pages/TaxDeedSale.aspx',\n        'scraping_strategy': 'selenium_required',\n        'timezone': 'America/New_York'\n    },\n    {\n        'name': 'Palm Beach',\n        'state': 'FL',\n        'url': 'https://pbctax.manatron.com/Tabs/TaxDeedSales.aspx',\n        'scraping_strategy': 'pdf_calendar',\n        'pdf_pattern': 'Tax_Deed_Sale_*.pdf',\n        'timezone': 'America/New_York'\n    },\n    {\n        'name': 'Hillsborough',\n        'state': 'FL',\n        'url': 'https://www.hillstax.org/tax-deed-sales/',\n        'scraping_strategy': 'html_table',\n        'timezone': 'America/New_York'\n    },\n    {\n        'name': 'Orange',\n        'state': 'FL',\n        'url': 'https://www.octaxcol.com/pages/TaxDeedSales.aspx',\n        'scraping_strategy': 'ajax_requests',\n        'timezone': 'America/New_York'\n    }\n]\n\n# Add unique identifiers and metadata\nfor county in counties:\n    # Generate unique county ID\n    county['county_id'] = hashlib.md5(f\"{county['name']}_{county['state']}\".encode()).hexdigest()[:8]\n    \n    # Add processing metadata\n    county['last_check'] = datetime.datetime.utcnow().isoformat()\n    county['processing_priority'] = 1 if county['name'] == 'Miami-Dade' else 2\n    \n    # Enhanced extraction hints for AI\n    county['ai_hints'] = {\n        'look_for': ['tax deed', 'certificate sale', 'auction', 'public sale'],\n        'exclude': ['tax lien', 'foreclosure', 'sheriff sale'],\n        'date_context': ['upcoming', 'scheduled', 'next', 'will be held']\n    }\n\n# Sort by priority\ncounties.sort(key=lambda x: x['processing_priority'])\n\nreturn counties"
+      },
+      "id": "python_county_config",
+      "name": "Python County Configuration",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 30000,
+          "headers": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+              }
+            ]
+          }
+        }
+      },
+      "id": "fetch_page",
+      "name": "Fetch County Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport re\nfrom datetime import datetime, timedelta\nfrom bs4 import BeautifulSoup\nimport pandas as pd\nfrom typing import List, Dict, Optional\nimport dateutil.parser as date_parser\nimport hashlib\n\n# Get input data\ncounty_info = _input[0]['json']\nhtml_content = _input[1]['json'].get('data', '')\n\n# Initialize BeautifulSoup\nsoup = BeautifulSoup(html_content, 'html.parser')\n\nclass AuctionExtractor:\n    \"\"\"Advanced auction data extractor with multiple strategies\"\"\"\n    \n    def __init__(self, soup: BeautifulSoup, county: Dict):\n        self.soup = soup\n        self.county = county\n        self.auctions = []\n        self.confidence_scores = {}\n        \n    def extract_all(self) -> List[Dict]:\n        \"\"\"Run all extraction strategies and combine results\"\"\"\n        strategies = [\n            self.extract_from_tables,\n            self.extract_from_calendar_divs,\n            self.extract_from_lists,\n            self.extract_from_text_patterns,\n            self.extract_from_json_ld\n        ]\n        \n        all_auctions = {}\n        \n        for strategy in strategies:\n            try:\n                results = strategy()\n                for auction in results:\n                    # Use date as unique key\n                    key = auction.get('auction_date')\n                    if key:\n                        if key not in all_auctions or auction.get('confidence', 0) > all_auctions[key].get('confidence', 0):\n                            all_auctions[key] = auction\n            except Exception as e:\n                print(f\"Strategy {strategy.__name__} failed: {e}\")\n                \n        return list(all_auctions.values())\n    \n    def extract_from_tables(self) -> List[Dict]:\n        \"\"\"Extract auction data from HTML tables\"\"\"\n        auctions = []\n        tables = self.soup.find_all('table')\n        \n        for table in tables:\n            # Look for auction-related headers\n            headers = [th.get_text(strip=True).lower() for th in table.find_all('th')]\n            if any(term in ' '.join(headers) for term in ['date', 'auction', 'sale', 'property']):\n                rows = table.find_all('tr')[1:]  # Skip header row\n                \n                for row in rows:\n                    cells = row.find_all(['td', 'th'])\n                    if len(cells) >= 2:\n                        date_text = cells[0].get_text(strip=True)\n                        auction_date = self.parse_date(date_text)\n                        \n                        if auction_date:\n                            auctions.append({\n                                'auction_date': auction_date.isoformat(),\n                                'source_text': date_text,\n                                'extraction_method': 'table',\n                                'confidence': 0.9,\n                                'details': cells[1].get_text(strip=True) if len(cells) > 1 else ''\n                            })\n        \n        return auctions\n    \n    def extract_from_calendar_divs(self) -> List[Dict]:\n        \"\"\"Extract from calendar-like div structures\"\"\"\n        auctions = []\n        \n        # Common calendar class patterns\n        calendar_selectors = [\n            '.calendar', '.event', '.auction-date',\n            '[class*=\"calendar\"]', '[class*=\"event\"]',\n            '[id*=\"calendar\"]', '[data-date]'\n        ]\n        \n        for selector in calendar_selectors:\n            elements = self.soup.select(selector)\n            for elem in elements:\n                # Try to extract date from various attributes\n                date_str = (\n                    elem.get('data-date') or \n                    elem.get('datetime') or \n                    elem.get_text(strip=True)\n                )\n                \n                auction_date = self.parse_date(date_str)\n                if auction_date:\n                    auctions.append({\n                        'auction_date': auction_date.isoformat(),\n                        'source_text': date_str,\n                        'extraction_method': 'calendar_div',\n                        'confidence': 0.85,\n                        'element_class': elem.get('class', [])\n                    })\n        \n        return auctions\n    \n    def extract_from_lists(self) -> List[Dict]:\n        \"\"\"Extract from list structures (ul/ol)\"\"\"\n        auctions = []\n        \n        lists = self.soup.find_all(['ul', 'ol'])\n        for lst in lists:\n            items = lst.find_all('li')\n            for item in items:\n                text = item.get_text(strip=True)\n                if any(keyword in text.lower() for keyword in ['auction', 'sale', 'deed']):\n                    auction_date = self.parse_date(text)\n                    if auction_date:\n                        auctions.append({\n                            'auction_date': auction_date.isoformat(),\n                            'source_text': text,\n                            'extraction_method': 'list',\n                            'confidence': 0.75\n                        })\n        \n        return auctions\n    \n    def extract_from_text_patterns(self) -> List[Dict]:\n        \"\"\"Extract using regex patterns from full text\"\"\"\n        auctions = []\n        full_text = self.soup.get_text()\n        \n        # Enhanced date patterns\n        patterns = [\n            r'(?:auction|sale|deed sale).*?(\\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{1,2},?\\s+\\d{4}\\b)',\n            r'(?:next|upcoming|scheduled).*?(\\d{1,2}/\\d{1,2}/\\d{2,4})',\n            r'(?:will be held|scheduled for).*?(\\d{1,2}[-/]\\d{1,2}[-/]\\d{2,4})',\n        ]\n        \n        for pattern in patterns:\n            matches = re.finditer(pattern, full_text, re.IGNORECASE)\n            for match in matches:\n                date_str = match.group(1)\n                auction_date = self.parse_date(date_str)\n                if auction_date:\n                    # Get context around the date\n                    start = max(0, match.start() - 100)\n                    end = min(len(full_text), match.end() + 100)\n                    context = full_text[start:end].strip()\n                    \n                    auctions.append({\n                        'auction_date': auction_date.isoformat(),\n                        'source_text': date_str,\n                        'context': context,\n                        'extraction_method': 'regex',\n                        'confidence': 0.7\n                    })\n        \n        return auctions\n    \n    def extract_from_json_ld(self) -> List[Dict]:\n        \"\"\"Extract from structured data (JSON-LD)\"\"\"\n        auctions = []\n        \n        scripts = self.soup.find_all('script', type='application/ld+json')\n        for script in scripts:\n            try:\n                data = json.loads(script.string)\n                if isinstance(data, dict) and data.get('@type') == 'Event':\n                    start_date = data.get('startDate')\n                    if start_date:\n                        auction_date = self.parse_date(start_date)\n                        if auction_date:\n                            auctions.append({\n                                'auction_date': auction_date.isoformat(),\n                                'name': data.get('name', ''),\n                                'location': data.get('location', {}).get('name', ''),\n                                'extraction_method': 'json_ld',\n                                'confidence': 0.95\n                            })\n            except:\n                pass\n        \n        return auctions\n    \n    def parse_date(self, date_str: str) -> Optional[datetime]:\n        \"\"\"Parse date string into datetime object\"\"\"\n        if not date_str:\n            return None\n            \n        try:\n            # Try dateutil parser first (handles most formats)\n            parsed_date = date_parser.parse(date_str, fuzzy=True)\n            \n            # Validate date is in the future (or recent past - last 7 days)\n            now = datetime.now()\n            week_ago = now - timedelta(days=7)\n            two_years = now + timedelta(days=730)\n            \n            if week_ago <= parsed_date <= two_years:\n                return parsed_date\n        except:\n            pass\n            \n        return None\n\n# Initialize extractor and run extraction\nextractor = AuctionExtractor(soup, county_info)\nauctions = extractor.extract_all()\n\n# Enrich auction data with county information\nfor auction in auctions:\n    auction['county_id'] = county_info['county_id']\n    auction['county'] = county_info['name']\n    auction['state'] = county_info['state']\n    auction['source_url'] = county_info['url']\n    \n    # Generate unique auction ID\n    auction_key = f\"{auction['county']}_{auction['state']}_{auction['auction_date']}\"\n    auction['auction_id'] = hashlib.md5(auction_key.encode()).hexdigest()[:12]\n    \n    # Calculate derived fields\n    if auction.get('auction_date'):\n        auction_dt = datetime.fromisoformat(auction['auction_date'])\n        auction['days_until'] = (auction_dt - datetime.now()).days\n        auction['registration_deadline'] = (auction_dt - timedelta(days=14)).isoformat()\n        auction['deposit_deadline'] = (auction_dt - timedelta(days=7)).isoformat()\n    \n    # Set default values\n    auction['auction_type'] = 'Tax Deed'\n    auction['status'] = 'upcoming' if auction.get('days_until', 0) > 0 else 'past'\n    auction['created_at'] = datetime.utcnow().isoformat()\n    auction['updated_at'] = datetime.utcnow().isoformat()\n\n# Add extraction summary\nsummary = {\n    'county': county_info['name'],\n    'auctions_found': len(auctions),\n    'extraction_methods': list(set(a['extraction_method'] for a in auctions)),\n    'confidence_avg': sum(a.get('confidence', 0) for a in auctions) / len(auctions) if auctions else 0,\n    'next_auction': min((a['auction_date'] for a in auctions), default=None)\n}\n\nreturn {'auctions': auctions, 'summary': summary}"
+      },
+      "id": "python_extractor",
+      "name": "Python Advanced Extractor",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert at extracting and validating tax deed auction information. Review the Python-extracted data and:\n\n1. Validate all dates are correct and in proper format\n2. Identify any missing critical information\n3. Extract additional details from the context\n4. Find property list URLs if not already found\n5. Determine auction location and time if available\n6. Add any special instructions or requirements\n\nReturn enhanced auction data with your confidence assessment."
+            },
+            {
+              "role": "user",
+              "content": "Review and enhance this extracted auction data:\n\nCounty: {{ $json.summary.county }}\nAuctions Found: {{ $json.summary.auctions_found }}\nData: {{ JSON.stringify($json.auctions) }}\n\nHTML Context: {{ $('Fetch County Page').item.json.data.substring(0, 3000) }}\n\nEnhance with additional details and validate all information."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2,
+          "responseFormat": { "type": "json_object" }
+        }
+      },
+      "id": "ai_enhancer",
+      "name": "AI Data Enhancer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [1050, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport pandas as pd\nfrom datetime import datetime, timedelta\nimport hashlib\nfrom typing import List, Dict, Any\nimport requests\n\n# Get input data\npython_extracted = _input[0]['json']\nai_enhanced = _input[1]['json']\n\n# Parse AI response\nif isinstance(ai_enhanced, str):\n    ai_enhanced = json.loads(ai_enhanced)\n\nif 'message' in ai_enhanced and 'content' in ai_enhanced['message']:\n    ai_enhanced = json.loads(ai_enhanced['message']['content'])\n\n# Merge Python and AI extracted data\nauctions = python_extracted.get('auctions', [])\nai_auctions = ai_enhanced.get('auctions', [])\n\n# Create a DataFrame for easier processing\nif auctions:\n    df = pd.DataFrame(auctions)\nelse:\n    df = pd.DataFrame()\n\n# Merge AI enhancements\nfor ai_auction in ai_auctions:\n    auction_date = ai_auction.get('auction_date')\n    if auction_date:\n        # Find matching auction in Python results\n        mask = df['auction_date'] == auction_date if not df.empty else False\n        if mask.any():\n            # Update existing auction with AI enhancements\n            idx = df[mask].index[0]\n            for key, value in ai_auction.items():\n                if value and (key not in df.columns or pd.isna(df.at[idx, key])):\n                    df.at[idx, key] = value\n        else:\n            # Add new auction from AI\n            ai_auction['extraction_method'] = 'ai_only'\n            ai_auction['confidence'] = ai_enhanced.get('confidence', 0.8)\n            df = pd.concat([df, pd.DataFrame([ai_auction])], ignore_index=True)\n\n# Process property lists if found\ndef process_property_lists(auction_row):\n    \"\"\"Extract and process property list URLs\"\"\"\n    property_lists = []\n    \n    # Check for various URL fields\n    url_fields = ['property_list_url', 'property_list_urls', 'download_url', 'list_url']\n    for field in url_fields:\n        if field in auction_row and auction_row[field]:\n            urls = auction_row[field] if isinstance(auction_row[field], list) else [auction_row[field]]\n            for url in urls:\n                if url and isinstance(url, str):\n                    # Determine file type\n                    file_type = 'unknown'\n                    if '.pdf' in url.lower():\n                        file_type = 'pdf'\n                    elif '.xls' in url.lower():\n                        file_type = 'excel'\n                    elif '.csv' in url.lower():\n                        file_type = 'csv'\n                    \n                    property_lists.append({\n                        'url': url,\n                        'type': file_type,\n                        'auction_id': auction_row.get('auction_id'),\n                        'status': 'pending_download'\n                    })\n    \n    return property_lists\n\n# Prepare Supabase update data\nsupabase_updates = {\n    'auctions': [],\n    'auction_properties': [],\n    'extraction_logs': [],\n    'notifications': []\n}\n\n# Process each auction for Supabase\nfor idx, row in df.iterrows():\n    auction_data = row.to_dict()\n    \n    # Clean NaN values\n    auction_data = {k: v for k, v in auction_data.items() if pd.notna(v)}\n    \n    # Ensure required fields\n    auction_data['id'] = auction_data.get('auction_id')\n    auction_data['county'] = auction_data.get('county')\n    auction_data['state'] = auction_data.get('state')\n    auction_data['auction_date'] = auction_data.get('auction_date')\n    \n    # Calculate additional fields\n    if auction_data.get('auction_date'):\n        auction_dt = datetime.fromisoformat(auction_data['auction_date'].replace('Z', '+00:00'))\n        now = datetime.now()\n        \n        # Status determination\n        if auction_dt < now:\n            auction_data['status'] = 'completed'\n        elif auction_dt < now + timedelta(days=7):\n            auction_data['status'] = 'upcoming_soon'\n        else:\n            auction_data['status'] = 'upcoming'\n        \n        # Set defaults\n        auction_data['deposit_amount'] = auction_data.get('deposit_amount', 1000)\n        auction_data['online_auction'] = auction_data.get('online_auction', False)\n        auction_data['in_person_auction'] = auction_data.get('in_person_auction', True)\n        \n        # Process property lists\n        property_lists = process_property_lists(auction_data)\n        if property_lists:\n            auction_data['has_property_list'] = True\n            auction_data['property_list_url'] = property_lists[0]['url']  # Primary URL\n            \n            # Queue property list for processing\n            for prop_list in property_lists:\n                supabase_updates['auction_properties'].append(prop_list)\n        \n        # Add to updates\n        supabase_updates['auctions'].append(auction_data)\n        \n        # Create notification if auction is soon\n        if auction_data['status'] == 'upcoming_soon':\n            supabase_updates['notifications'].append({\n                'type': 'auction_reminder',\n                'title': f\"Upcoming Auction: {auction_data['county']}, {auction_data['state']}\",\n                'message': f\"Auction scheduled for {auction_data['auction_date']}\",\n                'auction_id': auction_data['id'],\n                'priority': 'high',\n                'created_at': datetime.utcnow().isoformat()\n            })\n\n# Add extraction log\nextraction_log = {\n    'id': hashlib.md5(f\"{datetime.utcnow().isoformat()}_{python_extracted['summary']['county']}\".encode()).hexdigest()[:12],\n    'county': python_extracted['summary']['county'],\n    'extraction_method': 'python_ai_hybrid',\n    'auctions_found': len(supabase_updates['auctions']),\n    'confidence_score': python_extracted['summary'].get('confidence_avg', 0),\n    'extraction_details': {\n        'python_found': len(python_extracted.get('auctions', [])),\n        'ai_enhanced': len(ai_auctions),\n        'methods_used': python_extracted['summary'].get('extraction_methods', [])\n    },\n    'created_at': datetime.utcnow().isoformat()\n}\nsupabase_updates['extraction_logs'].append(extraction_log)\n\n# Generate summary statistics\nsummary_stats = {\n    'total_auctions': len(supabase_updates['auctions']),\n    'upcoming_soon': len([a for a in supabase_updates['auctions'] if a['status'] == 'upcoming_soon']),\n    'with_property_lists': len([a for a in supabase_updates['auctions'] if a.get('has_property_list')]),\n    'high_confidence': len([a for a in supabase_updates['auctions'] if a.get('confidence', 0) > 0.8]),\n    'needs_review': len([a for a in supabase_updates['auctions'] if a.get('confidence', 0) < 0.6])\n}\n\n# Return structured data for Supabase updates\nreturn {\n    'updates': supabase_updates,\n    'summary': summary_stats,\n    'county': python_extracted['summary']['county']\n}"
+      },
+      "id": "python_processor",
+      "name": "Python Data Processor",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "schema": "public",
+        "table": "auctions",
+        "columns": "id,county,state,auction_date,auction_type,status,registration_deadline,deposit_deadline,deposit_amount,location,online_auction,in_person_auction,property_list_url,has_property_list,confidence_score,extraction_method,source_url,created_at,updated_at",
+        "upsertColumns": "id",
+        "additionalFields": {}
+      },
+      "id": "upsert_auctions",
+      "name": "Upsert Auctions to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "auction_property_lists",
+        "columns": "auction_id,url,type,status,created_at",
+        "additionalFields": {}
+      },
+      "id": "save_property_lists",
+      "name": "Save Property Lists",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "extraction_logs",
+        "columns": "id,county,extraction_method,auctions_found,confidence_score,extraction_details,created_at",
+        "additionalFields": {}
+      },
+      "id": "log_extraction",
+      "name": "Log Extraction",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport requests\nimport PyPDF2\nimport pandas as pd\nimport io\nfrom datetime import datetime\nimport re\n\n# Get property list URLs from previous step\nproperty_lists = _input[0]['json'].get('updates', {}).get('auction_properties', [])\n\nprocessed_properties = []\nerrors = []\n\nfor prop_list in property_lists[:3]:  # Limit to 3 for demo\n    try:\n        url = prop_list['url']\n        file_type = prop_list['type']\n        \n        if file_type == 'pdf':\n            # Download and process PDF\n            response = requests.get(url, timeout=30)\n            pdf_file = io.BytesIO(response.content)\n            \n            # Extract text from PDF\n            pdf_reader = PyPDF2.PdfReader(pdf_file)\n            text = ''\n            for page in pdf_reader.pages:\n                text += page.extract_text()\n            \n            # Parse properties from text using regex\n            # Pattern for parcel numbers (adjust based on county format)\n            parcel_pattern = r'\\b\\d{2}-\\d{4}-\\d{3}-\\d{3}\\b'\n            parcels = re.findall(parcel_pattern, text)\n            \n            # Pattern for minimum bids\n            bid_pattern = r'\\$([\\d,]+(?:\\.\\d{2})?)'  \n            bids = re.findall(bid_pattern, text)\n            \n            # Create property records\n            for i, parcel in enumerate(parcels):\n                property_data = {\n                    'auction_id': prop_list['auction_id'],\n                    'parcel_number': parcel,\n                    'minimum_bid': float(bids[i].replace(',', '')) if i < len(bids) else None,\n                    'source_url': url,\n                    'extraction_method': 'pdf_parser',\n                    'created_at': datetime.utcnow().isoformat()\n                }\n                processed_properties.append(property_data)\n                \n        elif file_type == 'excel':\n            # Download and process Excel\n            response = requests.get(url, timeout=30)\n            df = pd.read_excel(io.BytesIO(response.content))\n            \n            # Map common column names\n            column_mapping = {\n                'parcel': 'parcel_number',\n                'folio': 'parcel_number',\n                'minimum bid': 'minimum_bid',\n                'opening bid': 'minimum_bid',\n                'assessed value': 'assessed_value',\n                'property address': 'address'\n            }\n            \n            # Rename columns\n            df.columns = [column_mapping.get(col.lower(), col.lower()) for col in df.columns]\n            \n            # Convert to property records\n            for _, row in df.iterrows():\n                property_data = {\n                    'auction_id': prop_list['auction_id'],\n                    'parcel_number': str(row.get('parcel_number', '')),\n                    'minimum_bid': float(row.get('minimum_bid', 0)) if pd.notna(row.get('minimum_bid')) else None,\n                    'assessed_value': float(row.get('assessed_value', 0)) if pd.notna(row.get('assessed_value')) else None,\n                    'address': str(row.get('address', '')) if pd.notna(row.get('address')) else None,\n                    'source_url': url,\n                    'extraction_method': 'excel_parser',\n                    'created_at': datetime.utcnow().isoformat()\n                }\n                processed_properties.append(property_data)\n                \n        elif file_type == 'csv':\n            # Download and process CSV\n            response = requests.get(url, timeout=30)\n            df = pd.read_csv(io.StringIO(response.text))\n            \n            # Process similar to Excel\n            for _, row in df.iterrows():\n                property_data = {\n                    'auction_id': prop_list['auction_id'],\n                    'parcel_number': str(row.get('parcel_number', row.get('parcel', ''))),\n                    'minimum_bid': float(row.get('minimum_bid', 0)) if pd.notna(row.get('minimum_bid')) else None,\n                    'source_url': url,\n                    'extraction_method': 'csv_parser',\n                    'created_at': datetime.utcnow().isoformat()\n                }\n                processed_properties.append(property_data)\n                \n    except Exception as e:\n        errors.append({\n            'url': url,\n            'error': str(e),\n            'timestamp': datetime.utcnow().isoformat()\n        })\n\n# Remove duplicates based on parcel number\nseen_parcels = set()\nunique_properties = []\nfor prop in processed_properties:\n    parcel = prop.get('parcel_number')\n    if parcel and parcel not in seen_parcels:\n        seen_parcels.add(parcel)\n        unique_properties.append(prop)\n\n# Generate summary\nsummary = {\n    'total_properties_extracted': len(unique_properties),\n    'total_lists_processed': len(property_lists),\n    'errors_encountered': len(errors),\n    'extraction_methods': list(set(p['extraction_method'] for p in unique_properties)),\n    'auction_ids': list(set(p['auction_id'] for p in unique_properties))\n}\n\nreturn {\n    'properties': unique_properties,\n    'summary': summary,\n    'errors': errors\n}"
+      },
+      "id": "python_property_processor",
+      "name": "Python Property List Processor",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [1650, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "schema": "public",
+        "table": "properties",
+        "columns": "parcel_number,county,state,auction_id,minimum_bid,assessed_value,address,source_url,extraction_method,created_at,updated_at",
+        "upsertColumns": "parcel_number,county,state",
+        "additionalFields": {}
+      },
+      "id": "upsert_properties",
+      "name": "Upsert Properties to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1850, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nfrom datetime import datetime, timedelta\nimport statistics\n\n# Collect all results\ncounty_results = []\nauction_results = []\nproperty_results = []\n\nfor item in _input:\n    if 'summary' in item['json']:\n        county_results.append(item['json'])\n    if 'properties' in item['json']:\n        property_results.append(item['json'])\n\n# Generate comprehensive report\nreport = {\n    'execution_id': datetime.utcnow().strftime('%Y%m%d_%H%M%S'),\n    'timestamp': datetime.utcnow().isoformat(),\n    \n    'counties_processed': len(county_results),\n    \n    'auctions': {\n        'total_found': sum(r.get('summary', {}).get('total_auctions', 0) for r in county_results),\n        'upcoming_soon': sum(r.get('summary', {}).get('upcoming_soon', 0) for r in county_results),\n        'with_property_lists': sum(r.get('summary', {}).get('with_property_lists', 0) for r in county_results),\n        'high_confidence': sum(r.get('summary', {}).get('high_confidence', 0) for r in county_results),\n        'needs_review': sum(r.get('summary', {}).get('needs_review', 0) for r in county_results)\n    },\n    \n    'properties': {\n        'total_extracted': sum(r.get('summary', {}).get('total_properties_extracted', 0) for r in property_results),\n        'lists_processed': sum(r.get('summary', {}).get('total_lists_processed', 0) for r in property_results),\n        'extraction_errors': sum(r.get('summary', {}).get('errors_encountered', 0) for r in property_results)\n    },\n    \n    'performance': {\n        'avg_confidence': statistics.mean([r.get('summary', {}).get('confidence_avg', 0) for r in county_results if r.get('summary', {}).get('confidence_avg')]) if county_results else 0,\n        'extraction_methods': list(set(\n            method \n            for r in county_results \n            for method in r.get('summary', {}).get('extraction_methods', [])\n        )),\n        'estimated_cost': len(county_results) * 0.15  # Rough estimate\n    },\n    \n    'alerts': [],\n    'recommendations': []\n}\n\n# Generate alerts\nif report['auctions']['upcoming_soon'] > 0:\n    report['alerts'].append({\n        'type': 'upcoming_auctions',\n        'severity': 'high',\n        'message': f\"{report['auctions']['upcoming_soon']} auctions happening within 7 days\"\n    })\n\nif report['auctions']['needs_review'] > 0:\n    report['alerts'].append({\n        'type': 'low_confidence',\n        'severity': 'medium',\n        'message': f\"{report['auctions']['needs_review']} auctions need manual review (low confidence)\"\n    })\n\nif report['properties']['extraction_errors'] > 0:\n    report['alerts'].append({\n        'type': 'extraction_errors',\n        'severity': 'low',\n        'message': f\"{report['properties']['extraction_errors']} property lists failed to process\"\n    })\n\n# Generate recommendations\nif report['performance']['avg_confidence'] < 0.7:\n    report['recommendations'].append(\n        \"Consider updating extraction patterns - average confidence is low\"\n    )\n\nif report['auctions']['with_property_lists'] < report['auctions']['total_found'] * 0.5:\n    report['recommendations'].append(\n        \"Many auctions missing property lists - may need manual download\"\n    )\n\nif report['properties']['total_extracted'] > 1000:\n    report['recommendations'].append(\n        \"Large number of properties extracted - consider batching analysis\"\n    )\n\n# Add next steps\nreport['next_steps'] = [\n    f\"Review {report['auctions']['needs_review']} low-confidence auctions\",\n    f\"Process {report['auctions']['upcoming_soon']} upcoming auctions\",\n    f\"Analyze {report['properties']['total_extracted']} extracted properties\"\n]\n\nreturn report"
+      },
+      "id": "python_report_generator",
+      "name": "Python Report Generator",
+      "type": "n8n-nodes-base.python",
+      "typeVersion": 1,
+      "position": [2050, 400]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "workflow_reports",
+        "columns": "execution_id,workflow_name,report_type,report_data,created_at",
+        "additionalFields": {}
+      },
+      "id": "save_report",
+      "name": "Save Workflow Report",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2250, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Python County Configuration", "type": "main", "index": 0 }]]
+    },
+    "Python County Configuration": {
+      "main": [[{ "node": "Fetch County Page", "type": "main", "index": 0 }]]
+    },
+    "Fetch County Page": {
+      "main": [[{ "node": "Python Advanced Extractor", "type": "main", "index": 0 }]]
+    },
+    "Python Advanced Extractor": {
+      "main": [[{ "node": "AI Data Enhancer", "type": "main", "index": 0 }]]
+    },
+    "AI Data Enhancer": {
+      "main": [[{ "node": "Python Data Processor", "type": "main", "index": 0 }]]
+    },
+    "Python Data Processor": {
+      "main": [
+        [
+          { "node": "Upsert Auctions to Supabase", "type": "main", "index": 0 },
+          { "node": "Save Property Lists", "type": "main", "index": 0 },
+          { "node": "Log Extraction", "type": "main", "index": 0 },
+          { "node": "Python Property List Processor", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Python Property List Processor": {
+      "main": [[{ "node": "Upsert Properties to Supabase", "type": "main", "index": 0 }]]
+    },
+    "Upsert Auctions to Supabase": {
+      "main": [[{ "node": "Python Report Generator", "type": "main", "index": 0 }]]
+    },
+    "Save Property Lists": {
+      "main": [[{ "node": "Python Report Generator", "type": "main", "index": 0 }]]
+    },
+    "Log Extraction": {
+      "main": [[{ "node": "Python Report Generator", "type": "main", "index": 0 }]]
+    },
+    "Upsert Properties to Supabase": {
+      "main": [[{ "node": "Python Report Generator", "type": "main", "index": 0 }]]
+    },
+    "Python Report Generator": {
+      "main": [[{ "node": "Save Workflow Report", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["python", "ai", "calendar", "scraper", "supabase"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}

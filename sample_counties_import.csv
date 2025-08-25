@@ -1,0 +1,6 @@
+name,state_code,population,tax_collector_url,auction_url,notes
+"Cook","IL",5275541,"https://www.cookcountygov.com/service/property-tax-information","https://www.cookcountyclerk.com/agency/judicial-sales","Chicago metro area"
+"Maricopa","AZ",4485414,"https://treasurer.maricopa.gov/","https://treasurer.maricopa.gov/Auctions","Phoenix metro area"
+"Harris","TX",4713325,"https://hctax.net/","https://tax.hctx.net/taxsale/","Houston metro area"
+"San Diego","CA",3286069,"https://www.sdttc.com/","https://www.sdttc.com/content/dttc/en/auctions.html","San Diego metro"
+"Dallas","TX",2613539,"https://www.dallascounty.org/departments/tax/","https://www.dallascounty.org/departments/tax/tax-sales.php","Dallas metro area"

@@ -1,0 +1,338 @@
+{
+  "name": "Tax Deed - County Business Patterns Enrichment",
+  "description": "Enriches counties table with business and economic data from Census Bureau CBP API",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "county-enrichment",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "county-enrichment"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Census API configuration\nconst CENSUS_API_BASE = 'https://api.census.gov/data/2023/cbp';\nconst API_KEY = '059814072c853cf2c2c996f264d00b456f04979d';\n\n// All US state codes for comprehensive coverage\nconst STATE_CODES = [\n  '01', '02', '04', '05', '06', '08', '09', '10', '11', '12',\n  '13', '15', '16', '17', '18', '19', '20', '21', '22', '23',\n  '24', '25', '26', '27', '28', '29', '30', '31', '32', '33',\n  '34', '35', '36', '37', '38', '39', '40', '41', '42', '44',\n  '45', '46', '47', '48', '49', '50', '51', '53', '54', '55', '56'\n];\n\n// Key business sectors to analyze\nconst BUSINESS_SECTORS = {\n  '11': 'Agriculture, Forestry, Fishing and Hunting',\n  '21': 'Mining, Quarrying, and Oil and Gas Extraction',\n  '22': 'Utilities',\n  '23': 'Construction',\n  '31-33': 'Manufacturing',\n  '42': 'Wholesale Trade',\n  '44-45': 'Retail Trade',\n  '48-49': 'Transportation and Warehousing',\n  '51': 'Information',\n  '52': 'Finance and Insurance',\n  '53': 'Real Estate and Rental and Leasing',\n  '54': 'Professional, Scientific, and Technical Services',\n  '55': 'Management of Companies and Enterprises',\n  '56': 'Administrative and Support and Waste Management Services',\n  '61': 'Educational Services',\n  '62': 'Health Care and Social Assistance',\n  '71': 'Arts, Entertainment, and Recreation',\n  '72': 'Accommodation and Food Services',\n  '81': 'Other Services (except Public Administration)',\n  '92': 'Public Administration'\n};\n\nreturn {\n  censusApiBase: CENSUS_API_BASE,\n  apiKey: API_KEY,\n  stateCodes: STATE_CODES,\n  businessSectors: BUSINESS_SECTORS,\n  currentStateIndex: 0,\n  currentSectorIndex: 0\n};"
+      },
+      "id": "initialize-variables",
+      "name": "Initialize Variables",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": "counties",
+        "options": {
+          "limit": 50,
+          "where": "business_data_updated_at IS NULL OR business_data_updated_at < NOW() - INTERVAL '30 days'"
+        }
+      },
+      "id": "get-counties",
+      "name": "Get Counties to Update",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "supabase": {
+          "id": "supabase-credentials",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const counties = $input.all()[0].json;\nconst config = $input.all()[1].json;\n\nif (!counties || counties.length === 0) {\n  return {\n    status: 'complete',\n    message: 'No counties to update'\n  };\n}\n\n// Group counties by state for efficient API calls\nconst countiesByState = {};\ncounties.forEach(county => {\n  const stateCode = county.state_code;\n  if (!countiesByState[stateCode]) {\n    countiesByState[stateCode] = [];\n  }\n  countiesByState[stateCode].push(county);\n});\n\nreturn {\n  countiesByState,\n  stateCodes: Object.keys(countiesByState),\n  currentStateIndex: 0,\n  totalStates: Object.keys(countiesByState).length,\n  config\n};"
+      },
+      "id": "prepare-state-processing",
+      "name": "Prepare State Processing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.all()[0].json;\n\nif (input.status === 'complete') {\n  return input;\n}\n\nconst { countiesByState, stateCodes, currentStateIndex, totalStates, config } = input;\n\nif (currentStateIndex >= totalStates) {\n  return {\n    status: 'complete',\n    message: 'All states processed',\n    processedStates: totalStates\n  };\n}\n\nconst currentStateCode = stateCodes[currentStateIndex];\nconst countiesInState = countiesByState[currentStateCode];\n\nreturn {\n  status: 'processing',\n  currentStateCode,\n  countiesInState,\n  currentStateIndex,\n  totalStates,\n  config,\n  nextStateIndex: currentStateIndex + 1\n};"
+      },
+      "id": "process-state",
+      "name": "Process State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.config.censusApiBase}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "get",
+              "value": "ESTAB,EMP,PAYANN,NAICS2017_LABEL,NAME"
+            },
+            {
+              "name": "for",
+              "value": "state:={{$json.currentStateCode}}"
+            },
+            {
+              "name": "key",
+              "value": "={{$json.config.apiKey}}"
+            }
+          ]
+        }
+      },
+      "id": "fetch-state-business-data",
+      "name": "Fetch State Business Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const businessData = $input.all()[0].json;\nconst stateInfo = $input.all()[1].json;\n\nif (!businessData || businessData.length === 0) {\n  return {\n    ...stateInfo,\n    businessData: [],\n    processed: false\n  };\n}\n\n// Process the CSV-like response from Census API\nconst headers = businessData[0];\nconst dataRows = businessData.slice(1);\n\nconst processedData = dataRows.map(row => {\n  const rowData = {};\n  headers.forEach((header, index) => {\n    rowData[header] = row[index];\n  });\n  return rowData;\n});\n\n// Group by county and calculate metrics\nconst countyBusinessMetrics = {};\n\nprocessedData.forEach(row => {\n  const countyName = row.NAME;\n  const establishments = parseInt(row.ESTAB) || 0;\n  const employees = parseInt(row.EMP) || 0;\n  const payroll = parseInt(row.PAYANN) || 0;\n  const industry = row.NAICS2017_LABEL;\n  \n  if (!countyBusinessMetrics[countyName]) {\n    countyBusinessMetrics[countyName] = {\n      totalEstablishments: 0,\n      totalEmployees: 0,\n      totalPayroll: 0,\n      industries: {},\n      topIndustries: []\n    };\n  }\n  \n  countyBusinessMetrics[countyName].totalEstablishments += establishments;\n  countyBusinessMetrics[countyName].totalEmployees += employees;\n  countyBusinessMetrics[countyName].totalPayroll += payroll;\n  \n  if (!countyBusinessMetrics[countyName].industries[industry]) {\n    countyBusinessMetrics[countyName].industries[industry] = {\n      establishments: 0,\n      employees: 0,\n      payroll: 0\n    };\n  }\n  \n  countyBusinessMetrics[countyName].industries[industry].establishments += establishments;\n  countyBusinessMetrics[countyName].industries[industry].employees += employees;\n  countyBusinessMetrics[countyName].industries[industry].payroll += payroll;\n});\n\n// Calculate top industries for each county\nObject.keys(countyBusinessMetrics).forEach(countyName => {\n  const industries = countyBusinessMetrics[countyName].industries;\n  const sortedIndustries = Object.entries(industries)\n    .sort(([,a], [,b]) => b.employees - a.employees)\n    .slice(0, 5);\n  \n  countyBusinessMetrics[countyName].topIndustries = sortedIndustries.map(([name, data]) => ({\n    name,\n    establishments: data.establishments,\n    employees: data.employees,\n    payroll: data.payroll\n  }));\n});\n\nreturn {\n  ...stateInfo,\n  businessData: countyBusinessMetrics,\n  processed: true\n};"
+      },
+      "id": "process-business-data",
+      "name": "Process Business Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.all()[0].json;\n\nif (!input.processed) {\n  return input;\n}\n\nconst { countiesInState, businessData } = input;\nconst matchedCounties = [];\n\ncountiesInState.forEach(county => {\n  const countyName = county.name;\n  const businessMetrics = businessData[countyName];\n  \n  if (businessMetrics) {\n    // Calculate economic health score (0-100)\n    let economicScore = 50; // Base score\n    \n    // Factor in business diversity\n    const industryCount = Object.keys(businessMetrics.industries).length;\n    if (industryCount > 10) economicScore += 20;\n    else if (industryCount > 5) economicScore += 10;\n    \n    // Factor in employment density\n    const employmentDensity = businessMetrics.totalEmployees / 1000; // per 1000 residents\n    if (employmentDensity > 50) economicScore += 15;\n    else if (employmentDensity > 25) economicScore += 10;\n    else if (employmentDensity > 10) economicScore += 5;\n    \n    // Factor in payroll (economic prosperity)\n    const avgPayroll = businessMetrics.totalPayroll / businessMetrics.totalEmployees;\n    if (avgPayroll > 50000) economicScore += 15;\n    else if (avgPayroll > 35000) economicScore += 10;\n    else if (avgPayroll > 25000) economicScore += 5;\n    \n    // Cap at 100\n    economicScore = Math.min(economicScore, 100);\n    \n    matchedCounties.push({\n      countyId: county.id,\n      countyName: county.name,\n      businessMetrics,\n      economicScore,\n      updateData: {\n        business_establishments: businessMetrics.totalEstablishments,\n        business_employees: businessMetrics.totalEmployees,\n        business_payroll: businessMetrics.totalPayroll,\n        top_industries: businessMetrics.topIndustries,\n        economic_health_score: economicScore,\n        business_data_updated_at: new Date().toISOString()\n      }\n    });\n  } else {\n    // No business data found, mark as updated with default values\n    matchedCounties.push({\n      countyId: county.id,\n      countyName: county.name,\n      businessMetrics: null,\n      economicScore: 0,\n      updateData: {\n        business_establishments: 0,\n        business_employees: 0,\n        business_payroll: 0,\n        top_industries: [],\n        economic_health_score: 0,\n        business_data_updated_at: new Date().toISOString()\n      }\n    });\n  }\n});\n\nreturn {\n  ...input,\n  matchedCounties,\n  countiesToUpdate: matchedCounties.length\n};"
+      },
+      "id": "match-counties",
+      "name": "Match Counties",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "counties",
+        "updateFields": "={{$json.updateData}}",
+        "options": {
+          "where": "id = {{$json.countyId}}"
+        }
+      },
+      "id": "update-counties",
+      "name": "Update Counties",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        300
+      ],
+      "credentials": {
+        "supabase": {
+          "id": "supabase-credentials",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.all()[0].json;\nconst updateResult = $input.all()[1].json;\n\nif (input.status === 'complete') {\n  return input;\n}\n\n// Check if update was successful\nif (updateResult.error) {\n  console.error('Error updating county:', updateResult.error);\n}\n\n// Move to next state\nconst nextStateIndex = input.nextStateIndex;\n\nif (nextStateIndex >= input.totalStates) {\n  return {\n    status: 'complete',\n    message: 'All states processed successfully',\n    processedStates: input.totalStates,\n    lastUpdated: new Date().toISOString()\n  };\n}\n\n// Continue with next state\nreturn {\n  ...input,\n  currentStateIndex: nextStateIndex,\n  nextStateIndex: nextStateIndex + 1\n};"
+      },
+      "id": "process-next-state",
+      "name": "Process Next State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allInputs = $input.all();\nconst finalResult = allInputs[allInputs.length - 1].json;\n\nif (finalResult.status === 'complete') {\n  const summary = {\n    status: 'success',\n    message: 'County Business Patterns enrichment completed',\n    timestamp: new Date().toISOString(),\n    summary: {\n      totalStatesProcessed: finalResult.processedStates,\n      completionTime: finalResult.lastUpdated,\n      dataSource: 'Census Bureau County Business Patterns 2023',\n      apiEndpoint: 'https://api.census.gov/data/2023/cbp'\n    },\n    recommendations: [\n      'Business data updated for all counties',\n      'Economic health scores calculated',\n      'Top industries identified for each county',\n      'Data ready for property investment analysis'\n    ]\n  };\n  \n  return summary;\n}\n\nreturn finalResult;"
+      },
+      "id": "generate-summary-report",
+      "name": "Generate Summary Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "return-response",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Variables": {
+      "main": [
+        [
+          {
+            "node": "Get Counties to Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Counties to Update": {
+      "main": [
+        [
+          {
+            "node": "Prepare State Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare State Processing": {
+      "main": [
+        [
+          {
+            "node": "Process State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process State": {
+      "main": [
+        [
+          {
+            "node": "Fetch State Business Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch State Business Data": {
+      "main": [
+        [
+          {
+            "node": "Process Business Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Business Data": {
+      "main": [
+        [
+          {
+            "node": "Match Counties",
+            "type": "main",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Counties": {
+      "main": [
+        [
+          {
+            "node": "Update Counties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Counties": {
+      "main": [
+        [
+          {
+            "node": "Process Next State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Next State": {
+      "main": [
+        [
+          {
+            "node": "Generate Summary Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Summary Report": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}

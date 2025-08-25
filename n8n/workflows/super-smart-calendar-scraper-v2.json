@@ -1,0 +1,247 @@
+{
+  "name": "Super-Smart Calendar Scraper v2",
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fetch-calendar",
+      "name": "Fetch Miami-Dade Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.miamidadeclerk.gov/public-records/foreclosure-sales",
+        "options": {
+          "timeout": 30000,
+          "followRedirect": true
+        },
+        "responseFormat": "text"
+      }
+    },
+    {
+      "id": "ai-orchestrator",
+      "name": "AI Master Orchestrator",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "resource": "chat",
+        "operation": "complete",
+        "modelId": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a master orchestrator for tax deed auction extraction.\nAnalyze the HTML content and coordinate extraction strategies:\n1. Identify the page structure (calendar, table, list)\n2. Extract auction dates, case numbers, and property addresses\n3. Return structured JSON with confidence scores"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.data }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 4000,
+          "responseFormat": {
+            "type": "json_object"
+          }
+        }
+      }
+    },
+    {
+      "id": "code-processor",
+      "name": "Python Data Processor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "language": "python",
+        "pythonCode": "\nimport json\nimport re\nfrom datetime import datetime, timedelta\nimport hashlib\n\n# Process AI extraction results\ndata = items[0]['json']\nai_results = data.get('ai_results', {})\n\n# Enhanced extraction with confidence scoring\ndef extract_auctions(ai_data):\n    auctions = []\n    \n    for item in ai_data.get('auctions', []):\n        # Generate deterministic ID\n        id_string = f\"{item.get('case_number', '')}-{item.get('sale_date', '')}\"\n        auction_id = hashlib.md5(id_string.encode()).hexdigest()[:12]\n        \n        # Process and validate each auction\n        auction = {\n            'id': auction_id,\n            'case_number': item.get('case_number', '').strip(),\n            'sale_date': item.get('sale_date'),\n            'property_address': item.get('property_address', '').strip(),\n            'assessed_value': item.get('assessed_value', 0),\n            'minimum_bid': item.get('minimum_bid', 0),\n            'confidence_score': item.get('confidence', 0.5),\n            'extraction_method': 'ai_orchestrated',\n            'county': 'Miami-Dade',\n            'created_at': datetime.now().isoformat()\n        }\n        \n        # Validate required fields\n        if auction['case_number'] and auction['sale_date']:\n            auctions.append(auction)\n    \n    return auctions\n\n# Extract and process\nprocessed_auctions = extract_auctions(ai_results)\n\n# Calculate metrics\ntotal_found = len(processed_auctions)\navg_confidence = sum(a['confidence_score'] for a in processed_auctions) / total_found if total_found > 0 else 0\n\nreturn {\n    'auctions': processed_auctions,\n    'metrics': {\n        'total_found': total_found,\n        'avg_confidence': avg_confidence,\n        'extraction_time': datetime.now().isoformat()\n    }\n}\n"
+      }
+    },
+    {
+      "id": "supabase-upsert",
+      "name": "Save to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "auctions",
+        "upsertColumn": "id",
+        "dataToSend": "defineBelow",
+        "fieldsToSend": {
+          "values": [
+            {
+              "fieldName": "id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldName": "case_number",
+              "fieldValue": "={{ $json.case_number }}"
+            },
+            {
+              "fieldName": "sale_date",
+              "fieldValue": "={{ $json.sale_date }}"
+            },
+            {
+              "fieldName": "property_address",
+              "fieldValue": "={{ $json.property_address }}"
+            },
+            {
+              "fieldName": "assessed_value",
+              "fieldValue": "={{ $json.assessed_value }}"
+            },
+            {
+              "fieldName": "minimum_bid",
+              "fieldValue": "={{ $json.minimum_bid }}"
+            },
+            {
+              "fieldName": "confidence_score",
+              "fieldValue": "={{ $json.confidence_score }}"
+            },
+            {
+              "fieldName": "county",
+              "fieldValue": "={{ $json.county }}"
+            },
+            {
+              "fieldName": "created_at",
+              "fieldValue": "={{ $json.created_at }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "log-extraction",
+      "name": "Log Extraction Results",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        450
+      ],
+      "parameters": {
+        "operation": "create",
+        "tableId": "extraction_logs",
+        "dataToSend": "defineBelow",
+        "fieldsToSend": {
+          "values": [
+            {
+              "fieldName": "workflow_name",
+              "fieldValue": "Super-Smart Calendar Scraper"
+            },
+            {
+              "fieldName": "county",
+              "fieldValue": "Miami-Dade"
+            },
+            {
+              "fieldName": "records_processed",
+              "fieldValue": "={{ $json.metrics.total_found }}"
+            },
+            {
+              "fieldName": "confidence_score",
+              "fieldValue": "={{ $json.metrics.avg_confidence }}"
+            },
+            {
+              "fieldName": "strategy",
+              "fieldValue": "ai_orchestrated_python"
+            },
+            {
+              "fieldName": "created_at",
+              "fieldValue": "={{ $json.metrics.extraction_time }}"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "fetch-calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch-calendar": {
+      "main": [
+        [
+          {
+            "node": "ai-orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-orchestrator": {
+      "main": [
+        [
+          {
+            "node": "code-processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "code-processor": {
+      "main": [
+        [
+          {
+            "node": "supabase-upsert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "log-extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

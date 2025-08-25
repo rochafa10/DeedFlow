@@ -1,0 +1,166 @@
+{
+  "name": "AI Calendar Scraper Agent v2",
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fetch-calendar",
+      "name": "Fetch Calendar Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.miamidadeclerk.gov/public-records/foreclosure-sales",
+        "responseFormat": "text"
+      }
+    },
+    {
+      "id": "ai-agent",
+      "name": "AI Extraction Agent",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "resource": "chat",
+        "operation": "complete",
+        "modelId": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an AI agent specialized in extracting tax deed auction data.\nExtract all auction information including:\n- Case numbers\n- Sale dates and times\n- Property addresses\n- Assessed values\n- Minimum bid amounts\nReturn as structured JSON."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.data }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "responseFormat": {
+            "type": "json_object"
+          }
+        }
+      }
+    },
+    {
+      "id": "transform-data",
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "values": {
+          "values": [
+            {
+              "name": "auctions",
+              "type": "string",
+              "value": "={{ $json.auctions }}"
+            },
+            {
+              "name": "extraction_metadata",
+              "type": "json",
+              "value": "={{ { \"method\": \"ai_agent\", \"timestamp\": $now.toISO() } }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "save-to-supabase",
+      "name": "Save Auctions",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "auctions",
+        "upsertColumn": "case_number",
+        "dataToSend": "autoMapInputData"
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "fetch-calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch-calendar": {
+      "main": [
+        [
+          {
+            "node": "ai-agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-agent": {
+      "main": [
+        [
+          {
+            "node": "transform-data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "transform-data": {
+      "main": [
+        [
+          {
+            "node": "save-to-supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

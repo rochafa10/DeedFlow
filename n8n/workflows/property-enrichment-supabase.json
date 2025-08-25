@@ -1,0 +1,405 @@
+{
+  "name": "Tax Deed - Property Enrichment (Supabase)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "property-enrichment-supabase",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "property-enrichment-supabase"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate input data\nconst input = $input.first().json;\n\nif (!input.propertyId) {\n  throw new Error('Property ID is required');\n}\n\nreturn [\n  {\n    propertyId: input.propertyId,\n    parcelNumber: input.parcelNumber || '',\n    county: input.county || '',\n    state: input.state || 'FL',\n    address: input.address || '',\n    coordinates: input.coordinates || null,\n    run_id: input.run_id || crypto.randomUUID(),\n    timestamp: new Date().toISOString()\n  }\n];"
+      },
+      "id": "parse_input",
+      "name": "Parse & Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "select",
+        "schema": "public",
+        "table": "properties",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "string",
+        "filters": {
+          "conditions": [
+            {
+              "field": "id",
+              "condition": "equals",
+              "value": "={{ $json.propertyId }}"
+            }
+          ]
+        }
+      },
+      "id": "check_property",
+      "name": "Check Property Exists",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.datafiniti.co/v4/properties/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "address",
+              "value": "={{ $json.address }}"
+            },
+            {
+              "name": "city",
+              "value": "={{ $json.county }}"
+            },
+            {
+              "name": "state",
+              "value": "={{ $json.state }}"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch_property_data",
+      "name": "Fetch Property Data API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://maps.googleapis.com/maps/api/geocode/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "address",
+              "value": "={{ $json.address }}, {{ $json.county }}, {{ $json.state }}"
+            },
+            {
+              "name": "key",
+              "value": "={{ $env.GOOGLE_MAPS_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "geocode_address",
+      "name": "Geocode Address",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 350],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/identify",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "geometry",
+              "value": "={{ $json.coordinates ? $json.coordinates : '-80.2,25.8' }}"
+            },
+            {
+              "name": "geometryType",
+              "value": "esriGeometryPoint"
+            },
+            {
+              "name": "layers",
+              "value": "all"
+            },
+            {
+              "name": "f",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "fetch_flood_zone",
+      "name": "Fetch FEMA Flood Zone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all enrichment data\nconst originalData = $('Parse & Validate Input').first().json;\nconst propertyExists = $('Check Property Exists').all().length > 0;\nconst propertyData = $('Fetch Property Data API').first().json;\nconst geocodeData = $('Geocode Address').first().json;\nconst floodData = $('Fetch FEMA Flood Zone').first().json;\n\n// Extract coordinates from geocoding\nlet coordinates = originalData.coordinates;\nif (!coordinates && geocodeData.results && geocodeData.results[0]) {\n  const location = geocodeData.results[0].geometry.location;\n  coordinates = [location.lng, location.lat];\n}\n\n// Property scoring algorithm\nlet score = 70; // Base score\nconst riskFactors = [];\n\n// Check flood zone\nlet floodZone = 'X';\nif (floodData.results && floodData.results[0]) {\n  floodZone = floodData.results[0].attributes?.FLD_ZONE || 'X';\n  if (['AE', 'A', 'VE', 'AO', 'AH'].includes(floodZone)) {\n    score -= 30;\n    riskFactors.push(`flood_zone_${floodZone}`);\n  }\n}\n\n// Extract property details\nlet propertyDetails = {\n  yearBuilt: null,\n  livingArea: null,\n  lotSize: null,\n  bedrooms: null,\n  bathrooms: null,\n  propertyType: 'Single Family',\n  stories: 1\n};\n\nif (propertyData.records && propertyData.records[0]) {\n  const record = propertyData.records[0];\n  propertyDetails = {\n    yearBuilt: record.yearBuilt || null,\n    livingArea: record.buildingArea || null,\n    lotSize: record.lotSizeSquareFeet || null,\n    bedrooms: record.numBedroom || null,\n    bathrooms: record.numBathroom || null,\n    propertyType: record.propertyType || 'Single Family',\n    stories: record.numFloor || 1\n  };\n  \n  // Adjust score based on property condition\n  if (propertyDetails.yearBuilt && propertyDetails.yearBuilt > 2000) {\n    score += 10;\n  } else if (propertyDetails.yearBuilt && propertyDetails.yearBuilt < 1970) {\n    score -= 10;\n    riskFactors.push('older_property');\n  }\n  \n  if (propertyDetails.livingArea && propertyDetails.livingArea > 2000) {\n    score += 5;\n  }\n}\n\n// Determine classification\nlet classification = 'B';\nif (score >= 80) {\n  classification = 'A';\n} else if (score < 60) {\n  classification = 'C';\n}\n\n// Calculate estimated values\nconst marketValue = propertyDetails.livingArea ? propertyDetails.livingArea * 150 : 150000;\nconst rehabEstimate = propertyDetails.yearBuilt ? \n  Math.max(15000, (2024 - propertyDetails.yearBuilt) * 500) : 25000;\nconst arvEstimate = marketValue * 1.15; // 15% appreciation after rehab\nconst rentEstimate = marketValue * 0.008; // 0.8% rent ratio\n\nreturn [{\n  propertyId: originalData.propertyId,\n  enrichmentData: {\n    // Property details\n    year_built: propertyDetails.yearBuilt,\n    living_area: propertyDetails.livingArea,\n    lot_size: propertyDetails.lotSize,\n    bedrooms: propertyDetails.bedrooms,\n    bathrooms: propertyDetails.bathrooms,\n    property_type: propertyDetails.propertyType,\n    stories: propertyDetails.stories,\n    \n    // Location data\n    latitude: coordinates ? coordinates[1] : null,\n    longitude: coordinates ? coordinates[0] : null,\n    \n    // Risk assessment\n    flood_zone: floodZone,\n    risk_factors: riskFactors,\n    \n    // Scoring\n    score: score,\n    classification: classification\n  },\n  valuationData: {\n    property_id: originalData.propertyId,\n    market_value: marketValue,\n    arv_estimate: arvEstimate,\n    rehab_estimate: rehabEstimate,\n    estimated_rent_min: rentEstimate * 0.9,\n    estimated_rent_max: rentEstimate * 1.1,\n    comp_count: 0,\n    confidence_score: 75,\n    valuation_method: 'automated',\n    updated_at: new Date().toISOString()\n  },\n  logData: {\n    property_id: originalData.propertyId,\n    source: 'n8n_workflow',\n    status: 'success',\n    data_retrieved: JSON.stringify({\n      propertyData: !!propertyData.records,\n      geocoding: !!geocodeData.results,\n      floodZone: !!floodData.results\n    }),\n    run_id: originalData.run_id,\n    created_at: new Date().toISOString()\n  },\n  run_id: originalData.run_id,\n  timestamp: originalData.timestamp\n}];"
+      },
+      "id": "process_enrichment",
+      "name": "Process & Score Property",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 350]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "update",
+        "schema": "public",
+        "table": "properties",
+        "updateKey": "id",
+        "columns": "year_built,living_area,lot_size,bedrooms,bathrooms,property_type,stories,latitude,longitude,flood_zone,score,classification,updated_at",
+        "additionalFields": {}
+      },
+      "id": "update_property",
+      "name": "Update Property Details",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "upsert",
+        "schema": "public",
+        "table": "property_valuations",
+        "columns": "property_id,market_value,arv_estimate,rehab_estimate,estimated_rent_min,estimated_rent_max,comp_count,confidence_score,valuation_method,updated_at",
+        "upsertColumns": "property_id",
+        "additionalFields": {}
+      },
+      "id": "upsert_valuation",
+      "name": "Upsert Property Valuation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 350],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "schema": "public",
+        "table": "enrichment_logs",
+        "columns": "property_id,source,status,data_retrieved,run_id,created_at",
+        "additionalFields": {}
+      },
+      "id": "log_enrichment",
+      "name": "Log Enrichment Activity",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Tax Deed"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare success response\nconst enrichmentResult = $('Process & Score Property').first().json;\n\nreturn [{\n  status: 'success',\n  message: 'Property enrichment completed',\n  data: {\n    propertyId: enrichmentResult.propertyId,\n    score: enrichmentResult.enrichmentData.score,\n    classification: enrichmentResult.enrichmentData.classification,\n    floodZone: enrichmentResult.enrichmentData.flood_zone,\n    marketValue: enrichmentResult.valuationData.market_value,\n    arvEstimate: enrichmentResult.valuationData.arv_estimate,\n    rehabEstimate: enrichmentResult.valuationData.rehab_estimate,\n    coordinates: [\n      enrichmentResult.enrichmentData.longitude,\n      enrichmentResult.enrichmentData.latitude\n    ]\n  },\n  run_id: enrichmentResult.run_id,\n  timestamp: enrichmentResult.timestamp\n}];"
+      },
+      "id": "prepare_response",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 350]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1650, 350]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Check Property Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Property Exists": {
+      "main": [
+        [
+          {
+            "node": "Fetch Property Data API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Geocode Address",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch FEMA Flood Zone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Property Data API": {
+      "main": [
+        [
+          {
+            "node": "Process & Score Property",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geocode Address": {
+      "main": [
+        [
+          {
+            "node": "Process & Score Property",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch FEMA Flood Zone": {
+      "main": [
+        [
+          {
+            "node": "Process & Score Property",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process & Score Property": {
+      "main": [
+        [
+          {
+            "node": "Update Property Details",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upsert Property Valuation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Enrichment Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Property Details": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Property Valuation": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Enrichment Activity": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["tax-deed", "enrichment", "supabase"],
+  "meta": {
+    "instanceId": "tax-deed-platform"
+  }
+}
