@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Calculator
+  TrendingUp,
+  AlertCircle
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { FinancialAnalysis } from '@/lib/types';

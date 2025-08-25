@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,14 +11,7 @@ import {
   ArrowLeft,
   Download,
   Printer,
-  MapPin,
-  Home,
-  DollarSign,
-  Calendar,
   FileText,
-  Users,
-  Building2,
-  Ruler,
   Trees,
   Car,
   Bath,
@@ -27,9 +20,7 @@ import {
   XCircle,
   AlertCircle,
   ExternalLink,
-  Share2,
-  Calculator,
-  TrendingUp
+  Share2
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 

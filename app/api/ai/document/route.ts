@@ -48,7 +48,6 @@ export async function POST(request: Request) {
     const result = await response.json();
 
     // Store import batch record
-    const supabase = createClient();
     const { data: batchData, error: batchError } = await supabase
       .from('import_batches')
       .insert({

@@ -13,7 +13,7 @@ const TOKEN_PRICING = {
 
 export async function GET() {
   try {
-    const supabase = createClient();
+
     
     // Get current date boundaries
     const now = new Date();

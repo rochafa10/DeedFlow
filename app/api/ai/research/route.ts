@@ -9,10 +9,7 @@ export async function POST(request: Request) {
     const { 
       propertyId,
       address,
-      parcelNumber,
-      county,
-      state,
-      minimumBid 
+      parcelNumber
     } = body;
 
     if (!parcelNumber && !propertyId) {
@@ -25,8 +22,7 @@ export async function POST(request: Request) {
     // If propertyId provided, fetch property details
     let propertyData = body;
     if (propertyId && !address) {
-      const supabase = createClient();
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('properties')
         .select('*')
         .eq('id', propertyId)
@@ -56,7 +52,6 @@ export async function POST(request: Request) {
     const researchResult = await response.json();
 
     // Store research report
-    const supabase = createClient();
     const { data: reportData, error: reportError } = await supabase
       .from('ai_research_reports')
       .insert({

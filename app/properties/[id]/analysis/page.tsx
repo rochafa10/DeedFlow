@@ -7,27 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Calculator,
-  TrendingUp,
-  DollarSign,
-  Home,
-  Building,
-  PiggyBank,
-  AlertCircle,
   ArrowLeft,
   Download,
-  MapPin,
-  Ruler,
-  Calendar,
-  Target,
   Package,
   Repeat,
-  BarChart3,
   FileText,
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { formatCurrency, calculateROI, formatDate, getClassificationColor, getScoreColor } from '@/lib/utils';
+import { formatCurrency, formatDate, getClassificationColor, getScoreColor } from '@/lib/utils';
 import type { Property, FinancialAnalysis, PropertyEnrichment } from '@/lib/types';
 
 // Mock data - in production, fetch from API
@@ -92,8 +80,8 @@ export default function PropertyAnalysisPage() {
   const params = useParams();
   const propertyId = params.id as string;
   
-  const [property, setProperty] = useState<Property>(MOCK_PROPERTY);
-  const [enrichment, setEnrichment] = useState<PropertyEnrichment>(MOCK_ENRICHMENT);
+  const [property] = useState<Property>(MOCK_PROPERTY);
+  const [enrichment] = useState<PropertyEnrichment>(MOCK_ENRICHMENT);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<FinancialAnalysis | null>(null);
   const [activeStrategy, setActiveStrategy] = useState<'flip' | 'brrrr' | 'wholesale' | 'rental'>('flip');

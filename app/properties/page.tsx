@@ -3,15 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Search,
   Filter,
-  MapPin,
-  DollarSign,
-  Home,
   TrendingUp,
   AlertCircle,
   ChevronRight,
@@ -877,7 +874,7 @@ export default function PropertiesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedProperties.map((property, index) => (
+                  {sortedProperties.map((property) => (
                     <tr 
                       key={property.id} 
                       className={`border-b hover:bg-muted/50 transition-colors ${
