@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase",
+        "run"
+      ],
+      "env": {
+        "SUPABASE_URL": "https://YOUR-PROJECT-ID.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "YOUR-SERVICE-ROLE-KEY-HERE"
+      }
+    },
+    "google-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-google-search"
+      ],
+      "env": {
+        "GOOGLE_API_KEY": "YOUR-GOOGLE-API-KEY",
+        "GOOGLE_CSE_ID": "YOUR-CUSTOM-SEARCH-ENGINE-ID"
+      }
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "YOUR-BRAVE-API-KEY"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ]
+    }
+  }
+}
