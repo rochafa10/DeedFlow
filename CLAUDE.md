@@ -28,8 +28,9 @@ When working on this project, you have standing permission to:
 - **Result**: Comprehensive database with PDF links
 
 ### Agent 2: Parser Agent
-@PARSER-AGENT-SYSTEM-PROMPT.md
+@PARSER-AGENT-UNIFIED.md
 - Reads PDFs from documents table
+- Uses multi-method approach (Universal Parser, Playwright, Custom Python, Manual)
 - Extracts property data (parcels, addresses, amounts)
 - Stores structured data in properties table
 - **Result**: Queryable property database
