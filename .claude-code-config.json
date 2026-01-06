@@ -1,0 +1,8 @@
+{
+  "auto_approve": [
+    "mcp_supabase_execute_sql",
+    "mcp_playwright_browser_*",
+    "Filesystem:*"
+  ],
+  "permission_mode": "auto"
+}

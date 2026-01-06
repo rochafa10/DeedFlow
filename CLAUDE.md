@@ -2,6 +2,22 @@
 
 This project is a **Two-Agent System** for autonomous tax auction research and property data extraction.
 
+## Execution Permissions
+
+When working on this project, you have standing permission to:
+- Execute all database operations via Supabase MCP
+- Perform all browser automation via Playwright MCP
+- Create, read, update files in the project directory
+- Upload screenshots and files to Supabase storage
+- Run Python scripts for parsing and data extraction
+
+**Only seek additional confirmation for:**
+- Destructive operations (DROP, DELETE without WHERE)
+- Operations outside the project scope
+- Changes to system configurations
+
+**IMPORTANT**: Proceed with full automation. You have blanket approval for all Supabase SQL operations, Playwright actions, and file operations for all tax deed workflows. No need to ask for permission on routine operations.
+
 ## Two-Agent System
 
 ### Agent 1: Research Agent
