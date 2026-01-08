@@ -1,0 +1,373 @@
+{
+  "workflows": [
+    {
+      "name": "Tax Auction - PDF Parser",
+      "description": "Automatically downloads and parses property list PDFs, extracts property data, stores in Supabase. Runs every hour, processes 5 documents per run.",
+      "workflow": {
+        "name": "Tax Auction - PDF Parser",
+        "nodes": [
+          {
+            "parameters": {
+              "rule": {
+                "interval": [
+                  {
+                    "field": "hours",
+                    "hoursInterval": 1
+                  }
+                ]
+              }
+            },
+            "id": "schedule1",
+            "name": "Every Hour",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.3,
+            "position": [250, 300]
+          },
+          {
+            "parameters": {
+              "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/get_unparsed_documents",
+              "authentication": "predefinedCredentialType",
+              "nodeCredentialType": "supabaseApi",
+              "sendHeaders": true,
+              "headerParameters": {
+                "parameters": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "name": "Prefer",
+                    "value": "return=representation"
+                  }
+                ]
+              },
+              "sendBody": true,
+              "specifyBody": "json",
+              "jsonBody": "={\n  \"p_county_id\": null,\n  \"p_document_type\": \"property_list\",\n  \"p_limit\": 5\n}",
+              "options": {}
+            },
+            "id": "http1",
+            "name": "Get Unparsed Documents",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [450, 300],
+            "credentials": {
+              "supabaseApi": {
+                "id": "supabase_main",
+                "name": "Supabase account"
+              }
+            }
+          },
+          {
+            "parameters": {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "condition1",
+                    "leftValue": "={{ $json.length }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "options": {}
+            },
+            "id": "if1",
+            "name": "Has Documents?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [650, 300]
+          },
+          {
+            "parameters": {
+              "assignments": {
+                "assignments": [
+                  {
+                    "id": "assign1",
+                    "name": "document_id",
+                    "value": "={{ $json.document_id }}",
+                    "type": "string"
+                  },
+                  {
+                    "id": "assign2",
+                    "name": "document_url",
+                    "value": "={{ $json.document_url }}",
+                    "type": "string"
+                  },
+                  {
+                    "id": "assign3",
+                    "name": "county_id",
+                    "value": "={{ $json.county_id }}",
+                    "type": "string"
+                  },
+                  {
+                    "id": "assign4",
+                    "name": "county_name",
+                    "value": "={{ $json.county_name }}",
+                    "type": "string"
+                  },
+                  {
+                    "id": "assign5",
+                    "name": "state_code",
+                    "value": "={{ $json.state_code }}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "options": {}
+            },
+            "id": "edit1",
+            "name": "Extract Fields",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.3,
+            "position": [850, 200]
+          },
+          {
+            "parameters": {
+              "url": "={{ $json.document_url }}",
+              "options": {
+                "response": {
+                  "response": {
+                    "responseFormat": "file"
+                  }
+                }
+              }
+            },
+            "id": "http2",
+            "name": "Download PDF",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [1050, 200]
+          },
+          {
+            "parameters": {
+              "language": "python",
+              "pythonCode": "import pdfplumber\nimport io\nimport re\n\n# Get PDF binary data\nfor item in _input.all():\n    pdf_data = item.binary['data']\n    break\n\npdf_file = io.BytesIO(pdf_data)\n\n# Parse PDF\nproperties = []\n\ntry:\n    with pdfplumber.open(pdf_file) as pdf:\n        for page_num, page in enumerate(pdf.pages, 1):\n            tables = page.extract_tables()\n            \n            if not tables:\n                continue\n            \n            for table in tables:\n                # Skip header row\n                for row in table[1:]:\n                    if not row or len(row) < 3:\n                        continue\n                    \n                    # Extract parcel ID (PA format: XX-XXX-XXX.X)\n                    parcel_text = str(row[0] or '')\n                    parcel_match = re.search(r'\\d{2,3}-\\d{2,3}-\\d{3,4}\\.?\\d?', parcel_text)\n                    \n                    if not parcel_match:\n                        continue\n                    \n                    parcel_id = parcel_match.group(0)\n                    address = str(row[1] or '').strip() if len(row) > 1 else ''\n                    owner = str(row[2] or '').strip() if len(row) > 2 else ''\n                    \n                    # Parse amounts\n                    total_due = None\n                    tax_amount = None\n                    \n                    if len(row) > 5:\n                        # Column 5 is usually total\n                        total_str = re.sub(r'[^\\d.]', '', str(row[5] or ''))\n                        if total_str:\n                            try:\n                                total_due = float(total_str)\n                            except:\n                                pass\n                    \n                    if len(row) > 3:\n                        # Column 3 is usually tax\n                        tax_str = re.sub(r'[^\\d.]', '', str(row[3] or ''))\n                        if tax_str:\n                            try:\n                                tax_amount = float(tax_str)\n                            except:\n                                pass\n                    \n                    # If no total but have tax, use tax as total\n                    if not total_due and tax_amount:\n                        total_due = tax_amount\n                    \n                    properties.append({\n                        'parcel_id': parcel_id,\n                        'address': address if address else None,\n                        'owner': owner if owner else None,\n                        'tax_amount': tax_amount,\n                        'total_due': total_due,\n                        'raw_text': ' | '.join([str(c) for c in row if c])\n                    })\n\nexcept Exception as e:\n    return [{'json': {'error': str(e), 'properties': []}}]\n\n# Get metadata from input\nmetadata = _input.first().json\n\nreturn [{\n    'json': {\n        'properties': properties,\n        'count': len(properties),\n        'document_id': metadata.get('document_id'),\n        'county_id': metadata.get('county_id'),\n        'county_name': metadata.get('county_name'),\n        'state_code': metadata.get('state_code')\n    }\n}]"
+            },
+            "id": "python1",
+            "name": "Parse PDF with Python",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1250, 200]
+          },
+          {
+            "parameters": {
+              "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/create_parsing_job",
+              "authentication": "predefinedCredentialType",
+              "nodeCredentialType": "supabaseApi",
+              "sendHeaders": true,
+              "headerParameters": {
+                "parameters": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "sendBody": true,
+              "specifyBody": "json",
+              "jsonBody": "={\n  \"p_document_id\": \"{{ $json.document_id }}\"\n}",
+              "options": {}
+            },
+            "id": "http3",
+            "name": "Create Parsing Job",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [1450, 200],
+            "credentials": {
+              "supabaseApi": {
+                "id": "supabase_main",
+                "name": "Supabase account"
+              }
+            }
+          },
+          {
+            "parameters": {
+              "assignments": {
+                "assignments": [
+                  {
+                    "id": "job_id",
+                    "name": "job_id",
+                    "value": "={{ $json }}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "includeOtherFields": true,
+              "options": {}
+            },
+            "id": "edit2",
+            "name": "Store Job ID",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.3,
+            "position": [1650, 200]
+          },
+          {
+            "parameters": {
+              "batchSize": 1,
+              "options": {}
+            },
+            "id": "loop1",
+            "name": "Loop Properties",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [1850, 200]
+          },
+          {
+            "parameters": {
+              "jsCode": "// Get current property from loop\nconst property = $json.properties[$json.$index];\nconst metadata = $('Parse PDF with Python').first().json;\n\nreturn {\n  json: {\n    ...property,\n    document_id: metadata.document_id,\n    county_id: metadata.county_id,\n    job_id: $('Store Job ID').first().json.job_id\n  }\n};"
+            },
+            "id": "code1",
+            "name": "Extract Property",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [2050, 200]
+          },
+          {
+            "parameters": {
+              "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/upsert_property",
+              "authentication": "predefinedCredentialType",
+              "nodeCredentialType": "supabaseApi",
+              "sendHeaders": true,
+              "headerParameters": {
+                "parameters": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "sendBody": true,
+              "specifyBody": "json",
+              "jsonBody": "={\n  \"p_county_id\": \"{{ $json.county_id }}\",\n  \"p_document_id\": \"{{ $json.document_id }}\",\n  \"p_parcel_id\": \"{{ $json.parcel_id }}\",\n  \"p_property_address\": {{ $json.address ? '\"' + $json.address + '\"' : 'null' }},\n  \"p_owner_name\": {{ $json.owner ? '\"' + $json.owner + '\"' : 'null' }},\n  \"p_tax_amount\": {{ $json.tax_amount || 'null' }},\n  \"p_total_due\": {{ $json.total_due || 'null' }},\n  \"p_tax_year\": 2025,\n  \"p_sale_type\": \"repository\",\n  \"p_sale_date\": \"2026-03-11 10:00:00\",\n  \"p_raw_text\": {{ $json.raw_text ? '\"' + $json.raw_text.replace(/\"/g, '\\\\\"') + '\"' : 'null' }},\n  \"p_confidence\": 0.90\n}",
+              "options": {}
+            },
+            "id": "http4",
+            "name": "Store Property",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [2250, 200],
+            "credentials": {
+              "supabaseApi": {
+                "id": "supabase_main",
+                "name": "Supabase account"
+              }
+            }
+          },
+          {
+            "parameters": {
+              "jsCode": "// Count stored properties\nconst stored = $('Store Property').all().length;\nconst metadata = $('Parse PDF with Python').first().json;\nconst total = metadata.count;\nconst job_id = $('Store Job ID').first().json.job_id;\n\nreturn {\n  json: {\n    stored,\n    total,\n    failed: total - stored,\n    job_id,\n    county: metadata.county_name\n  }\n};"
+            },
+            "id": "summary1",
+            "name": "Calculate Summary",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [2450, 300]
+          },
+          {
+            "parameters": {
+              "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/complete_parsing_job",
+              "authentication": "predefinedCredentialType",
+              "nodeCredentialType": "supabaseApi",
+              "sendHeaders": true,
+              "headerParameters": {
+                "parameters": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "sendBody": true,
+              "specifyBody": "json",
+              "jsonBody": "={\n  \"p_job_id\": \"{{ $json.job_id }}\",\n  \"p_properties_extracted\": {{ $json.stored }},\n  \"p_properties_failed\": {{ $json.failed }},\n  \"p_parser_used\": \"n8n-python-pdfplumber\",\n  \"p_confidence_avg\": 0.90\n}",
+              "options": {}
+            },
+            "id": "http5",
+            "name": "Complete Job",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [2650, 300],
+            "credentials": {
+              "supabaseApi": {
+                "id": "supabase_main",
+                "name": "Supabase account"
+              }
+            }
+          },
+          {
+            "parameters": {
+              "jsCode": "const summary = $input.first().json;\n\nreturn {\n  json: {\n    message: `✅ PDF Parser Complete`,\n    county: summary.county,\n    properties_stored: summary.stored,\n    properties_failed: summary.failed,\n    success_rate: `${Math.round((summary.stored / summary.total) * 100)}%`\n  }\n};"
+            },
+            "id": "final",
+            "name": "Final Summary",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [2850, 300]
+          }
+        ],
+        "connections": {
+          "Every Hour": {
+            "main": [[{"node": "Get Unparsed Documents", "type": "main", "index": 0}]]
+          },
+          "Get Unparsed Documents": {
+            "main": [[{"node": "Has Documents?", "type": "main", "index": 0}]]
+          },
+          "Has Documents?": {
+            "main": [[{"node": "Extract Fields", "type": "main", "index": 0}]]
+          },
+          "Extract Fields": {
+            "main": [[{"node": "Download PDF", "type": "main", "index": 0}]]
+          },
+          "Download PDF": {
+            "main": [[{"node": "Parse PDF with Python", "type": "main", "index": 0}]]
+          },
+          "Parse PDF with Python": {
+            "main": [[{"node": "Create Parsing Job", "type": "main", "index": 0}]]
+          },
+          "Create Parsing Job": {
+            "main": [[{"node": "Store Job ID", "type": "main", "index": 0}]]
+          },
+          "Store Job ID": {
+            "main": [[{"node": "Loop Properties", "type": "main", "index": 0}]]
+          },
+          "Loop Properties": {
+            "main": [
+              [{"node": "Extract Property", "type": "main", "index": 0}],
+              [{"node": "Calculate Summary", "type": "main", "index": 0}]
+            ]
+          },
+          "Extract Property": {
+            "main": [[{"node": "Store Property", "type": "main", "index": 0}]]
+          },
+          "Store Property": {
+            "main": [[{"node": "Loop Properties", "type": "main", "index": 0}]]
+          },
+          "Calculate Summary": {
+            "main": [[{"node": "Complete Job", "type": "main", "index": 0}]]
+          },
+          "Complete Job": {
+            "main": [[{"node": "Final Summary", "type": "main", "index": 0}]]
+          }
+        },
+        "settings": {
+          "executionOrder": "v1"
+        },
+        "staticData": null,
+        "tags": [],
+        "triggerCount": 1,
+        "updatedAt": "2025-01-06T00:00:00.000Z",
+        "versionId": "1"
+      }
+    }
+  ]
+}

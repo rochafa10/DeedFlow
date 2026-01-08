@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase",
+        "run"
+      ],
+      "env": {
+        "SUPABASE_URL": "https://YOUR-PROJECT-ID.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "YOUR-SERVICE-ROLE-KEY-HERE"
+      }
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@farishkash/mcp-perplexity"
+      ],
+      "env": {
+        "PERPLEXITY_API_KEY": "YOUR-PERPLEXITY-API-KEY-HERE"
+      }
+    }
+  }
+}

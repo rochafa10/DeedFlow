@@ -1,12 +1,12 @@
 # Agent Instructions: Using UPSERT Functions
 
-## **CRITICAL: Agent Must Use UPSERT Functions**
+## 🎯 **CRITICAL: Agent Must Use UPSERT Functions**
 
 When storing data in Supabase, **ALWAYS use UPSERT functions** instead of direct INSERT to prevent duplicates.
 
 ---
 
-## **UPSERT Functions Available**
+## 📋 **UPSERT Functions Available**
 
 ### **1. upsert_official_link()**
 ```sql
@@ -82,7 +82,7 @@ SELECT upsert_important_note(
 
 ---
 
-## **Complete Research Workflow**
+## 🔄 **Complete Research Workflow**
 
 ```sql
 -- STEP 1: Get or Create County
@@ -92,10 +92,10 @@ DECLARE
 BEGIN
   -- Get county ID (creates if doesn't exist)
   SELECT get_or_create_county('Blair', 'PA') INTO v_county_id;
-
+  
   -- STEP 2: Refresh old data (optional but recommended)
   PERFORM refresh_county_research(v_county_id, TRUE, FALSE);
-
+  
   -- STEP 3: Insert Official Links (UPSERT)
   PERFORM upsert_official_link(
     v_county_id, 'tax_claim_bureau',
@@ -103,20 +103,20 @@ BEGIN
     'Blair County Tax Claim Bureau',
     '814-317-2361', 'taxclaim@blairco.org'
   );
-
+  
   PERFORM upsert_official_link(
     v_county_id, 'tax_sale_page',
     'https://blairco.org/tax-claim/sales',
     'Tax Sale Information', NULL, NULL
   );
-
+  
   -- STEP 4: Insert Upcoming Sales (UPSERT)
   PERFORM upsert_upcoming_sale(
     v_county_id, 'repository',
     '2026-03-11 10:00:00', '2026-02-25 16:00:00',
     'Bid4Assets', 10000, 568, 'Online', 'online'
   );
-
+  
   -- STEP 5: Insert Documents (UPSERT)
   PERFORM upsert_document(
     v_county_id, 'property_list',
@@ -124,14 +124,14 @@ BEGIN
     'https://blairco.org/getmedia/2026-repo-list.pdf',
     'pdf', '2026-01-15', 2026, 568
   );
-
+  
   PERFORM upsert_document(
     v_county_id, 'registration_form',
     'Bidder Registration Instructions',
     'https://blairco.org/registration.pdf',
     'pdf', '2026-01-10', 2026, NULL
   );
-
+  
   -- STEP 6: Insert Vendor Portal (UPSERT)
   PERFORM upsert_vendor_portal(
     v_county_id, 'Bid4Assets',
@@ -139,25 +139,25 @@ BEGIN
     'https://bid4assets.com/blair-county-pa/register',
     TRUE
   );
-
+  
   -- STEP 7: Insert Additional Resources (UPSERT)
   PERFORM upsert_additional_resource(
     v_county_id, 'assessment',
     'Blair County Assessment Office',
     'https://blairco.org/assessment'
   );
-
+  
   -- STEP 8: Insert Important Notes (UPSERT)
   PERFORM upsert_important_note(
     v_county_id, 'deadline',
     'Registration deadline: February 25, 2026 at 4:00 PM', 9
   );
-
+  
   PERFORM upsert_important_note(
     v_county_id, 'deposit',
     '$10,000 deposit required via wire transfer', 8
   );
-
+  
   -- STEP 9: Insert Research Log
   INSERT INTO research_log (
     county_id, researcher, sources_checked, data_quality_score, notes
@@ -172,16 +172,16 @@ BEGIN
     10,
     'Complete research with Perplexity + Google Custom Search'
   );
-
+  
   -- STEP 10: Update county timestamp
   PERFORM update_county_research_timestamp(v_county_id);
-
+  
 END $$;
 ```
 
 ---
 
-## **Agent Checklist**
+## ✅ **Agent Checklist**
 
 Before inserting data, agent should:
 
@@ -196,12 +196,12 @@ Before inserting data, agent should:
    ```
 
 3. **Use UPSERT for All Inserts**
-   - `upsert_official_link()` for official links
-   - `upsert_upcoming_sale()` for sales
-   - `upsert_document()` for documents
-   - `upsert_vendor_portal()` for vendor portals
-   - `upsert_additional_resource()` for resources
-   - `upsert_important_note()` for notes
+   - ✅ `upsert_official_link()` for official links
+   - ✅ `upsert_upcoming_sale()` for sales
+   - ✅ `upsert_document()` for documents
+   - ✅ `upsert_vendor_portal()` for vendor portals
+   - ✅ `upsert_additional_resource()` for resources
+   - ✅ `upsert_important_note()` for notes
 
 4. **Insert Research Log** (always new)
    ```sql
@@ -215,21 +215,21 @@ Before inserting data, agent should:
 
 ---
 
-## **Example: Agent Response**
+## 🎯 **Example: Agent Response**
 
 ```
 User: Research Blair County, PA
 
-Agent: RESEARCHING: Blair County, PA
+Agent: 🔍 RESEARCHING: Blair County, PA
 
 Step 1: Getting county ID...
-County ID: 550e8400-e29b-41d4-a716-446655440000
+✓ County ID: 550e8400-e29b-41d4-a716-446655440000
 
 Step 2: Refreshing old data...
-Removed 2 old sales, kept 10 documents
+✓ Removed 2 old sales, kept 10 documents
 
 Step 3: Researching via Perplexity + Google...
-Found comprehensive information
+✓ Found comprehensive information
 
 Step 4: Storing data using UPSERT functions...
 ├─ Official Links: 5 (3 updated, 2 new)
@@ -240,17 +240,17 @@ Step 4: Storing data using UPSERT functions...
 └─ Important Notes: 17 (10 updated, 7 new)
 
 Step 5: Updating research log...
-New research entry added
+✓ New research entry added
 
-COMPLETE: 41 records total
+✅ COMPLETE: 41 records total
 Quality Score: 10/10
 
-No duplicates created!
+No duplicates created! ✨
 ```
 
 ---
 
-## **Troubleshooting**
+## 🐛 **Troubleshooting**
 
 ### **Issue: "Function does not exist"**
 
@@ -258,8 +258,8 @@ No duplicates created!
 
 ```sql
 -- Check if functions exist
-SELECT routine_name
-FROM information_schema.routines
+SELECT routine_name 
+FROM information_schema.routines 
 WHERE routine_name LIKE 'upsert%';
 ```
 
@@ -283,11 +283,11 @@ SELECT refresh_county_research(county_id, FALSE, FALSE);
 
 ---
 
-## **Monitoring**
+## 📊 **Monitoring**
 
 ### **Query: Check Last Research Date**
 ```sql
-SELECT
+SELECT 
   county_name,
   state_code,
   last_researched_at,
@@ -306,7 +306,7 @@ ORDER BY last_researched_at;
 
 ### **Query: Count Records Per County**
 ```sql
-SELECT
+SELECT 
   c.county_name,
   COUNT(DISTINCT ol.id) as official_links,
   COUNT(DISTINCT us.id) as upcoming_sales,
@@ -327,22 +327,22 @@ ORDER BY c.county_name;
 
 ---
 
-## **Summary**
+## 🎉 **Summary**
 
 **ALWAYS use UPSERT functions to:**
-- Prevent duplicate records
-- Update existing information
-- Add new information
-- Keep database clean
-- Preserve historical data
+- ✅ Prevent duplicate records
+- ✅ Update existing information
+- ✅ Add new information
+- ✅ Keep database clean
+- ✅ Preserve historical data
 
 **Never use direct INSERT for:**
-- official_links
-- upcoming_sales
-- documents
-- vendor_portals
-- additional_resources
-- important_notes
+- ❌ official_links
+- ❌ upcoming_sales
+- ❌ documents
+- ❌ vendor_portals
+- ❌ additional_resources
+- ❌ important_notes
 
 **Only use direct INSERT for:**
-- research_log (always want new entries)
+- ✅ research_log (always want new entries)
