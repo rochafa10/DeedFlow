@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useDashboardData } from "@/hooks/useDashboardData"
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton"
 
 export default function DashboardPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
@@ -96,11 +97,83 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Loading State with Skeletons */}
         {dataLoading && !dashboardData && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-slate-500">Loading dashboard data...</div>
-          </div>
+          <>
+            {/* KPI Card Skeletons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+
+            {/* Main Grid Skeletons */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Pipeline Funnel Skeleton */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Skeleton className="h-5 w-5" />
+                  <Skeleton className="h-5 w-32" />
+                </div>
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i}>
+                      <div className="flex justify-between mb-1">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                      <Skeleton className="h-3 w-full rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upcoming Auctions Skeleton */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Skeleton className="h-5 w-5" />
+                  <Skeleton className="h-5 w-36" />
+                </div>
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-slate-200">
+                      <div className="flex justify-between">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                        <div className="text-right space-y-2">
+                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* County Progress Table Skeleton */}
+            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-200">
+                <Skeleton className="h-6 w-36" />
+              </div>
+              <div className="p-4">
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-4 w-1/4" />
+                      <Skeleton className="h-4 w-1/6" />
+                      <Skeleton className="h-4 w-1/6" />
+                      <Skeleton className="h-4 w-1/6" />
+                      <Skeleton className="h-4 w-1/6" />
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Error State */}
