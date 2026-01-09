@@ -108,9 +108,9 @@ export function Header() {
               aria-label="Open menu"
               aria-expanded={showMobileMenu}
             >
-              <Menu className="h-6 w-6 text-slate-600" />
+              <Menu className="h-6 w-6 text-slate-600" aria-hidden="true" />
             </button>
-            <Building2 className="h-8 w-8 text-primary" />
+            <Building2 className="h-8 w-8 text-primary" aria-hidden="true" />
             <span className="text-xl font-bold text-slate-900">Tax Deed Flow</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
@@ -132,7 +132,7 @@ export function Header() {
                   className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors"
                   aria-label="Notifications"
                 >
-                  <Bell className="h-5 w-5 text-slate-600" />
+                  <Bell className="h-5 w-5 text-slate-600" aria-hidden="true" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                       {unreadCount > 9 ? "9+" : unreadCount}
@@ -173,7 +173,7 @@ export function Header() {
                             >
                               <div className="flex items-start gap-3">
                                 <div className={`p-1.5 rounded-full ${getTypeStyles(notification.type)}`}>
-                                  <Bell className="h-3 w-3" />
+                                  <Bell className="h-3 w-3" aria-hidden="true" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
@@ -186,16 +186,18 @@ export function Header() {
                                           onClick={() => markAsRead(notification.id)}
                                           className="p-1 hover:bg-slate-200 rounded"
                                           title="Mark as read"
+                                          aria-label="Mark as read"
                                         >
-                                          <Check className="h-3 w-3 text-slate-500" />
+                                          <Check className="h-3 w-3 text-slate-500" aria-hidden="true" />
                                         </button>
                                       )}
                                       <button
                                         onClick={() => dismissNotification(notification.id)}
                                         className="p-1 hover:bg-slate-200 rounded"
                                         title="Dismiss"
+                                        aria-label="Dismiss notification"
                                       >
-                                        <X className="h-3 w-3 text-slate-500" />
+                                        <X className="h-3 w-3 text-slate-500" aria-hidden="true" />
                                       </button>
                                     </div>
                                   </div>
@@ -211,7 +213,7 @@ export function Header() {
                           ))
                         ) : (
                           <div className="px-4 py-8 text-center text-slate-500">
-                            <Bell className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                            <Bell className="h-8 w-8 mx-auto mb-2 text-slate-300" aria-hidden="true" />
                             <p className="text-sm">No notifications</p>
                           </div>
                         )}
@@ -246,7 +248,7 @@ export function Header() {
                   <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium">
                     {userInitial}
                   </div>
-                  <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${showDropdown ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
 
                 {showDropdown && (
@@ -268,14 +270,14 @@ export function Header() {
                           href="/settings"
                           className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                         >
-                          <User className="h-4 w-4" />
+                          <User className="h-4 w-4" aria-hidden="true" />
                           Account Settings
                         </a>
                         <button
                           onClick={handleLogout}
                           className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                         >
-                          <LogOut className="h-4 w-4" />
+                          <LogOut className="h-4 w-4" aria-hidden="true" />
                           Sign out
                         </button>
                       </div>
@@ -301,7 +303,7 @@ export function Header() {
           <nav className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 md:hidden transform transition-transform">
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Building2 className="h-6 w-6 text-primary" />
+                <Building2 className="h-6 w-6 text-primary" aria-hidden="true" />
                 <span className="font-bold text-slate-900">Tax Deed Flow</span>
               </div>
               <button
@@ -309,7 +311,7 @@ export function Header() {
                 className="p-2 rounded-lg hover:bg-slate-100"
                 aria-label="Close menu"
               >
-                <X className="h-5 w-5 text-slate-600" />
+                <X className="h-5 w-5 text-slate-600" aria-hidden="true" />
               </button>
             </div>
             <div className="py-4">

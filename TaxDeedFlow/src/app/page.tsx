@@ -78,7 +78,7 @@ export default function DashboardPage() {
                   : "bg-amber-100 text-amber-700"
               )}
             >
-              <Database className="h-3 w-3" />
+              <Database className="h-3 w-3" aria-hidden="true" />
               {dataSource === "database" ? "Live Data" : "Demo Mode"}
             </div>
             {/* Refresh button */}
@@ -89,6 +89,7 @@ export default function DashboardPage() {
             >
               <RefreshCw
                 className={cn("h-4 w-4", dataLoading && "animate-spin")}
+                aria-hidden="true"
               />
               Refresh
             </button>
@@ -117,35 +118,35 @@ export default function DashboardPage() {
                 title="Counties"
                 value={dashboardData.stats.counties.total.toLocaleString()}
                 description="Researched"
-                icon={<MapPin className="h-5 w-5" />}
+                icon={<MapPin className="h-5 w-5" aria-hidden="true" />}
                 trend={dashboardData.stats.counties.trend}
               />
               <KpiCard
                 title="Properties"
                 value={dashboardData.stats.properties.total.toLocaleString()}
                 description="In pipeline"
-                icon={<Building2 className="h-5 w-5" />}
+                icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
                 trend={dashboardData.stats.properties.trend}
               />
               <KpiCard
                 title="Approved"
                 value={dashboardData.stats.approved.total.toLocaleString()}
                 description="Ready to bid"
-                icon={<CheckCircle2 className="h-5 w-5" />}
+                icon={<CheckCircle2 className="h-5 w-5" aria-hidden="true" />}
                 trend={dashboardData.stats.approved.percentage}
               />
               <KpiCard
                 title="Pending"
                 value={dashboardData.stats.pending.total.toLocaleString()}
                 description="Need processing"
-                icon={<Clock className="h-5 w-5" />}
+                icon={<Clock className="h-5 w-5" aria-hidden="true" />}
                 trend={dashboardData.stats.pending.percentage}
               />
               <KpiCard
                 title="Auctions"
                 value={dashboardData.stats.auctions.total.toLocaleString()}
                 description="Next 7 days"
-                icon={<Calendar className="h-5 w-5" />}
+                icon={<Calendar className="h-5 w-5" aria-hidden="true" />}
                 trend={
                   dashboardData.stats.auctions.urgency === "urgent"
                     ? "Urgent"
@@ -160,7 +161,7 @@ export default function DashboardPage() {
               {/* Pipeline Funnel */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-slate-500" />
+                  <TrendingUp className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   Pipeline Funnel
                 </h2>
                 <div className="space-y-4">
@@ -194,7 +195,7 @@ export default function DashboardPage() {
               {/* Upcoming Auctions */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-slate-500" />
+                  <Calendar className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   Upcoming Auctions
                 </h2>
                 <div className="space-y-3">
@@ -223,7 +224,7 @@ export default function DashboardPage() {
               {/* Bottleneck Alerts */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden="true" />
                   Bottlenecks
                 </h2>
                 <div className="space-y-3">
@@ -248,7 +249,7 @@ export default function DashboardPage() {
               {/* Recent Activity */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-slate-500" />
+                  <Activity className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   Recent Activity
                 </h2>
                 <div className="space-y-3">
@@ -510,6 +511,7 @@ function BottleneckAlert({
               ? "text-amber-500"
               : "text-blue-500"
         )}
+        aria-hidden="true"
       />
       <div className="flex-1">
         <div className="flex items-center justify-between">
