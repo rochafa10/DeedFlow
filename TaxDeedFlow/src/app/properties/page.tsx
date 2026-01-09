@@ -19,6 +19,10 @@ import {
   ShieldCheck,
   Gavel,
   Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Calendar,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -235,7 +239,7 @@ const MOCK_PROPERTIES = [
     lotSize: "1.2 acres",
     saleType: "Tax Lien",
     validation: null,
-    saleDate: "2026-01-16",
+    saleDate: "2026-01-10",  // Saturday this week
   },
   {
     id: "14",
@@ -250,7 +254,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.5 acres",
     saleType: "Tax Deed",
     validation: null,
-    saleDate: "2026-03-11",
+    saleDate: "2026-01-09",  // Thursday this week (today)
   },
   {
     id: "15",
@@ -272,6 +276,7 @@ const MOCK_PROPERTIES = [
 // Date range options for filtering
 const DATE_RANGES = [
   { value: "all", label: "All Dates" },
+  { value: "thisWeek", label: "This Week" },
   { value: "7days", label: "Next 7 Days" },
   { value: "30days", label: "Next 30 Days" },
   { value: "90days", label: "Next 90 Days" },
@@ -329,6 +334,9 @@ const VALIDATION_CONFIG: Record<
   },
 }
 
+type SortField = "saleDate" | "totalDue" | "county" | "parcelId" | null
+type SortDirection = "asc" | "desc"
+
 function PropertiesContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
@@ -339,6 +347,8 @@ function PropertiesContent() {
   const [countyFilter, setCountyFilter] = useState<string>("all")
   const [dateRangeFilter, setDateRangeFilter] = useState<string>("all")
   const [showFilters, setShowFilters] = useState(false)
+  const [sortField, setSortField] = useState<SortField>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const itemsPerPage = 10
 
   // Get unique counties for filter dropdown
@@ -348,7 +358,7 @@ function PropertiesContent() {
   const validStatuses: PropertyStatus[] = ["parsed", "enriched", "validated", "approved"]
 
   // Function to update URL parameters
-  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; dateRange?: string | null; q?: string | null; page?: number | null }) => {
+  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; dateRange?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null }) => {
     const params = new URLSearchParams(searchParams.toString())
 
     if (updates.stage !== undefined) {
@@ -388,6 +398,22 @@ function PropertiesContent() {
         params.set("page", updates.page.toString())
       } else {
         params.delete("page")
+      }
+    }
+
+    if (updates.sort !== undefined) {
+      if (updates.sort) {
+        params.set("sort", updates.sort)
+      } else {
+        params.delete("sort")
+      }
+    }
+
+    if (updates.dir !== undefined) {
+      if (updates.dir && updates.dir !== "asc") {
+        params.set("dir", updates.dir)
+      } else {
+        params.delete("dir")
       }
     }
 
@@ -466,6 +492,25 @@ function PropertiesContent() {
     }
   }, [searchParams])
 
+  // Read sort params from URL
+  useEffect(() => {
+    const sortParam = searchParams.get("sort")
+    const dirParam = searchParams.get("dir")
+    const validSortFields: SortField[] = ["saleDate", "totalDue", "county", "parcelId"]
+
+    if (sortParam && validSortFields.includes(sortParam as SortField)) {
+      setSortField(sortParam as SortField)
+    } else if (!sortParam) {
+      setSortField(null)
+    }
+
+    if (dirParam === "desc") {
+      setSortDirection("desc")
+    } else {
+      setSortDirection("asc")
+    }
+  }, [searchParams])
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -496,6 +541,20 @@ function PropertiesContent() {
     const diffDays = Math.ceil((sale.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
     switch (range) {
+      case "thisWeek": {
+        // Get the start of the current week (Sunday)
+        const startOfWeek = new Date(today)
+        startOfWeek.setHours(0, 0, 0, 0)
+        startOfWeek.setDate(today.getDate() - today.getDay()) // Go back to Sunday
+
+        // Get the end of the current week (Saturday 23:59:59)
+        const endOfWeek = new Date(startOfWeek)
+        endOfWeek.setDate(startOfWeek.getDate() + 6)
+        endOfWeek.setHours(23, 59, 59, 999)
+
+        // Check if sale date falls within this week
+        return sale >= startOfWeek && sale <= endOfWeek
+      }
       case "7days":
         return diffDays >= 0 && diffDays <= 7
       case "30days":
@@ -533,15 +592,58 @@ function PropertiesContent() {
   // Count active filters
   const activeFilterCount = [statusFilter !== "all", countyFilter !== "all", dateRangeFilter !== "all"].filter(Boolean).length
 
+  // Sort properties if a sort field is selected
+  const sortedProperties = [...filteredProperties].sort((a, b) => {
+    if (!sortField) return 0
+
+    let comparison = 0
+    switch (sortField) {
+      case "saleDate":
+        // Date comparison - chronological order
+        comparison = new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime()
+        break
+      case "totalDue":
+        comparison = a.totalDue - b.totalDue
+        break
+      case "county":
+        comparison = a.county.localeCompare(b.county)
+        break
+      case "parcelId":
+        comparison = a.parcelId.localeCompare(b.parcelId)
+        break
+      default:
+        return 0
+    }
+
+    return sortDirection === "asc" ? comparison : -comparison
+  })
+
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredProperties.length / itemsPerPage))
+  const totalPages = Math.max(1, Math.ceil(sortedProperties.length / itemsPerPage))
   // Clamp currentPage to valid range (handles case where page param exceeds total pages)
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
   const startIndex = (validCurrentPage - 1) * itemsPerPage
-  const paginatedProperties = filteredProperties.slice(
+  const paginatedProperties = sortedProperties.slice(
     startIndex,
     startIndex + itemsPerPage
   )
+
+  // Handle sort column click
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking same field
+      const newDirection = sortDirection === "asc" ? "desc" : "asc"
+      setSortDirection(newDirection)
+      setCurrentPage(1)
+      updateUrlParams({ dir: newDirection, page: null })
+    } else {
+      // New field, reset to ascending
+      setSortField(field)
+      setSortDirection("asc")
+      setCurrentPage(1)
+      updateUrlParams({ sort: field, dir: null, page: null })
+    }
+  }
 
   // Export to CSV function
   const exportToCSV = () => {
@@ -553,6 +655,7 @@ function PropertiesContent() {
       "State",
       "County",
       "Total Due",
+      "Sale Date",
       "Sale Type",
       "Property Type",
       "Lot Size",
@@ -560,14 +663,15 @@ function PropertiesContent() {
       "Validation"
     ]
 
-    // CSV rows from filtered properties
-    const rows = filteredProperties.map(property => [
+    // CSV rows from sorted properties (respects current sort order)
+    const rows = sortedProperties.map(property => [
       property.parcelId,
       property.address,
       property.city,
       property.state,
       property.county,
       property.totalDue.toFixed(2),
+      property.saleDate,
       property.saleType,
       property.propertyType,
       property.lotSize,
@@ -851,16 +955,59 @@ function PropertiesContent() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Parcel ID
+                    <button
+                      onClick={() => handleSort("parcelId")}
+                      className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    >
+                      Parcel ID
+                      {sortField === "parcelId" ? (
+                        sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Address
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    County
+                    <button
+                      onClick={() => handleSort("county")}
+                      className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    >
+                      County
+                      {sortField === "county" ? (
+                        sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Total Due
+                    <button
+                      onClick={() => handleSort("totalDue")}
+                      className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    >
+                      Total Due
+                      {sortField === "totalDue" ? (
+                        sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort("saleDate")}
+                      className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    >
+                      Sale Date
+                      {sortField === "saleDate" ? (
+                        sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Sale Type
@@ -912,6 +1059,19 @@ function PropertiesContent() {
                             {property.totalDue.toLocaleString("en-US", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Sale Date */}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                          <span className="text-sm text-slate-700">
+                            {new Date(property.saleDate).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
                             })}
                           </span>
                         </div>
