@@ -18,6 +18,7 @@ import {
   XCircle,
   X,
   Sparkles,
+  Users,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -133,6 +134,13 @@ const MOCK_ACTIVE_AGENTS = [
   },
 ]
 
+// Mock agent assignments
+const MOCK_AGENT_ASSIGNMENTS = [
+  { id: 1, agent: "Regrid Scraper", task: "Regrid Scraping - Somerset", status: "running", progress: 45, processed: 1080, total: 2400 },
+  { id: 2, agent: "Visual Validator", task: "Visual Validation - Westmoreland", status: "queued", progress: 0, processed: 0, total: 150 },
+  { id: 3, agent: "Parser Agent", task: "PDF Parsing - Blair", status: "idle", progress: 0, processed: 0, total: 12 },
+]
+
 // Mock AI session plan
 const SESSION_PLAN = {
   recommendations: [
@@ -192,6 +200,12 @@ const WORK_TYPE_LABELS: Record<string, string> = {
   title_research: "Title Research",
   environmental_research: "Environmental Research",
   bid_strategy: "Bid Strategy",
+}
+
+const ASSIGNMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  running: { label: "Running", color: "bg-green-100 text-green-700" },
+  queued: { label: "Queued", color: "bg-amber-100 text-amber-700" },
+  idle: { label: "Idle", color: "bg-slate-100 text-slate-600" },
 }
 
 export default function OrchestrationPage() {
@@ -337,6 +351,85 @@ export default function OrchestrationPage() {
                   <span>6,762 items in queue</span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Agent Assignments Table - Only shown when session is active */}
+        {activeSession && (
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
+            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+              <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Agent Assignments
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Agent
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Task
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Progress
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {MOCK_AGENT_ASSIGNMENTS.map((assignment) => {
+                    const statusConfig = ASSIGNMENT_STATUS_CONFIG[assignment.status] || ASSIGNMENT_STATUS_CONFIG.idle
+                    return (
+                      <tr key={assignment.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                          {assignment.agent}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700">
+                          {assignment.task}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={cn(
+                              "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                              statusConfig.color
+                            )}
+                          >
+                            {statusConfig.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 min-w-[100px]">
+                              <div className="w-full bg-slate-200 rounded-full h-2">
+                                <div
+                                  className={cn(
+                                    "h-2 rounded-full transition-all",
+                                    assignment.status === "running"
+                                      ? "bg-green-500"
+                                      : assignment.status === "queued"
+                                      ? "bg-amber-500"
+                                      : "bg-slate-400"
+                                  )}
+                                  style={{ width: `${assignment.progress}%` }}
+                                />
+                              </div>
+                            </div>
+                            <span className="text-sm text-slate-600 whitespace-nowrap">
+                              {assignment.processed.toLocaleString()}/{assignment.total.toLocaleString()} items
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
