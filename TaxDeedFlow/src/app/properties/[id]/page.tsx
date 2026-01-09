@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 
 // Mock property data - in production this would come from API
 const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
@@ -350,14 +351,13 @@ export default function PropertyDetailPage() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <button
-          onClick={() => router.push("/properties")}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Properties
-        </button>
+        {/* Breadcrumbs */}
+        <Breadcrumbs
+          items={[
+            { label: "Properties", href: "/properties" },
+            { label: property.parcelId },
+          ]}
+        />
 
         {/* Property Header */}
         <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
