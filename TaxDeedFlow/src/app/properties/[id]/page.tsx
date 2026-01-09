@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams, useRouter, usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import {
   ArrowLeft,
   MapPin,
@@ -23,6 +23,10 @@ import {
   Gavel,
   Home,
   Ruler,
+  Edit3,
+  Save,
+  X,
+  RefreshCw,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -34,7 +38,8 @@ const RESTRICTED_PROPERTY_IDS = new Set(["100", "101", "102", "999", "private-1"
 
 // Mock property data - in production this would come from API
 // Properties 1-4 belong to the current user, 5+ are "other users' properties" for testing access control
-const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
+// Simulated server-side data store (shared across "users" for demo)
+let mockPropertyStore: Record<string, PropertyDetail> = {
   "1": {
     id: "1",
     parcelId: "10-01-001-0001",
@@ -57,6 +62,9 @@ const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Jan 16, 2026",
     minimumBid: 5234.56,
+    version: 1,
+    lastModifiedAt: "2026-01-08T10:30:00Z",
+    lastModifiedBy: "Demo User",
   },
   "2": {
     id: "2",
@@ -80,6 +88,9 @@ const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Jan 16, 2026",
     minimumBid: 12450.0,
+    version: 1,
+    lastModifiedAt: "2026-01-07T15:45:00Z",
+    lastModifiedBy: "Demo User",
     regridData: {
       lotSizeAcres: 1.5,
       lotSizeSqFt: 65340,
@@ -116,6 +127,9 @@ const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Jan 16, 2026",
     minimumBid: 3200.0,
+    version: 2,
+    lastModifiedAt: "2026-01-08T14:30:00Z",
+    lastModifiedBy: "Visual Validator Agent",
     validationData: {
       status: "approved",
       confidenceScore: 92,
@@ -153,8 +167,14 @@ const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Mar 11, 2026",
     minimumBid: 8750.25,
+    version: 1,
+    lastModifiedAt: "2026-01-06T09:15:00Z",
+    lastModifiedBy: "Demo User",
   },
 }
+
+// Alias for backward compatibility (read-only access)
+const MOCK_PROPERTIES = mockPropertyStore
 
 interface RegridData {
   lotSizeAcres: number
@@ -209,6 +229,10 @@ interface PropertyDetail {
   minimumBid: number
   regridData?: RegridData
   validationData?: ValidationData
+  // Concurrency control fields
+  version: number
+  lastModifiedAt: string
+  lastModifiedBy: string
 }
 
 type PropertyStatus = "parsed" | "enriched" | "validated" | "approved"
@@ -264,6 +288,13 @@ const VALIDATION_CONFIG: Record<
 
 type TabType = "overview" | "regrid" | "validation" | "images" | "analysis" | "history"
 
+// Conflict dialog state interface
+interface ConflictState {
+  show: boolean
+  serverVersion: PropertyDetail | null
+  localChanges: Partial<PropertyDetail>
+}
+
 export default function PropertyDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -273,6 +304,18 @@ export default function PropertyDetailPage() {
   const [property, setProperty] = useState<PropertyDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [accessDenied, setAccessDenied] = useState(false)
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false)
+  const [editFormData, setEditFormData] = useState<Partial<PropertyDetail>>({})
+  const [originalVersion, setOriginalVersion] = useState<number>(0)
+  const [saving, setSaving] = useState(false)
+  const [conflict, setConflict] = useState<ConflictState>({
+    show: false,
+    serverVersion: null,
+    localChanges: {},
+  })
+  const [recordDeleted, setRecordDeleted] = useState(false)
 
   const propertyId = params.id as string
 
@@ -309,6 +352,137 @@ export default function PropertyDetailPage() {
       loadProperty()
     }
   }, [propertyId])
+
+  // Start editing - capture the current version
+  const startEditing = useCallback(() => {
+    if (property) {
+      setEditFormData({
+        address: property.address,
+        city: property.city,
+        totalDue: property.totalDue,
+        assessedValue: property.assessedValue,
+        propertyType: property.propertyType,
+        status: property.status,
+      })
+      setOriginalVersion(property.version)
+      setIsEditing(true)
+    }
+  }, [property])
+
+  // Cancel editing
+  const cancelEditing = useCallback(() => {
+    setIsEditing(false)
+    setEditFormData({})
+    setOriginalVersion(0)
+  }, [])
+
+  // Simulate another user editing the same record
+  const simulateOtherUserEdit = useCallback(() => {
+    if (property) {
+      // Simulate "User B" making changes in the background
+      mockPropertyStore[property.id] = {
+        ...mockPropertyStore[property.id],
+        version: mockPropertyStore[property.id].version + 1,
+        lastModifiedAt: new Date().toISOString(),
+        lastModifiedBy: "Other User (User B)",
+        address: mockPropertyStore[property.id].address + " (edited by User B)",
+      }
+    }
+  }, [property])
+
+  // Simulate another user deleting the record
+  const simulateOtherUserDelete = useCallback(() => {
+    if (property) {
+      // Simulate "User B" deleting the record from the server
+      delete mockPropertyStore[property.id]
+    }
+  }, [property])
+
+  // Save changes with optimistic concurrency check
+  const saveChanges = useCallback(async () => {
+    if (!property) return
+
+    setSaving(true)
+
+    // Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    // Check if record still exists (was deleted by another user)
+    const currentServerProperty = mockPropertyStore[property.id]
+
+    if (!currentServerProperty) {
+      // Record was deleted by another user!
+      setRecordDeleted(true)
+      setSaving(false)
+      return
+    }
+
+    if (currentServerProperty.version !== originalVersion) {
+      // Version conflict detected!
+      setConflict({
+        show: true,
+        serverVersion: { ...currentServerProperty },
+        localChanges: { ...editFormData },
+      })
+      setSaving(false)
+      return
+    }
+
+    // No conflict - save changes
+    const updatedProperty: PropertyDetail = {
+      ...currentServerProperty,
+      ...editFormData,
+      version: currentServerProperty.version + 1,
+      lastModifiedAt: new Date().toISOString(),
+      lastModifiedBy: "Demo User (You)",
+    }
+
+    // Update the mock store
+    mockPropertyStore[property.id] = updatedProperty
+
+    // Update local state
+    setProperty(updatedProperty)
+    setIsEditing(false)
+    setEditFormData({})
+    setSaving(false)
+  }, [property, originalVersion, editFormData])
+
+  // Force save (overwrite server changes)
+  const forceSave = useCallback(async () => {
+    if (!property || !conflict.serverVersion) return
+
+    const updatedProperty: PropertyDetail = {
+      ...conflict.serverVersion,
+      ...conflict.localChanges,
+      version: conflict.serverVersion.version + 1,
+      lastModifiedAt: new Date().toISOString(),
+      lastModifiedBy: "Demo User (You - force saved)",
+    }
+
+    mockPropertyStore[property.id] = updatedProperty
+    setProperty(updatedProperty)
+    setIsEditing(false)
+    setEditFormData({})
+    setConflict({ show: false, serverVersion: null, localChanges: {} })
+  }, [property, conflict])
+
+  // Discard local changes and use server version
+  const useServerVersion = useCallback(() => {
+    if (conflict.serverVersion) {
+      setProperty({ ...conflict.serverVersion })
+    }
+    setIsEditing(false)
+    setEditFormData({})
+    setConflict({ show: false, serverVersion: null, localChanges: {} })
+  }, [conflict])
+
+  // Update form field
+  const updateField = useCallback((field: keyof PropertyDetail, value: string | number | null) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }, [])
 
   // Show loading state
   if (authLoading || loading) {
@@ -413,63 +587,194 @@ export default function PropertyDetailPage() {
 
         {/* Property Header */}
         <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold text-slate-900">
-                  {property.address}
-                </h1>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium",
-                    statusConfig.color
-                  )}
+          {/* Version Info Banner */}
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-4 text-sm text-slate-500">
+              <span>Version: {property.version}</span>
+              <span className="text-slate-300">|</span>
+              <span>Last modified: {new Date(property.lastModifiedAt).toLocaleString()}</span>
+              <span className="text-slate-300">|</span>
+              <span>By: {property.lastModifiedBy}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {!isEditing ? (
+                <button
+                  onClick={startEditing}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                 >
-                  {statusConfig.icon}
-                  {statusConfig.label}
-                </span>
-                {validationConfig && (
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={saveChanges}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                  >
+                    <Save className="h-4 w-4" />
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </button>
+                </>
+              )}
+              {/* Demo button to simulate concurrent edit - always visible */}
+              <button
+                onClick={simulateOtherUserEdit}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors"
+                title="Simulates another user editing this record (increments version)"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Simulate User B Edit
+              </button>
+              {/* Demo button to simulate delete by another user */}
+              <button
+                onClick={simulateOtherUserDelete}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                title="Simulates another user deleting this record"
+              >
+                <X className="h-4 w-4" />
+                Simulate User B Delete
+              </button>
+            </div>
+          </div>
+
+          {isEditing ? (
+            /* Edit Form */
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.address || ""}
+                    onChange={(e) => updateField("address", e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.city || ""}
+                    onChange={(e) => updateField("city", e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Total Due ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editFormData.totalDue || ""}
+                    onChange={(e) => updateField("totalDue", parseFloat(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Assessed Value ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={editFormData.assessedValue || ""}
+                    onChange={(e) => updateField("assessedValue", parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Property Type
+                  </label>
+                  <select
+                    value={editFormData.propertyType || ""}
+                    onChange={(e) => updateField("propertyType", e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="Residential">Residential</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Industrial">Industrial</option>
+                    <option value="Land">Land</option>
+                  </select>
+                </div>
+              </div>
+              <div className="text-sm text-slate-500">
+                You are editing version {originalVersion}. If another user saves changes before you, you will see a conflict warning.
+              </div>
+            </div>
+          ) : (
+            /* View Mode */
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    {property.address}
+                  </h1>
                   <span
                     className={cn(
                       "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium",
-                      validationConfig.color
+                      statusConfig.color
                     )}
                   >
-                    {validationConfig.icon}
-                    {validationConfig.label}
+                    {statusConfig.icon}
+                    {statusConfig.label}
                   </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-slate-600">
-                <MapPin className="h-4 w-4" />
-                <span>
-                  {property.city}, {property.state} {property.zipCode}
-                </span>
-                <span className="text-slate-300">|</span>
-                <span>{property.county} County</span>
-              </div>
-              <div className="mt-2 font-mono text-sm text-slate-500">
-                Parcel ID: {property.parcelId}
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-right">
-                <div className="text-sm text-slate-500">Total Due</div>
-                <div className="text-2xl font-bold text-slate-900 flex items-center gap-1">
-                  <DollarSign className="h-5 w-5" />
-                  {property.totalDue.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {validationConfig && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium",
+                        validationConfig.color
+                      )}
+                    >
+                      {validationConfig.icon}
+                      {validationConfig.label}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <MapPin className="h-4 w-4" />
+                  <span>
+                    {property.city}, {property.state} {property.zipCode}
+                  </span>
+                  <span className="text-slate-300">|</span>
+                  <span>{property.county} County</span>
+                </div>
+                <div className="mt-2 font-mono text-sm text-slate-500">
+                  Parcel ID: {property.parcelId}
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-sm text-slate-600">
-                <Gavel className="h-4 w-4" />
-                {property.saleType}
+
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-right">
+                  <div className="text-sm text-slate-500">Total Due</div>
+                  <div className="text-2xl font-bold text-slate-900 flex items-center gap-1">
+                    <DollarSign className="h-5 w-5" />
+                    {property.totalDue.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-sm text-slate-600">
+                  <Gavel className="h-4 w-4" />
+                  {property.saleType}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Quick Stats */}
@@ -868,6 +1173,150 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       </main>
+
+      {/* Conflict Resolution Modal */}
+      {conflict.show && conflict.serverVersion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50" />
+
+          {/* Modal */}
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-red-200 bg-red-50 rounded-t-lg">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+              <div>
+                <h2 className="text-lg font-semibold text-red-800">
+                  Conflict Detected
+                </h2>
+                <p className="text-sm text-red-600">
+                  Another user has modified this record while you were editing.
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+              {/* Server Version */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Server Version (User B's changes)
+                </h3>
+                <div className="text-sm text-blue-700 space-y-1">
+                  <p><strong>Version:</strong> {conflict.serverVersion.version}</p>
+                  <p><strong>Last Modified:</strong> {new Date(conflict.serverVersion.lastModifiedAt).toLocaleString()}</p>
+                  <p><strong>Modified By:</strong> {conflict.serverVersion.lastModifiedBy}</p>
+                  <p><strong>Address:</strong> {conflict.serverVersion.address}</p>
+                  <p><strong>Total Due:</strong> ${conflict.serverVersion.totalDue?.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Your Changes */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h3 className="font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                  <Edit3 className="h-4 w-4" />
+                  Your Unsaved Changes (User A)
+                </h3>
+                <div className="text-sm text-amber-700 space-y-1">
+                  {conflict.localChanges.address && (
+                    <p><strong>Address:</strong> {conflict.localChanges.address}</p>
+                  )}
+                  {conflict.localChanges.city && (
+                    <p><strong>City:</strong> {conflict.localChanges.city}</p>
+                  )}
+                  {conflict.localChanges.totalDue !== undefined && (
+                    <p><strong>Total Due:</strong> ${conflict.localChanges.totalDue?.toLocaleString()}</p>
+                  )}
+                  {conflict.localChanges.assessedValue !== undefined && (
+                    <p><strong>Assessed Value:</strong> ${conflict.localChanges.assessedValue?.toLocaleString()}</p>
+                  )}
+                  {conflict.localChanges.propertyType && (
+                    <p><strong>Property Type:</strong> {conflict.localChanges.propertyType}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-sm text-slate-600 bg-slate-100 p-3 rounded-lg">
+                <strong>What would you like to do?</strong>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><strong>Force Save:</strong> Overwrite User B's changes with your changes</li>
+                  <li><strong>Use Server Version:</strong> Discard your changes and use User B's version</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-lg">
+              <button
+                onClick={useServerVersion}
+                className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+              >
+                Use Server Version
+              </button>
+              <button
+                onClick={forceSave}
+                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Force Save My Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Record Deleted Modal */}
+      {recordDeleted && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50" />
+
+          {/* Modal */}
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-red-200 bg-red-50 rounded-t-lg">
+              <ShieldX className="h-6 w-6 text-red-600" />
+              <div>
+                <h2 className="text-lg font-semibold text-red-800">
+                  Record Deleted
+                </h2>
+                <p className="text-sm text-red-600">
+                  This record has been deleted by another user.
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-700">
+                  The property you were editing has been deleted by another user (User B) while you were making changes.
+                </p>
+                <p className="text-sm text-red-700 mt-2">
+                  Your unsaved changes cannot be saved because the record no longer exists.
+                </p>
+              </div>
+
+              <div className="text-sm text-slate-600 bg-slate-100 p-3 rounded-lg">
+                <strong>What happened to your changes?</strong>
+                <p className="mt-1">
+                  Your edits were not saved. You will be redirected to the Properties list.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-lg">
+              <button
+                onClick={() => router.push("/properties")}
+                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Go to Properties List
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
