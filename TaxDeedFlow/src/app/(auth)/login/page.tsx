@@ -50,9 +50,10 @@ function LoginForm() {
   }, [lockoutUntil])
 
   // Redirect if already authenticated
+  // Use router.replace to prevent browser back from going to login page
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push(redirectUrl)
+      router.replace(redirectUrl)
     }
   }, [isAuthenticated, authLoading, router, redirectUrl])
 
@@ -74,7 +75,8 @@ function LoginForm() {
       // Reset attempts on successful login
       setLoginAttempts(0)
       setLockoutUntil(null)
-      router.push(redirectUrl)
+      // Use router.replace to prevent browser back from returning to login form
+      router.replace(redirectUrl)
     } else {
       const newAttempts = loginAttempts + 1
       setLoginAttempts(newAttempts)

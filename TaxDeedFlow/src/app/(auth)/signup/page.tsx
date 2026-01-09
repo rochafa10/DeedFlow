@@ -31,6 +31,11 @@ export default function SignupPage() {
     e.preventDefault()
     setError("")
 
+    // Prevent duplicate submission if already successful
+    if (success) {
+      return
+    }
+
     // Validation
     if (!formData.name.trim()) {
       setError("Name is required")
@@ -62,8 +67,9 @@ export default function SignupPage() {
       setSuccess(true)
 
       // Redirect to login after a delay
+      // Use router.replace instead of push to prevent duplicate submission on browser back
       setTimeout(() => {
-        router.push("/login")
+        router.replace("/login")
       }, 2000)
     } catch (err) {
       setError("An error occurred during registration")
