@@ -218,6 +218,11 @@ export default function OrchestrationPage() {
   const [selectedType, setSelectedType] = useState("full_pipeline")
   const [sessionNotes, setSessionNotes] = useState("")
 
+  // End Session dialog state
+  const [isEndDialogOpen, setIsEndDialogOpen] = useState(false)
+  const [endSessionStatus, setEndSessionStatus] = useState("completed")
+  const [endSessionNotes, setEndSessionNotes] = useState("")
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -271,13 +276,26 @@ export default function OrchestrationPage() {
   }
 
   const handleStopSession = () => {
+    setEndSessionStatus("completed")
+    setEndSessionNotes("")
+    setIsEndDialogOpen(true)
+  }
+
+  const handleCloseEndDialog = () => {
+    setIsEndDialogOpen(false)
+    setEndSessionStatus("completed")
+    setEndSessionNotes("")
+  }
+
+  const handleConfirmEndSession = () => {
     if (activeSession) {
       const updatedSessions = sessions.map((session) =>
         session.id === activeSession.id
           ? {
               ...session,
-              status: "completed",
+              status: endSessionStatus,
               endedAt: new Date().toISOString(),
+              notes: endSessionNotes || session.notes,
             }
           : session
       )
@@ -285,6 +303,7 @@ export default function OrchestrationPage() {
     }
     setActiveSession(null)
     setIsSessionActive(false)
+    handleCloseEndDialog()
   }
 
   return (
@@ -873,6 +892,149 @@ export default function OrchestrationPage() {
               >
                 <Play className="h-4 w-4" />
                 Start
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* End Session Dialog */}
+      {isEndDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={handleCloseEndDialog}
+          />
+
+          {/* Dialog */}
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">
+                End Session
+              </h2>
+              <button
+                onClick={handleCloseEndDialog}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4">
+              {/* Completion Status Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  Completion Status
+                </label>
+                <div className="space-y-2">
+                  <label
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      endSessionStatus === "completed"
+                        ? "border-primary bg-primary/5"
+                        : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="endSessionStatus"
+                      value="completed"
+                      checked={endSessionStatus === "completed"}
+                      onChange={(e) => setEndSessionStatus(e.target.value)}
+                      className="mt-0.5 h-4 w-4 text-primary focus:ring-primary"
+                    />
+                    <div>
+                      <div className="font-medium text-slate-900">Completed</div>
+                      <div className="text-sm text-slate-500">
+                        Session completed successfully
+                      </div>
+                    </div>
+                  </label>
+                  <label
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      endSessionStatus === "paused"
+                        ? "border-primary bg-primary/5"
+                        : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="endSessionStatus"
+                      value="paused"
+                      checked={endSessionStatus === "paused"}
+                      onChange={(e) => setEndSessionStatus(e.target.value)}
+                      className="mt-0.5 h-4 w-4 text-primary focus:ring-primary"
+                    />
+                    <div>
+                      <div className="font-medium text-slate-900">Paused</div>
+                      <div className="text-sm text-slate-500">
+                        Session paused for later resumption
+                      </div>
+                    </div>
+                  </label>
+                  <label
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      endSessionStatus === "failed"
+                        ? "border-primary bg-primary/5"
+                        : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="endSessionStatus"
+                      value="failed"
+                      checked={endSessionStatus === "failed"}
+                      onChange={(e) => setEndSessionStatus(e.target.value)}
+                      className="mt-0.5 h-4 w-4 text-primary focus:ring-primary"
+                    />
+                    <div>
+                      <div className="font-medium text-slate-900">Failed</div>
+                      <div className="text-sm text-slate-500">
+                        Session encountered errors
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label
+                  htmlFor="endSessionNotes"
+                  className="block text-sm font-medium text-slate-700 mb-2"
+                >
+                  Notes (optional)
+                </label>
+                <textarea
+                  id="endSessionNotes"
+                  rows={3}
+                  value={endSessionNotes}
+                  onChange={(e) => setEndSessionNotes(e.target.value)}
+                  placeholder="Add any notes about this session..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-lg">
+              <button
+                onClick={handleCloseEndDialog}
+                className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmEndSession}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <Pause className="h-4 w-4" />
+                End Session
               </button>
             </div>
           </div>
