@@ -205,6 +205,43 @@ export default function BatchJobsPage() {
     }
   }, [isAuthenticated, authLoading, router])
 
+  // Real-time progress simulation for running jobs
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveJobs((prev) =>
+        prev.map((job) => {
+          if (job.status !== "running") return job
+
+          // Simulate progress - add 1-3 items per tick
+          const increment = Math.floor(Math.random() * 3) + 1
+          const newProcessed = Math.min(job.processedItems + increment, job.totalItems)
+          const newProgress = Math.round((newProcessed / job.totalItems) * 100)
+          const newBatch = Math.ceil(newProcessed / job.batchSize)
+
+          // Check if job is complete
+          if (newProcessed >= job.totalItems) {
+            return {
+              ...job,
+              processedItems: job.totalItems,
+              progress: 100,
+              status: "completed" as const,
+              currentBatch: job.totalBatches,
+            }
+          }
+
+          return {
+            ...job,
+            processedItems: newProcessed,
+            progress: newProgress,
+            currentBatch: Math.min(newBatch, job.totalBatches),
+          }
+        })
+      )
+    }, 1000) // Update every second
+
+    return () => clearInterval(interval)
+  }, [])
+
   // Show loading state while checking auth
   if (authLoading) {
     return (
