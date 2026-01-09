@@ -1,0 +1,505 @@
+import {
+  Building2,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  Calendar,
+  TrendingUp,
+  AlertTriangle,
+  Activity
+} from "lucide-react"
+
+export default function DashboardPage() {
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-8 w-8 text-primary" />
+              <span className="text-xl font-bold text-slate-900">Tax Deed Flow</span>
+            </div>
+            <nav className="hidden md:flex items-center gap-6">
+              <a href="/" className="text-sm font-medium text-primary">Dashboard</a>
+              <a href="/properties" className="text-sm font-medium text-slate-600 hover:text-slate-900">Properties</a>
+              <a href="/counties" className="text-sm font-medium text-slate-600 hover:text-slate-900">Counties</a>
+              <a href="/auctions" className="text-sm font-medium text-slate-600 hover:text-slate-900">Auctions</a>
+              <a href="/orchestration" className="text-sm font-medium text-slate-600 hover:text-slate-900">Orchestration</a>
+            </nav>
+            <div className="flex items-center gap-4">
+              <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium">
+                U
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Title */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-600 mt-1">Real-time pipeline overview and key metrics</p>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <KpiCard
+            title="Counties"
+            value="12"
+            description="Researched"
+            icon={<MapPin className="h-5 w-5" />}
+            trend="+2 this week"
+          />
+          <KpiCard
+            title="Properties"
+            value="7,375"
+            description="In pipeline"
+            icon={<Building2 className="h-5 w-5" />}
+            trend="+842 new"
+          />
+          <KpiCard
+            title="Approved"
+            value="156"
+            description="Ready to bid"
+            icon={<CheckCircle2 className="h-5 w-5" />}
+            trend="2.1%"
+          />
+          <KpiCard
+            title="Pending"
+            value="7,219"
+            description="Need processing"
+            icon={<Clock className="h-5 w-5" />}
+            trend="97.9%"
+          />
+          <KpiCard
+            title="Auctions"
+            value="3"
+            description="Next 7 days"
+            icon={<Calendar className="h-5 w-5" />}
+            trend="Urgent"
+            urgent
+          />
+        </div>
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Pipeline Funnel */}
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-slate-500" />
+              Pipeline Funnel
+            </h2>
+            <div className="space-y-4">
+              <FunnelBar label="Parsed" count={7375} total={7375} color="bg-slate-400" />
+              <FunnelBar label="Enriched" count={17} total={7375} color="bg-blue-500" />
+              <FunnelBar label="Validated" count={0} total={7375} color="bg-amber-500" />
+              <FunnelBar label="Approved" count={0} total={7375} color="bg-green-500" />
+            </div>
+          </div>
+
+          {/* Upcoming Auctions */}
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-slate-500" />
+              Upcoming Auctions
+            </h2>
+            <div className="space-y-3">
+              <AuctionItem
+                county="Westmoreland"
+                date="Jan 16, 2026"
+                daysUntil={7}
+                properties={172}
+              />
+              <AuctionItem
+                county="Blair"
+                date="Mar 11, 2026"
+                daysUntil={62}
+                properties={252}
+              />
+              <AuctionItem
+                county="Somerset"
+                date="Sep 08, 2026"
+                daysUntil={242}
+                properties={2663}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Bottleneck Alerts */}
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Bottlenecks
+            </h2>
+            <div className="space-y-3">
+              <BottleneckAlert
+                title="Regrid Enrichment"
+                count={7358}
+                severity="critical"
+                message="Properties waiting for Regrid data"
+              />
+              <BottleneckAlert
+                title="Visual Validation"
+                count={17}
+                severity="warning"
+                message="Properties ready for validation"
+              />
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <Activity className="h-5 w-5 text-slate-500" />
+              Recent Activity
+            </h2>
+            <div className="space-y-3">
+              <ActivityItem
+                action="Session completed"
+                details="Processed 150 properties"
+                time="10:32 AM"
+              />
+              <ActivityItem
+                action="Batch job started"
+                details="Regrid scraping - Somerset"
+                time="10:15 AM"
+              />
+              <ActivityItem
+                action="Properties parsed"
+                details="842 new from Westmoreland"
+                time="09:45 AM"
+              />
+              <ActivityItem
+                action="Auction alert"
+                details="Blair County - 62 days"
+                time="09:00 AM"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* County Progress Table */}
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="p-6 border-b border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900">County Progress</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">County</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Regrid</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Validated</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Approved</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Next Auction</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                <CountyRow
+                  county="Westmoreland"
+                  state="PA"
+                  total={172}
+                  regrid={0}
+                  validated={0}
+                  approved={0}
+                  daysUntil={7}
+                />
+                <CountyRow
+                  county="Somerset"
+                  state="PA"
+                  total={2663}
+                  regrid={0}
+                  validated={0}
+                  approved={0}
+                  daysUntil={242}
+                />
+                <CountyRow
+                  county="Blair"
+                  state="PA"
+                  total={252}
+                  regrid={7}
+                  validated={0}
+                  approved={0}
+                  daysUntil={62}
+                />
+                <CountyRow
+                  county="Centre"
+                  state="PA"
+                  total={845}
+                  regrid={0}
+                  validated={0}
+                  approved={0}
+                  daysUntil={null}
+                />
+                <CountyRow
+                  county="Dauphin"
+                  state="PA"
+                  total={1243}
+                  regrid={0}
+                  validated={0}
+                  approved={0}
+                  daysUntil={null}
+                />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+// Component Definitions
+
+function KpiCard({
+  title,
+  value,
+  description,
+  icon,
+  trend,
+  urgent = false
+}: {
+  title: string
+  value: string
+  description: string
+  icon: React.ReactNode
+  trend: string
+  urgent?: boolean
+}) {
+  return (
+    <div className={cn(
+      "bg-white rounded-lg border p-4",
+      urgent ? "border-red-200 bg-red-50" : "border-slate-200"
+    )}>
+      <div className="flex items-center justify-between mb-2">
+        <span className={cn(
+          "text-sm font-medium",
+          urgent ? "text-red-600" : "text-slate-500"
+        )}>{title}</span>
+        <span className={urgent ? "text-red-500" : "text-slate-400"}>{icon}</span>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className={cn(
+          "text-2xl font-bold",
+          urgent ? "text-red-700" : "text-slate-900"
+        )}>{value}</span>
+        <span className="text-sm text-slate-500">{description}</span>
+      </div>
+      <div className={cn(
+        "text-xs mt-2",
+        urgent ? "text-red-600 font-medium" : "text-slate-500"
+      )}>
+        {trend}
+      </div>
+    </div>
+  )
+}
+
+function FunnelBar({
+  label,
+  count,
+  total,
+  color
+}: {
+  label: string
+  count: number
+  total: number
+  color: string
+}) {
+  const percentage = total > 0 ? (count / total) * 100 : 0
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className="text-sm text-slate-500">
+          {count.toLocaleString()} ({percentage.toFixed(1)}%)
+        </span>
+      </div>
+      <div className="w-full bg-slate-100 rounded-full h-3">
+        <div
+          className={cn("h-3 rounded-full transition-all", color)}
+          style={{ width: `${Math.max(percentage, 1)}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function AuctionItem({
+  county,
+  date,
+  daysUntil,
+  properties
+}: {
+  county: string
+  date: string
+  daysUntil: number
+  properties: number
+}) {
+  const urgency = daysUntil <= 7 ? "critical" : daysUntil <= 30 ? "warning" : "normal"
+  return (
+    <div className={cn(
+      "p-3 rounded-lg border",
+      urgency === "critical" ? "bg-red-50 border-red-200" :
+      urgency === "warning" ? "bg-amber-50 border-amber-200" :
+      "bg-slate-50 border-slate-200"
+    )}>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-medium text-slate-900">{county}, PA</div>
+          <div className="text-sm text-slate-500">{date}</div>
+        </div>
+        <div className="text-right">
+          <div className={cn(
+            "text-sm font-bold",
+            urgency === "critical" ? "text-red-600" :
+            urgency === "warning" ? "text-amber-600" :
+            "text-slate-600"
+          )}>
+            {daysUntil} days
+          </div>
+          <div className="text-xs text-slate-500">{properties} properties</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BottleneckAlert({
+  title,
+  count,
+  severity,
+  message
+}: {
+  title: string
+  count: number
+  severity: "critical" | "warning" | "info"
+  message: string
+}) {
+  return (
+    <div className={cn(
+      "p-3 rounded-lg border flex items-start gap-3",
+      severity === "critical" ? "bg-red-50 border-red-200" :
+      severity === "warning" ? "bg-amber-50 border-amber-200" :
+      "bg-blue-50 border-blue-200"
+    )}>
+      <AlertTriangle className={cn(
+        "h-5 w-5 mt-0.5 flex-shrink-0",
+        severity === "critical" ? "text-red-500" :
+        severity === "warning" ? "text-amber-500" :
+        "text-blue-500"
+      )} />
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-slate-900">{title}</span>
+          <span className={cn(
+            "text-sm font-bold",
+            severity === "critical" ? "text-red-600" :
+            severity === "warning" ? "text-amber-600" :
+            "text-blue-600"
+          )}>
+            {count.toLocaleString()}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600 mt-1">{message}</p>
+      </div>
+    </div>
+  )
+}
+
+function ActivityItem({
+  action,
+  details,
+  time
+}: {
+  action: string
+  details: string
+  time: string
+}) {
+  return (
+    <div className="flex items-start gap-3 py-2">
+      <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+      <div className="flex-1">
+        <div className="text-sm font-medium text-slate-900">{action}</div>
+        <div className="text-sm text-slate-500">{details}</div>
+      </div>
+      <div className="text-xs text-slate-400">{time}</div>
+    </div>
+  )
+}
+
+function CountyRow({
+  county,
+  state,
+  total,
+  regrid,
+  validated,
+  approved,
+  daysUntil
+}: {
+  county: string
+  state: string
+  total: number
+  regrid: number
+  validated: number
+  approved: number
+  daysUntil: number | null
+}) {
+  const regridPct = total > 0 ? (regrid / total) * 100 : 0
+  const urgency = daysUntil !== null && daysUntil <= 7 ? "critical" :
+                  daysUntil !== null && daysUntil <= 30 ? "warning" : "normal"
+
+  return (
+    <tr className="hover:bg-slate-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="font-medium text-slate-900">{county}</div>
+        <div className="text-sm text-slate-500">{state}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+        {total.toLocaleString()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <div className="w-16 bg-slate-100 rounded-full h-2">
+            <div
+              className="bg-blue-500 h-2 rounded-full"
+              style={{ width: `${regridPct}%` }}
+            />
+          </div>
+          <span className="text-sm text-slate-500">{regridPct.toFixed(0)}%</span>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+        {validated}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+        {approved}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {daysUntil !== null ? (
+          <span className={cn(
+            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+            urgency === "critical" ? "bg-red-100 text-red-800" :
+            urgency === "warning" ? "bg-amber-100 text-amber-800" :
+            "bg-green-100 text-green-800"
+          )}>
+            {daysUntil} days
+          </span>
+        ) : (
+          <span className="text-sm text-slate-400">-</span>
+        )}
+      </td>
+    </tr>
+  )
+}
+
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(' ')
+}

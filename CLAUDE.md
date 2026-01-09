@@ -1,6 +1,79 @@
 # Tax Deed Flow - Project Instructions
 
-This project is a **Two-Agent System** for autonomous tax auction research and property data extraction.
+This project is a **Multi-Agent System** for autonomous tax auction research and property data extraction, coordinated by a **Master Orchestrator Agent**.
+
+## Web Application
+
+@APP-SPECIFICATION.md
+
+A comprehensive web application specification is available for building the Tax Deed Flow UI. It includes:
+- Complete database schema (17 tables)
+- All page layouts and components
+- API endpoints and real-time features
+- UI/UX design system
+- Technology stack (Next.js, Supabase, shadcn/ui)
+
+---
+
+## Master Orchestrator Agent
+
+@agents/MASTER-ORCHESTRATOR-AGENT.md
+
+The Master Orchestrator is the **central coordinator** for all 11 agents in the system. It handles:
+- Autonomous work delegation based on priority
+- Pipeline efficiency optimization
+- Session planning for Max $200 context limits
+- n8n workflow integration for routine tasks
+
+### Orchestrator Commands
+```
+"Start orchestration session"      -> Begin session, get work plan
+"Show pipeline status"             -> Full pipeline overview
+"What should we work on?"          -> Get prioritized recommendations
+"End session"                      -> Complete with summary
+"Check bottlenecks"                -> Find pipeline blockages
+```
+
+### Orchestrator SQL Functions
+```sql
+-- Start a session
+SELECT start_orchestration_session('full_pipeline', 'manual');
+
+-- Get prioritized work queue
+SELECT * FROM get_orchestrator_work_queue();
+
+-- Get recommended session plan (150 properties, 3 agents max)
+SELECT * FROM get_session_plan(150, 3);
+
+-- Create agent assignment
+SELECT create_agent_assignment(session_id, 'REGRID_SCRAPER', 'regrid_scraping', county_id, 2, 50, 'n8n');
+
+-- Check session status
+SELECT * FROM get_orchestration_status();
+
+-- Detect bottlenecks
+SELECT * FROM detect_bottlenecks();
+
+-- End session
+SELECT * FROM end_orchestration_session(session_id, 'completed');
+```
+
+### Orchestrator Tables
+| Table | Purpose |
+|-------|---------|
+| `orchestration_sessions` | Track orchestration runs |
+| `agent_assignments` | Track work delegated to agents |
+| `pipeline_metrics` | Track throughput over time |
+| `orchestrator_priority_rules` | Configurable priority rules |
+
+### n8n Orchestrator Workflows
+| Workflow | ID | Trigger | Purpose |
+|----------|-----|---------|---------|
+| TDF - Data Integrity Check | 5xZIPh2TIGYKdnZI | Webhook/Schedule | Run audit, generate work queues |
+| TDF - Daily Pipeline Review | RotWjv6Ld7l6hA6d | Schedule (6AM) | Morning summary, priorities |
+| TDF - Progress Tracker | eMmEyG00XFCF0LMr | Schedule (15 min) | Monitor active batches |
+
+---
 
 ## Execution Permissions
 
@@ -18,16 +91,16 @@ When working on this project, you have standing permission to:
 
 **IMPORTANT**: Proceed with full automation. You have blanket approval for all Supabase SQL operations, Playwright actions, and file operations for all tax deed workflows. No need to ask for permission on routine operations.
 
-## Two-Agent System
+## Core Agents
 
-### Agent 1: Research Agent
+### Research Agent (Agent 1)
 @AGENT-SYSTEM-PROMPT.md
 - Finds counties, auctions, documents
 - Uses Perplexity + Google Custom Search
 - Stores metadata in Supabase
 - **Result**: Comprehensive database with PDF links
 
-### Agent 2: Parser Agent
+### Parser Agent (Agent 2)
 @PARSER-AGENT-UNIFIED.md
 - Reads PDFs from documents table
 - Uses multi-method approach (Universal Parser, Playwright, Custom Python, Manual)
@@ -116,6 +189,7 @@ Research #3: 44 records (NOT 126 duplicates!)
 - **Google Custom Search** - PDFs, exact URLs, documents (SECONDARY)
 - **Playwright** - Web automation
 - **Web Search** - Fallback/validation
+- **n8n-mcp** - Workflow automation (see @N8N-MCP-SYSTEM-PROMPT.md)
 
 ## Tool Selection Guide
 
@@ -186,10 +260,296 @@ SELECT * FROM vw_parsing_summary ORDER BY completed_at DESC;
 | `complete_parsing_job()` | Mark job complete |
 | `fail_parsing_job()` | Mark job failed |
 
-## Complete Database Schema (11 Tables)
+## Batch Processing (MANDATORY for Large Jobs)
+
+**CRITICAL**: ALL agents must use batch processing to avoid context/rate limits on your Max $200 plan!
+
+See @BATCH-PROCESSING-GUIDE.md for full documentation.
+
+### Session Start Checklist
+```sql
+-- Always run this first!
+SELECT * FROM get_pending_work_summary();
+```
+
+### Batch Commands (Work for ALL Agents)
+```
+"Start [job_type] for [County] in batches of [size]"
+"Resume batch job"
+"Show batch job status"
+"Pause batch job"
+```
+
+### Supported Job Types
+| Job Type | Batch Size | Per Session | Agent |
+|----------|------------|-------------|-------|
+| `regrid_scraping` | 50 | ~150 | Regrid Scraper |
+| `visual_validation` | 100 | ~300 | Visual Validator |
+| `property_condition` | 25 | ~75 | Agent 6 |
+| `environmental_research` | 25 | ~75 | Agent 7 |
+| `title_research` | 20 | ~60 | Agent 5 |
+| `bid_strategy` | 50 | ~150 | Agent 9 |
+| `pdf_parsing` | 5 | ~15 | Parser Agent |
+| `county_research` | 10 | ~30 | Research Agent |
+
+### Quick SQL Reference
+```sql
+-- Check what needs to be done
+SELECT * FROM get_pending_work_summary();
+
+-- Start a job
+SELECT create_batch_job('regrid_scraping', county_id, 50);
+
+-- Get next batch
+SELECT * FROM get_next_batch('job-uuid');
+
+-- Pause/Resume
+SELECT pause_batch_job('job-uuid');
+SELECT resume_batch_job('job-uuid');
+
+-- Check status
+SELECT * FROM vw_active_batch_jobs;
+```
+
+### Session Workflow
+1. **Start**: `SELECT * FROM get_pending_work_summary();`
+2. **Work**: Process 2-4 batches (~100-200 items)
+3. **Pause**: `SELECT pause_batch_job('job-uuid');`
+4. **Next session**: `"Resume batch job"`
+
+---
+
+## Complete Database Schema (17 Tables)
 
 **Research Agent (8 tables):**
 counties, official_links, upcoming_sales, documents, vendor_portals, additional_resources, important_notes, research_log
 
 **Parser Agent (3 tables):**
 properties, parsing_jobs, parsing_errors
+
+**Visual Validation (1 table):**
+property_visual_validation
+
+**Batch Processing (1 table):**
+batch_jobs
+
+**Orchestration (4 tables):**
+orchestration_sessions, agent_assignments, pipeline_metrics, orchestrator_priority_rules
+
+---
+
+## Data Integrity & Auditing
+
+**IMPORTANT**: Run data audit regularly to catch issues early!
+
+### Quick Audit Commands
+```
+"Run data audit"
+"Show pipeline status by county"
+"Check for missing data"
+"Find orphaned records"
+```
+
+### Audit Views
+```sql
+-- Full system audit
+SELECT * FROM run_data_audit();
+
+-- Pipeline status per county
+SELECT * FROM vw_property_pipeline_status;
+
+-- Properties missing data
+SELECT * FROM vw_properties_missing_data LIMIT 50;
+
+-- Regrid data quality
+SELECT * FROM vw_regrid_data_quality;
+
+-- System health overview
+SELECT * FROM vw_system_health;
+```
+
+### Fix Functions
+```sql
+-- Fix flag mismatches
+SELECT fix_regrid_flags();
+SELECT fix_screenshot_flags();
+
+-- Clean orphaned records
+SELECT * FROM clean_orphaned_records();
+```
+
+### Current Status (as of last audit)
+| Issue | Count | Severity |
+|-------|-------|----------|
+| Properties missing Regrid | 7,358 | Gap |
+| Properties missing address | 6,221 | Gap |
+| Properties missing amount | 3,711 | Gap |
+| Regrid needing validation | 17 | Gap |
+| Critical/Consistency issues | 0 | OK |
+
+See @agents/DATA-INTEGRITY-AGENT.md for full auditing workflow.
+
+---
+
+## Auction Monitor Agent (Agent 10)
+
+@agents/AUCTION-MONITOR-AGENT.md
+
+Tracks upcoming auctions, extracts rules and requirements, monitors deadlines, and generates investor briefings.
+
+### Quick Commands
+```
+"Find upcoming auctions"                -> List all auctions in next 90 days
+"Get auction rules for Blair County"    -> Extract bidder requirements
+"Show registration deadlines"           -> Deadlines needing action
+"Generate auction briefing for [County]" -> Create investor summary
+"What auctions are in the next 30 days?" -> Filtered auction list
+```
+
+### Auction Monitor SQL
+```sql
+-- Get upcoming auctions with details
+SELECT * FROM get_upcoming_auctions_detailed(90);
+
+-- Get registration deadlines
+SELECT * FROM get_registration_deadlines();
+
+-- View active alerts
+SELECT * FROM vw_active_auction_alerts;
+
+-- Generate alerts (run daily)
+SELECT generate_auction_alerts();
+
+-- Get auction calendar
+SELECT * FROM vw_auction_calendar;
+
+-- Upsert auction rules
+SELECT upsert_auction_rules(county_id, 'repository', ...);
+
+-- Acknowledge alert
+SELECT acknowledge_auction_alert(alert_id);
+```
+
+### Auction Monitor Tables
+| Table | Purpose |
+|-------|---------|
+| `auction_rules` | Registration, deposit, bidding, payment requirements |
+| `auction_alerts` | Deadline warnings, new auction notifications |
+| `auction_summaries` | Investor briefings and analysis |
+
+### Alert Types
+| Alert Type | Trigger | Severity |
+|------------|---------|----------|
+| `auction_imminent` | Auction within 7 days | critical |
+| `registration_deadline` | Registration closes in 3 days | warning |
+| `new_auction` | New sale discovered | info |
+| `property_list_available` | New property list posted | info |
+
+---
+
+## Skills Available
+
+### Property Visual Validator
+@skills/SKILL-property-visual-validator.md
+- Analyzes images from Regrid, Google Maps, Zillow
+- Filters out non-investable properties (cemeteries, lakes, utility strips)
+- Auto-rejects: cemeteries, water bodies, utility properties, landlocked, sliver lots
+- Flags for review: vacant lots, industrial areas, irregular shapes
+
+**Visual Validation Commands:**
+- "Validate properties for Blair County"
+- "Check which properties are investable"
+- "Show rejected properties"
+- "Show properties needing manual review"
+
+**Visual Validation Queries:**
+```sql
+-- Get investable properties
+SELECT * FROM vw_investable_properties;
+
+-- Get rejected properties (audit)
+SELECT * FROM vw_rejected_properties;
+
+-- Get properties needing manual review
+SELECT * FROM vw_caution_properties;
+
+-- Get properties not yet validated
+SELECT * FROM get_properties_needing_visual_validation('county-uuid', 50);
+```
+
+**Visual Validation Functions:**
+| Function | Purpose |
+|----------|---------|
+| `upsert_visual_validation()` | Store validation results |
+| `get_properties_needing_visual_validation()` | Find unvalidated properties |
+
+---
+
+## n8n Workflow Automation
+
+**n8n MCP** is available for automating repetitive tasks and reducing token usage.
+
+See @N8N-MCP-SYSTEM-PROMPT.md for the full n8n expert system prompt.
+
+### n8n Instance
+- **URL**: https://n8n.lfb-investments.com
+- **API**: Configured via n8n-mcp
+
+### n8n Commands
+```
+"List n8n workflows"
+"Create workflow for [task]"
+"Trigger [workflow name]"
+"Check workflow execution status"
+```
+
+### Key n8n Tools
+| Tool | Purpose |
+|------|---------|
+| `n8n_list_workflows` | List all workflows |
+| `n8n_create_workflow` | Create new workflow |
+| `n8n_test_workflow` | Trigger workflow execution |
+| `n8n_health_check` | Verify API connectivity |
+| `search_templates` | Find workflow templates (2,709 available) |
+| `search_nodes` | Search 1,084 n8n nodes |
+
+### Workflows to Build
+1. **Data Integrity Check** - Daily audit via scheduled trigger
+2. **PDF Parser** - Webhook-triggered document parsing
+3. **Regrid Scraper** - Batch property scraping
+4. **County Research** - Automated research pipeline
+
+### n8n Best Practices
+- **Templates first** - Always search templates before building
+- **Parallel execution** - Run independent tools simultaneously
+- **Multi-level validation** - validate_node -> validate_workflow
+- **Never trust defaults** - Explicitly set ALL parameters
+
+---
+
+## Pipeline Workflow (Full)
+
+```
+1. Research Agent: Find counties & documents
+   -> Stores PDFs in documents table
+
+2. Parser Agent: Extract properties from PDFs
+   -> Stores properties in properties table
+
+3. Regrid Scraper: Enrich with land data & screenshots
+   -> Stores data in regrid_data table
+
+4. Visual Validator: Filter non-investable properties
+   -> REJECT: Skip cemeteries, lakes, utility strips
+   -> CAUTION: Flag for manual review
+   -> APPROVED: Continue pipeline
+
+5. Property Condition Agent (Agent 6): Assess condition
+   -> Only for APPROVED properties
+
+6. Environmental Agent (Agent 7): Check risks
+7. Title Research (Agent 5): Search liens
+8. Bid Strategy (Agent 9): Calculate max bid
+9. Auction Monitoring (Agent 10): Watch sales
+10. Post-Sale (Agent 11): Manage acquisition
+```

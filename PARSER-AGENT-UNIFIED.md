@@ -26,6 +26,49 @@ Parse property list documents (PDFs, web pages, scanned images) found by the Res
 
 ---
 
+## CRITICAL: Sale Date Extraction
+
+**Every property MUST have a sale_date** (except repository/sealed_bid/private_sale types).
+
+### Why This Matters
+Properties without sale_date are marked as `auction_status = 'unknown'` and won't be processed by other agents. This wastes resources and creates data gaps.
+
+### Where to Find Sale Dates
+
+1. **Document Title**: `"2026 Judicial Sale Property List (January 16, 2026)"` → Extract `2026-01-16`
+2. **Document Content**: Look for "Sale Date:", "Auction Date:", header sections
+3. **Linked upcoming_sales**: Match county + sale_type to get date
+4. **Document.sale_date column**: Already extracted from title
+
+### Extraction Steps
+
+```sql
+-- 1. Check if document already has sale_date
+SELECT sale_date FROM documents WHERE id = 'document-uuid';
+
+-- 2. Try to extract from title
+SELECT extract_sale_date_from_title('2026 Judicial Sale Property List (January 16, 2026)');
+-- Returns: 2026-01-16
+
+-- 3. After parsing, call post-parse linking
+SELECT * FROM post_parse_link_to_sales('document-uuid');
+```
+
+### Validation Trigger
+A database trigger (`trg_validate_property`) automatically:
+- Sets `auction_status` based on sale_type and sale_date
+- Links to `upcoming_sales` if possible
+- Marks as `unknown` if no date found (flagged for review)
+
+### Parser Requirements
+
+When parsing, **always capture and store**:
+1. `sale_type` - upset, judicial, repository, etc.
+2. `sale_date` - From document title, content, or linked sale
+3. `parcel_id`, `property_address`, `total_due` - Core property data
+
+---
+
 ## Available Methods (Priority Order)
 
 ### Method 1: Universal Parser Script (PREFERRED)

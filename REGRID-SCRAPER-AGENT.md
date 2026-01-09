@@ -22,6 +22,121 @@ When working on the tax deed flow project, you have standing permission to:
 ## Your Mission
 For each property in the `properties` table, login to Regrid, search the parcel, extract all property data, take screenshots, and store everything in Supabase.
 
+**IMPORTANT: Use batch processing to avoid context/rate limits!**
+
+---
+
+## Batch Processing (RECOMMENDED)
+
+### Why Batch Processing?
+- Avoids hitting Claude context limits
+- Prevents API rate limiting
+- Allows resumption if session ends
+- Tracks progress in database
+
+### Batch Commands
+
+**Start a new batch job:**
+```
+"Start Regrid scraping for Blair County in batches of 25"
+```
+
+**Resume an existing job:**
+```
+"Resume Regrid batch job"
+"Continue scraping from where we left off"
+```
+
+**Check batch status:**
+```
+"Show batch job status"
+"How many properties left to scrape?"
+```
+
+**Pause a batch:**
+```
+"Pause the batch job"
+"Stop scraping, we'll continue later"
+```
+
+### Batch Workflow
+
+```
+SESSION 1:
+1. Create batch job (25 properties per batch)
+2. Process batch 1 (properties 1-25)
+3. Process batch 2 (properties 26-50)
+4. Context getting full? → Pause job
+5. End session
+
+SESSION 2:
+1. "Resume Regrid batch job"
+2. Job resumes from property 51
+3. Process batch 3 (properties 51-75)
+4. Continue until complete or pause again
+```
+
+### SQL Commands for Batch Processing
+
+**Create a new batch job:**
+```sql
+SELECT create_batch_job(
+  'regrid_scraping',   -- job_type
+  (SELECT id FROM counties WHERE county_name = 'Blair' AND state_code = 'PA'),
+  25                   -- batch_size (default 25)
+);
+-- Returns: job_id UUID
+```
+
+**Get next batch of properties:**
+```sql
+SELECT * FROM get_next_batch('job-uuid-here');
+-- Returns: item_id, parcel_id, property_address, county_name, state_code
+```
+
+**Update progress after each property:**
+```sql
+SELECT update_batch_progress(
+  'job-uuid',          -- job_id
+  'property-uuid',     -- last_processed_id
+  1,                   -- items_processed
+  0,                   -- items_failed
+  NULL                 -- error_message (if any)
+);
+```
+
+**Pause job (end of session):**
+```sql
+SELECT pause_batch_job('job-uuid');
+```
+
+**Resume job (next session):**
+```sql
+SELECT resume_batch_job('job-uuid');
+```
+
+**Check job status:**
+```sql
+SELECT * FROM get_batch_status('job-uuid');
+-- Returns: progress %, processed, total, ETA, etc.
+```
+
+**View all active jobs:**
+```sql
+SELECT * FROM vw_active_batch_jobs;
+```
+
+### Recommended Batch Size
+
+| Scenario | Batch Size | Reason |
+|----------|------------|--------|
+| Normal scraping | 25 | Safe for most sessions |
+| Quick session | 10 | Minimal context usage |
+| Long session | 50 | More progress per session |
+| Testing | 5 | Verify workflow works |
+
+---
+
 ## Available Tools
 
 ### 1. Playwright MCP (PRIMARY TOOL)
@@ -296,11 +411,84 @@ Step 3: For each property:
 ├─> Take screenshot
 ├─> Upload to Supabase Storage
 ├─> Store regrid_data
-└─> Store screenshot reference
+├─> Store screenshot reference
+└─> >>> Run Visual Validation <<<
 
 Step 4: Report progress
-└─> "Scraped 50/50 properties"
+└─> "Scraped 50/50 properties, 45 approved, 3 caution, 2 rejected"
 ```
+
+---
+
+## Visual Validation Integration
+
+### **After scraping each property, run visual validation:**
+
+```sql
+-- Step 1: Check for non-investable indicators from Regrid data
+SELECT
+  property_type,
+  land_use,
+  lot_size_sqft,
+  lot_size_acres
+FROM regrid_data
+WHERE property_id = 'property-uuid';
+```
+
+### **Auto-Reject Conditions (from Regrid data):**
+
+| Condition | Detection | Action |
+|-----------|-----------|--------|
+| Cemetery | `land_use ILIKE '%cemetery%'` | REJECT |
+| Water Body | `land_use ILIKE '%water%' OR land_use ILIKE '%lake%'` | REJECT |
+| Utility | `land_use ILIKE '%utility%' OR property_type ILIKE '%utility%'` | REJECT |
+| Sliver Lot | `lot_size_sqft < 1000` | REJECT |
+| Tiny Vacant | `building_sqft = 0 AND lot_size_acres < 0.1` | CAUTION |
+
+### **Store Validation Result:**
+
+```sql
+SELECT upsert_visual_validation(
+  'property-uuid',           -- property_id
+  'APPROVED',                -- validation_status
+  85.0,                      -- confidence_score
+  true,                      -- structure_present (from building_sqft > 0)
+  true,                      -- road_access (assume true unless flagged)
+  'residential',             -- land_use_observed (from Regrid land_use)
+  'regular',                 -- lot_shape
+  '[]'::jsonb,               -- red_flags
+  NULL,                      -- skip_reason
+  '{"regrid": true}'::jsonb, -- images_analyzed
+  'screenshot_url',          -- regrid_screenshot_url
+  NULL, NULL, NULL,          -- google_maps, street_view, zillow
+  '{"from_regrid": true}'::jsonb,  -- findings
+  'Validated from Regrid data'     -- notes
+);
+```
+
+### **Updated Workflow with Validation:**
+
+```
+For each property:
+1. Search in Regrid
+2. Extract HTML
+3. Parse fields
+4. Take screenshot
+5. Store regrid_data
+6. Store screenshot reference
+7. RUN VISUAL VALIDATION:
+   a. Check land_use for red flags (cemetery, water, utility)
+   b. Check lot_size for sliver lots
+   c. Check building_sqft for vacant lots
+   d. Determine: APPROVED / CAUTION / REJECT
+   e. Store validation result
+8. If REJECTED: Log reason, skip future analysis
+9. If CAUTION: Flag for manual review
+10. If APPROVED: Property ready for Agent 6
+```
+
+### **Visual Validation Skill Reference:**
+See @skills/SKILL-property-visual-validator.md for full validation logic
 
 ---
 
