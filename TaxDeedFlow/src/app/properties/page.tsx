@@ -333,7 +333,7 @@ function PropertiesContent() {
   const validStatuses: PropertyStatus[] = ["parsed", "enriched", "validated", "approved"]
 
   // Function to update URL parameters
-  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; page?: number | null }) => {
+  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; dateRange?: string | null; q?: string | null; page?: number | null }) => {
     const params = new URLSearchParams(searchParams.toString())
 
     if (updates.stage !== undefined) {
@@ -349,6 +349,22 @@ function PropertiesContent() {
         params.set("county", updates.county)
       } else {
         params.delete("county")
+      }
+    }
+
+    if (updates.dateRange !== undefined) {
+      if (updates.dateRange && updates.dateRange !== "all") {
+        params.set("dateRange", updates.dateRange)
+      } else {
+        params.delete("dateRange")
+      }
+    }
+
+    if (updates.q !== undefined) {
+      if (updates.q && updates.q.trim() !== "") {
+        params.set("q", updates.q.trim())
+      } else {
+        params.delete("q")
       }
     }
 
@@ -380,10 +396,39 @@ function PropertiesContent() {
     const stageParam = searchParams.get("stage")
     if (stageParam && validStatuses.includes(stageParam as PropertyStatus)) {
       setStatusFilter(stageParam as PropertyStatus)
-      // Auto-expand filters panel when stage filter is set via URL
-      setShowFilters(true)
     } else if (!stageParam) {
       setStatusFilter("all")
+    }
+  }, [searchParams])
+
+  // Read date range from URL params
+  useEffect(() => {
+    const dateRangeParam = searchParams.get("dateRange")
+    const validDateRanges = DATE_RANGES.map(r => r.value)
+    if (dateRangeParam && validDateRanges.includes(dateRangeParam)) {
+      setDateRangeFilter(dateRangeParam)
+    } else if (!dateRangeParam) {
+      setDateRangeFilter("all")
+    }
+  }, [searchParams])
+
+  // Read search query from URL params
+  useEffect(() => {
+    const qParam = searchParams.get("q")
+    if (qParam) {
+      setSearchQuery(qParam)
+    } else {
+      setSearchQuery("")
+    }
+  }, [searchParams])
+
+  // Auto-expand filters panel when there are active URL filter params
+  useEffect(() => {
+    const hasStage = searchParams.get("stage")
+    const hasCounty = searchParams.get("county")
+    const hasDateRange = searchParams.get("dateRange")
+    if (hasStage || hasCounty || hasDateRange) {
+      setShowFilters(true)
     }
   }, [searchParams])
 
@@ -566,8 +611,10 @@ function PropertiesContent() {
                 placeholder="Search by address, parcel ID, city, or county..."
                 value={searchQuery}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value)
+                  const value = e.target.value
+                  setSearchQuery(value)
                   setCurrentPage(1)
+                  updateUrlParams({ q: value, page: null })
                 }}
                 className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
@@ -659,6 +706,7 @@ function PropertiesContent() {
                       const newValue = e.target.value
                       setDateRangeFilter(newValue)
                       setCurrentPage(1)
+                      updateUrlParams({ dateRange: newValue, page: null })
                     }}
                     className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
@@ -677,7 +725,7 @@ function PropertiesContent() {
                         setCountyFilter("all")
                         setDateRangeFilter("all")
                         setCurrentPage(1)
-                        updateUrlParams({ stage: null, county: null, page: null })
+                        updateUrlParams({ stage: null, county: null, dateRange: null, page: null })
                       }}
                       className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 underline"
                     >
@@ -726,6 +774,7 @@ function PropertiesContent() {
                         onClick={() => {
                           setDateRangeFilter("all")
                           setCurrentPage(1)
+                          updateUrlParams({ dateRange: null, page: null })
                         }}
                         className="hover:bg-primary/20 rounded-full p-0.5"
                       >
@@ -942,7 +991,7 @@ function PropertiesContent() {
                               setCountyFilter("all")
                               setDateRangeFilter("all")
                               setCurrentPage(1)
-                              updateUrlParams({ stage: null, county: null, page: null })
+                              updateUrlParams({ stage: null, county: null, dateRange: null, q: null, page: null })
                             }}
                             className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors"
                           >
