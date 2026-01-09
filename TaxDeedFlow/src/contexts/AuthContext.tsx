@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { User, AuthState, LoginCredentials } from "@/types/auth"
 
-// Demo user for development
+// Demo user for development (admin)
 const DEMO_USER: User = {
   id: "demo-user-1",
   email: "demo@taxdeedflow.com",
@@ -12,10 +12,25 @@ const DEMO_USER: User = {
   createdAt: new Date(),
 }
 
+// Viewer user for testing role-based access control
+const VIEWER_USER: User = {
+  id: "viewer-user-1",
+  email: "viewer@taxdeedflow.com",
+  name: "Viewer User",
+  role: "viewer",
+  createdAt: new Date(),
+}
+
 // Demo credentials (for development only)
 const DEMO_CREDENTIALS = {
   email: "demo@taxdeedflow.com",
   password: "demo123",
+}
+
+// Viewer credentials for testing
+const VIEWER_CREDENTIALS = {
+  email: "viewer@taxdeedflow.com",
+  password: "viewer123",
 }
 
 interface AuthContextType extends AuthState {
@@ -90,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Development: Check against demo credentials only
+      // Development: Check against demo credentials (admin)
       if (
         credentials.email === DEMO_CREDENTIALS.email &&
         credentials.password === DEMO_CREDENTIALS.password
@@ -98,6 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(DEMO_USER)
         localStorage.setItem("taxdeedflow_user", JSON.stringify(DEMO_USER))
         console.log("[Auth] Login successful for:", credentials.email)
+        return { success: true }
+      }
+
+      // Development: Check against viewer credentials (viewer role)
+      if (
+        credentials.email === VIEWER_CREDENTIALS.email &&
+        credentials.password === VIEWER_CREDENTIALS.password
+      ) {
+        setUser(VIEWER_USER)
+        localStorage.setItem("taxdeedflow_user", JSON.stringify(VIEWER_USER))
+        console.log("[Auth] Login successful for viewer:", credentials.email)
         return { success: true }
       }
 

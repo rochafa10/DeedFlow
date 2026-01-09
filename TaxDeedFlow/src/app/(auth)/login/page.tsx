@@ -125,9 +125,14 @@ function LoginForm() {
         {/* Demo Credentials Notice */}
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Demo credentials:</strong><br />
+            <strong>Demo credentials (Admin):</strong><br />
             Email: demo@taxdeedflow.com<br />
             Password: demo123
+          </p>
+          <p className="text-sm text-blue-800 mt-2">
+            <strong>Viewer credentials (Limited access):</strong><br />
+            Email: viewer@taxdeedflow.com<br />
+            Password: viewer123
           </p>
         </div>
 

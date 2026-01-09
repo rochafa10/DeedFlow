@@ -28,7 +28,12 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 
+// Simulated "other user's" property IDs for testing access control
+// In production, this would be determined by the API based on user ownership/permissions
+const RESTRICTED_PROPERTY_IDS = new Set(["100", "101", "102", "999", "private-1", "other-user-prop"])
+
 // Mock property data - in production this would come from API
+// Properties 1-4 belong to the current user, 5+ are "other users' properties" for testing access control
 const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
   "1": {
     id: "1",
@@ -267,6 +272,7 @@ export default function PropertyDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>("overview")
   const [property, setProperty] = useState<PropertyDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [accessDenied, setAccessDenied] = useState(false)
 
   const propertyId = params.id as string
 
@@ -277,12 +283,23 @@ export default function PropertyDetailPage() {
     }
   }, [isAuthenticated, authLoading, router, pathname])
 
-  // Load property data
+  // Load property data with access control
   useEffect(() => {
-    // Simulate API call
+    // Simulate API call with access control
     const loadProperty = () => {
       setLoading(true)
-      // In production, fetch from API
+      setAccessDenied(false)
+
+      // Check if this property ID is restricted (belongs to another user)
+      // In production, this check would happen server-side via API
+      if (RESTRICTED_PROPERTY_IDS.has(propertyId)) {
+        setAccessDenied(true)
+        setProperty(null)
+        setLoading(false)
+        return
+      }
+
+      // In production, fetch from API which would also verify ownership
       const found = MOCK_PROPERTIES[propertyId]
       setProperty(found || null)
       setLoading(false)
@@ -305,6 +322,40 @@ export default function PropertyDetailPage() {
   // Don't render if not authenticated
   if (!isAuthenticated) {
     return null
+  }
+
+  // Show access denied
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <button
+            onClick={() => router.push("/properties")}
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Properties
+          </button>
+          <div className="bg-white rounded-lg border border-red-200 p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <ShieldX className="h-8 w-8 text-red-600" />
+              </div>
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">
+              Access Denied
+            </h2>
+            <p className="text-slate-600 mb-4">
+              You don't have permission to view this property. This resource belongs to another user.
+            </p>
+            <p className="text-sm text-slate-500">
+              If you believe this is an error, please contact support.
+            </p>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   // Show not found

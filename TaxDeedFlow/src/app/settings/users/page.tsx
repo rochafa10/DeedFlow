@@ -19,6 +19,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  ShieldX,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -104,10 +105,36 @@ const STATUS_CONFIG: Record<UserStatus, { label: string; color: string; bgColor:
 
 export default function SettingsUsersPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
   const [users, setUsers] = useState(MOCK_USERS)
   const [searchQuery, setSearchQuery] = useState("")
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Check if user is admin
+  const isAdmin = user?.role === "admin"
+
+  // Handle user deletion with double-click protection
+  const handleDeleteUser = async (userId: string) => {
+    // Prevent multiple deletes
+    if (isDeleting) return
+
+    setIsDeleting(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Remove user from list
+      setUsers(prevUsers => prevUsers.filter(u => u.id !== userId))
+      setDeleteConfirmId(null)
+      setOpenMenuId(null)
+    } catch (error) {
+      console.error("Failed to delete user:", error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -128,6 +155,40 @@ export default function SettingsUsersPage() {
   // Don't render content if not authenticated
   if (!isAuthenticated) {
     return null
+  }
+
+  // Show access denied for non-admin users
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <Header />
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </button>
+          <div className="bg-white rounded-lg border border-red-200 p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <ShieldX className="h-8 w-8 text-red-600" />
+              </div>
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">
+              Access Denied
+            </h2>
+            <p className="text-slate-600 mb-4">
+              You don't have permission to access this page. Only administrators can manage users.
+            </p>
+            <p className="text-sm text-slate-500">
+              Contact your administrator if you need access to this feature.
+            </p>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   // Filter users
@@ -314,10 +375,42 @@ export default function SettingsUsersPage() {
                                     <Edit className="h-4 w-4" />
                                     Edit User
                                   </button>
-                                  <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                                  <button
+                                    onClick={() => setDeleteConfirmId(user.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                  >
                                     <Trash2 className="h-4 w-4" />
                                     Remove
                                   </button>
+                                </div>
+                              )}
+                              {/* Delete Confirmation Dialog */}
+                              {deleteConfirmId === user.id && (
+                                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                                  <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4">
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                                      Remove User
+                                    </h3>
+                                    <p className="text-slate-600 mb-4">
+                                      Are you sure you want to remove <strong>{user.name}</strong>? This action cannot be undone.
+                                    </p>
+                                    <div className="flex justify-end gap-3">
+                                      <button
+                                        onClick={() => setDeleteConfirmId(null)}
+                                        disabled={isDeleting}
+                                        className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteUser(user.id)}
+                                        disabled={isDeleting}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {isDeleting ? "Removing..." : "Remove User"}
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                             </div>

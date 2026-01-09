@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, Suspense, useCallback } from "react"
 import {
   Search,
   Filter,
@@ -304,13 +304,82 @@ function PropertiesContent() {
   // Get unique counties for filter dropdown
   const uniqueCounties = Array.from(new Set(MOCK_PROPERTIES.map(p => p.county))).sort()
 
-  // Read county from URL params
+  // Valid status values for URL param validation
+  const validStatuses: PropertyStatus[] = ["parsed", "enriched", "validated", "approved"]
+
+  // Function to update URL parameters
+  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; page?: number | null }) => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (updates.stage !== undefined) {
+      if (updates.stage && updates.stage !== "all") {
+        params.set("stage", updates.stage)
+      } else {
+        params.delete("stage")
+      }
+    }
+
+    if (updates.county !== undefined) {
+      if (updates.county && updates.county !== "all") {
+        params.set("county", updates.county)
+      } else {
+        params.delete("county")
+      }
+    }
+
+    if (updates.page !== undefined) {
+      if (updates.page && updates.page > 1) {
+        params.set("page", updates.page.toString())
+      } else {
+        params.delete("page")
+      }
+    }
+
+    const queryString = params.toString()
+    const newUrl = queryString ? `/properties?${queryString}` : "/properties"
+    router.replace(newUrl, { scroll: false })
+  }, [searchParams, router])
+
+  // Read county from URL params (also reset when param is removed)
   useEffect(() => {
     const countyParam = searchParams.get("county")
     if (countyParam && uniqueCounties.includes(countyParam)) {
       setCountyFilter(countyParam)
+    } else if (!countyParam) {
+      setCountyFilter("all")
     }
   }, [searchParams, uniqueCounties])
+
+  // Read stage/status from URL params (also reset when param is removed)
+  useEffect(() => {
+    const stageParam = searchParams.get("stage")
+    if (stageParam && validStatuses.includes(stageParam as PropertyStatus)) {
+      setStatusFilter(stageParam as PropertyStatus)
+      // Auto-expand filters panel when stage filter is set via URL
+      setShowFilters(true)
+    } else if (!stageParam) {
+      setStatusFilter("all")
+    }
+  }, [searchParams])
+
+  // Read page from URL params with validation for malformed values
+  useEffect(() => {
+    const pageParam = searchParams.get("page")
+    if (pageParam) {
+      // Parse and validate the page number
+      const parsedPage = parseInt(pageParam, 10)
+
+      // Check if it's a valid positive integer
+      if (!isNaN(parsedPage) && parsedPage > 0 && Number.isInteger(parsedPage)) {
+        // Will be clamped to valid range when totalPages is calculated
+        setCurrentPage(parsedPage)
+      } else {
+        // Invalid page parameter - fall back to default (page 1)
+        console.warn(`[Properties] Invalid page parameter "${pageParam}", defaulting to page 1`)
+        setCurrentPage(1)
+      }
+    }
+  }, [searchParams])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -334,13 +403,14 @@ function PropertiesContent() {
   }
 
   // Filter properties based on search, status, and county
+  const trimmedSearch = searchQuery.trim().toLowerCase()
   const filteredProperties = MOCK_PROPERTIES.filter((property) => {
     const matchesSearch =
-      searchQuery === "" ||
-      property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.parcelId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.county.toLowerCase().includes(searchQuery.toLowerCase())
+      trimmedSearch === "" ||
+      property.address.toLowerCase().includes(trimmedSearch) ||
+      property.parcelId.toLowerCase().includes(trimmedSearch) ||
+      property.city.toLowerCase().includes(trimmedSearch) ||
+      property.county.toLowerCase().includes(trimmedSearch)
 
     const matchesStatus =
       statusFilter === "all" || property.status === statusFilter
@@ -355,8 +425,10 @@ function PropertiesContent() {
   const activeFilterCount = [statusFilter !== "all", countyFilter !== "all"].filter(Boolean).length
 
   // Pagination
-  const totalPages = Math.ceil(filteredProperties.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
+  const totalPages = Math.max(1, Math.ceil(filteredProperties.length / itemsPerPage))
+  // Clamp currentPage to valid range (handles case where page param exceeds total pages)
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIndex = (validCurrentPage - 1) * itemsPerPage
   const paginatedProperties = filteredProperties.slice(
     startIndex,
     startIndex + itemsPerPage
@@ -492,8 +564,10 @@ function PropertiesContent() {
                   <select
                     value={statusFilter}
                     onChange={(e) => {
-                      setStatusFilter(e.target.value as PropertyStatus | "all")
+                      const newValue = e.target.value as PropertyStatus | "all"
+                      setStatusFilter(newValue)
                       setCurrentPage(1)
+                      updateUrlParams({ stage: newValue, page: null })
                     }}
                     className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
@@ -511,8 +585,10 @@ function PropertiesContent() {
                   <select
                     value={countyFilter}
                     onChange={(e) => {
-                      setCountyFilter(e.target.value)
+                      const newValue = e.target.value
+                      setCountyFilter(newValue)
                       setCurrentPage(1)
+                      updateUrlParams({ county: newValue, page: null })
                     }}
                     className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
@@ -531,6 +607,7 @@ function PropertiesContent() {
                         setStatusFilter("all")
                         setCountyFilter("all")
                         setCurrentPage(1)
+                        updateUrlParams({ stage: null, county: null, page: null })
                       }}
                       className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 underline"
                     >
@@ -549,6 +626,7 @@ function PropertiesContent() {
                         onClick={() => {
                           setStatusFilter("all")
                           setCurrentPage(1)
+                          updateUrlParams({ stage: null, page: null })
                         }}
                         className="hover:bg-primary/20 rounded-full p-0.5"
                       >
@@ -563,6 +641,7 @@ function PropertiesContent() {
                         onClick={() => {
                           setCountyFilter("all")
                           setCurrentPage(1)
+                          updateUrlParams({ county: null, page: null })
                         }}
                         className="hover:bg-primary/20 rounded-full p-0.5"
                       >
@@ -596,8 +675,10 @@ function PropertiesContent() {
                   <button
                     key={status}
                     onClick={() => {
-                      setStatusFilter(statusFilter === status ? "all" : status)
+                      const newValue = statusFilter === status ? "all" : status
+                      setStatusFilter(newValue)
                       setCurrentPage(1)
+                      updateUrlParams({ stage: newValue === "all" ? null : newValue, page: null })
                     }}
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
@@ -743,9 +824,47 @@ function PropertiesContent() {
                   <tr>
                     <td
                       colSpan={8}
-                      className="px-4 py-8 text-center text-slate-500"
+                      className="px-4 py-16 text-center"
                     >
-                      No properties found matching your criteria
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                          <Search className="h-8 w-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-slate-900 mb-2">
+                          No properties found
+                        </h3>
+                        {trimmedSearch && (
+                          <p className="text-sm text-slate-500 mb-4">
+                            No results for &quot;{searchQuery.trim()}&quot;
+                          </p>
+                        )}
+                        <div className="text-sm text-slate-500 space-y-1">
+                          <p>Try adjusting your search or filters:</p>
+                          <ul className="list-disc list-inside text-left inline-block mt-2">
+                            {trimmedSearch && (
+                              <li>Check for typos in your search term</li>
+                            )}
+                            <li>Try a different address, parcel ID, or city</li>
+                            {(statusFilter !== "all" || countyFilter !== "all") && (
+                              <li>Remove some filters to see more results</li>
+                            )}
+                          </ul>
+                        </div>
+                        {(trimmedSearch || statusFilter !== "all" || countyFilter !== "all") && (
+                          <button
+                            onClick={() => {
+                              setSearchQuery("")
+                              setStatusFilter("all")
+                              setCountyFilter("all")
+                              setCurrentPage(1)
+                              updateUrlParams({ stage: null, county: null, page: null })
+                            }}
+                            className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors"
+                          >
+                            Clear all filters
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -757,12 +876,12 @@ function PropertiesContent() {
           {totalPages > 1 && (
             <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between">
               <p className="text-sm text-slate-500">
-                Page {currentPage} of {totalPages}
+                Page {validCurrentPage} of {totalPages}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  disabled={validCurrentPage === 1}
                   className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -774,7 +893,7 @@ function PropertiesContent() {
                       onClick={() => setCurrentPage(page)}
                       className={cn(
                         "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                        currentPage === page
+                        validCurrentPage === page
                           ? "bg-primary text-white"
                           : "text-slate-600 hover:bg-slate-100"
                       )}
@@ -787,7 +906,7 @@ function PropertiesContent() {
                   onClick={() =>
                     setCurrentPage((p) => Math.min(totalPages, p + 1))
                   }
-                  disabled={currentPage === totalPages}
+                  disabled={validCurrentPage === totalPages}
                   className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronRight className="h-4 w-4" />
