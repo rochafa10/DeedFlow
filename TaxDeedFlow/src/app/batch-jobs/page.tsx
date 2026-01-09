@@ -195,7 +195,10 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 
 export default function BatchJobsPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+
+  // Check if user can create batch jobs (admin and analyst can, viewer cannot)
+  const canCreateJobs = user?.role === 'admin' || user?.role === 'analyst'
   const [activeJobs, setActiveJobs] = useState(MOCK_ACTIVE_JOBS)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all")
@@ -360,6 +363,7 @@ export default function BatchJobsPage() {
               Manage and monitor batch processing jobs
             </p>
           </div>
+          {canCreateJobs && (
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
@@ -367,6 +371,7 @@ export default function BatchJobsPage() {
             <Plus className="h-4 w-4" />
             Create New Job
           </button>
+        )}
         </div>
 
         {/* Stats Cards */}
@@ -509,15 +514,19 @@ export default function BatchJobsPage() {
               <Activity className="h-12 w-12 text-slate-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-slate-900 mb-2">No Active Jobs</h3>
               <p className="text-slate-500 mb-4">
-                Start a new batch job to process properties in bulk.
+                {canCreateJobs
+                  ? "Start a new batch job to process properties in bulk."
+                  : "No batch jobs are currently running."}
               </p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Create New Job
-              </button>
+              {canCreateJobs && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create New Job
+                </button>
+              )}
             </div>
           )}
         </div>
