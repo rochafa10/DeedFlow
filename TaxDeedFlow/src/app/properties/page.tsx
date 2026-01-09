@@ -40,6 +40,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.25 acres",
     saleType: "Tax Deed",
     validation: null,
+    saleDate: "2026-01-16",
   },
   {
     id: "2",
@@ -54,6 +55,7 @@ const MOCK_PROPERTIES = [
     lotSize: "1.5 acres",
     saleType: "Tax Deed",
     validation: null,
+    saleDate: "2026-01-16",
   },
   {
     id: "3",
@@ -68,6 +70,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.5 acres",
     saleType: "Tax Deed",
     validation: "approved",
+    saleDate: "2026-01-16",
   },
   {
     id: "4",
@@ -82,6 +85,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.33 acres",
     saleType: "Tax Lien",
     validation: "approved",
+    saleDate: "2026-03-11",
   },
   {
     id: "5",
@@ -96,6 +100,7 @@ const MOCK_PROPERTIES = [
     lotSize: "2.0 acres",
     saleType: "Tax Deed",
     validation: null,
+    saleDate: "2026-03-11",
   },
   {
     id: "6",
@@ -110,6 +115,7 @@ const MOCK_PROPERTIES = [
     lotSize: "5.0 acres",
     saleType: "Tax Deed",
     validation: null,
+    saleDate: "2026-09-08",
   },
   {
     id: "7",
@@ -124,6 +130,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.75 acres",
     saleType: "Tax Lien",
     validation: null,
+    saleDate: "2026-09-08",
   },
   {
     id: "8",
@@ -138,6 +145,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.4 acres",
     saleType: "Tax Deed",
     validation: "caution",
+    saleDate: "2026-05-20",
   },
   {
     id: "9",
@@ -152,6 +160,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.3 acres",
     saleType: "Tax Deed",
     validation: null,
+    saleDate: "2026-01-16",
   },
   {
     id: "10",
@@ -166,6 +175,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.8 acres",
     saleType: "Tax Lien",
     validation: null,
+    saleDate: "2026-03-11",
   },
   {
     id: "11",
@@ -180,6 +190,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.45 acres",
     saleType: "Tax Deed",
     validation: "approved",
+    saleDate: "2026-09-08",
   },
   {
     id: "12",
@@ -194,6 +205,7 @@ const MOCK_PROPERTIES = [
     lotSize: "3.0 acres",
     saleType: "Tax Deed",
     validation: "approved",
+    saleDate: "2026-05-20",
   },
   {
     id: "13",
@@ -208,6 +220,7 @@ const MOCK_PROPERTIES = [
     lotSize: "1.2 acres",
     saleType: "Tax Lien",
     validation: null,
+    saleDate: "2026-01-16",
   },
   {
     id: "14",
@@ -222,6 +235,7 @@ const MOCK_PROPERTIES = [
     lotSize: "0.5 acres",
     saleType: "Tax Deed",
     validation: null,
+    saleDate: "2026-03-11",
   },
   {
     id: "15",
@@ -236,7 +250,17 @@ const MOCK_PROPERTIES = [
     lotSize: "0.35 acres",
     saleType: "Tax Lien",
     validation: null,
+    saleDate: "2026-09-08",
   },
+]
+
+// Date range options for filtering
+const DATE_RANGES = [
+  { value: "all", label: "All Dates" },
+  { value: "7days", label: "Next 7 Days" },
+  { value: "30days", label: "Next 30 Days" },
+  { value: "90days", label: "Next 90 Days" },
+  { value: "6months", label: "Next 6 Months" },
 ]
 
 type PropertyStatus = "parsed" | "enriched" | "validated" | "approved"
@@ -298,6 +322,7 @@ function PropertiesContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<PropertyStatus | "all">("all")
   const [countyFilter, setCountyFilter] = useState<string>("all")
+  const [dateRangeFilter, setDateRangeFilter] = useState<string>("all")
   const [showFilters, setShowFilters] = useState(false)
   const itemsPerPage = 10
 
@@ -402,7 +427,29 @@ function PropertiesContent() {
     return null
   }
 
-  // Filter properties based on search, status, and county
+  // Helper function to check if sale date is within range
+  const isWithinDateRange = (saleDate: string, range: string): boolean => {
+    if (range === "all") return true
+
+    const today = new Date()
+    const sale = new Date(saleDate)
+    const diffDays = Math.ceil((sale.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+    switch (range) {
+      case "7days":
+        return diffDays >= 0 && diffDays <= 7
+      case "30days":
+        return diffDays >= 0 && diffDays <= 30
+      case "90days":
+        return diffDays >= 0 && diffDays <= 90
+      case "6months":
+        return diffDays >= 0 && diffDays <= 180
+      default:
+        return true
+    }
+  }
+
+  // Filter properties based on search, status, county, and date range
   const trimmedSearch = searchQuery.trim().toLowerCase()
   const filteredProperties = MOCK_PROPERTIES.filter((property) => {
     const matchesSearch =
@@ -418,11 +465,13 @@ function PropertiesContent() {
     const matchesCounty =
       countyFilter === "all" || property.county === countyFilter
 
-    return matchesSearch && matchesStatus && matchesCounty
+    const matchesDateRange = isWithinDateRange(property.saleDate, dateRangeFilter)
+
+    return matchesSearch && matchesStatus && matchesCounty && matchesDateRange
   })
 
   // Count active filters
-  const activeFilterCount = [statusFilter !== "all", countyFilter !== "all"].filter(Boolean).length
+  const activeFilterCount = [statusFilter !== "all", countyFilter !== "all", dateRangeFilter !== "all"].filter(Boolean).length
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredProperties.length / itemsPerPage))
@@ -600,12 +649,33 @@ function PropertiesContent() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Sale Date
+                  </label>
+                  <select
+                    value={dateRangeFilter}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setDateRangeFilter(newValue)
+                      setCurrentPage(1)
+                    }}
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {DATE_RANGES.map((range) => (
+                      <option key={range.value} value={range.value}>
+                        {range.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 {activeFilterCount > 0 && (
                   <div className="flex items-end">
                     <button
                       onClick={() => {
                         setStatusFilter("all")
                         setCountyFilter("all")
+                        setDateRangeFilter("all")
                         setCurrentPage(1)
                         updateUrlParams({ stage: null, county: null, page: null })
                       }}
@@ -642,6 +712,20 @@ function PropertiesContent() {
                           setCountyFilter("all")
                           setCurrentPage(1)
                           updateUrlParams({ county: null, page: null })
+                        }}
+                        className="hover:bg-primary/20 rounded-full p-0.5"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {dateRangeFilter !== "all" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                      Sale Date: {DATE_RANGES.find(r => r.value === dateRangeFilter)?.label}
+                      <button
+                        onClick={() => {
+                          setDateRangeFilter("all")
+                          setCurrentPage(1)
                         }}
                         className="hover:bg-primary/20 rounded-full p-0.5"
                       >
@@ -850,12 +934,13 @@ function PropertiesContent() {
                             )}
                           </ul>
                         </div>
-                        {(trimmedSearch || statusFilter !== "all" || countyFilter !== "all") && (
+                        {(trimmedSearch || statusFilter !== "all" || countyFilter !== "all" || dateRangeFilter !== "all") && (
                           <button
                             onClick={() => {
                               setSearchQuery("")
                               setStatusFilter("all")
                               setCountyFilter("all")
+                              setDateRangeFilter("all")
                               setCurrentPage(1)
                               updateUrlParams({ stage: null, county: null, page: null })
                             }}
