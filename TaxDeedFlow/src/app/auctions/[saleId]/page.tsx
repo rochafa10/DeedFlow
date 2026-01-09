@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "sonner"
 
 // Mock auction data - should match the data in auctions/page.tsx
 const MOCK_AUCTIONS = [
@@ -333,10 +334,45 @@ export default function AuctionDetailPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<"briefing" | "rules" | "documents">("briefing")
+  const [checkedRequirements, setCheckedRequirements] = useState<Set<number>>(new Set())
 
   const saleId = params.saleId as string
   const auction = MOCK_AUCTIONS.find((a) => a.id === saleId)
   const details = AUCTION_DETAILS[saleId]
+
+  // Load checked requirements from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined" && saleId) {
+      const saved = localStorage.getItem(`auction-checklist-${saleId}`)
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          setCheckedRequirements(new Set(parsed))
+        } catch (e) {
+          // Invalid data, ignore
+        }
+      }
+    }
+  }, [saleId])
+
+  // Toggle requirement check
+  const toggleRequirement = (index: number) => {
+    setCheckedRequirements((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(index)) {
+        newSet.delete(index)
+      } else {
+        newSet.add(index)
+        // Show toast when checking off an item
+        toast.success("Requirement completed!", {
+          description: "Your progress has been saved.",
+        })
+      }
+      // Save to localStorage
+      localStorage.setItem(`auction-checklist-${saleId}`, JSON.stringify([...newSet]))
+      return newSet
+    })
+  }
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -698,12 +734,37 @@ export default function AuctionDetailPage() {
                     </h3>
                     <ul className="space-y-2">
                       {details.bidderRequirements.map((req, index) => (
-                        <li key={index} className="flex items-start gap-2 text-slate-600">
-                          <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500 flex-shrink-0" />
-                          <span>{req}</span>
+                        <li key={index} className="flex items-start gap-2">
+                          <button
+                            onClick={() => toggleRequirement(index)}
+                            className={cn(
+                              "flex items-center justify-center h-5 w-5 rounded border-2 flex-shrink-0 mt-0.5 transition-colors",
+                              checkedRequirements.has(index)
+                                ? "bg-green-500 border-green-500 text-white"
+                                : "border-slate-300 hover:border-green-400"
+                            )}
+                            aria-label={checkedRequirements.has(index) ? "Uncheck requirement" : "Check requirement"}
+                          >
+                            {checkedRequirements.has(index) && (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                          <span className={cn(
+                            "transition-colors",
+                            checkedRequirements.has(index)
+                              ? "text-slate-400 line-through"
+                              : "text-slate-600"
+                          )}>
+                            {req}
+                          </span>
                         </li>
                       ))}
                     </ul>
+                    {details.bidderRequirements.length > 0 && (
+                      <div className="mt-3 text-sm text-slate-500">
+                        {checkedRequirements.size} of {details.bidderRequirements.length} completed
+                      </div>
+                    )}
                   </div>
 
                   <div>
