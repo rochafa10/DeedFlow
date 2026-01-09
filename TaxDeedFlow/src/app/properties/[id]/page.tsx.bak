@@ -1,6 +1,6 @@
 "use client"
 
-import { useParams, useRouter, usePathname } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
   ArrowLeft,
@@ -26,7 +26,6 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
-import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 
 // Mock property data - in production this would come from API
 const MOCK_PROPERTIES: Record<string, PropertyDetail> = {
@@ -262,7 +261,6 @@ type TabType = "overview" | "regrid" | "validation" | "images" | "analysis" | "h
 export default function PropertyDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const pathname = usePathname()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<TabType>("overview")
   const [property, setProperty] = useState<PropertyDetail | null>(null)
@@ -273,9 +271,9 @@ export default function PropertyDetailPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      router.push("/login")
     }
-  }, [isAuthenticated, authLoading, router, pathname])
+  }, [isAuthenticated, authLoading, router])
 
   // Load property data
   useEffect(() => {
@@ -352,13 +350,14 @@ export default function PropertyDetailPage() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumbs */}
-        <Breadcrumbs
-          items={[
-            { label: "Properties", href: "/properties" },
-            { label: property.parcelId },
-          ]}
-        />
+        {/* Back Button */}
+        <button
+          onClick={() => router.push("/properties")}
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Properties
+        </button>
 
         {/* Property Header */}
         <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">

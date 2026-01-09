@@ -53,6 +53,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession()
   }, [])
 
+  // Listen for storage events to sync logout across tabs
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "taxdeedflow_user") {
+        if (event.newValue === null) {
+          // User was logged out in another tab
+          console.log("[Auth] Detected logout in another tab")
+          setUser(null)
+        } else if (event.newValue) {
+          // User was logged in from another tab
+          try {
+            const parsedUser = JSON.parse(event.newValue)
+            console.log("[Auth] Detected login in another tab")
+            setUser({
+              ...parsedUser,
+              createdAt: new Date(parsedUser.createdAt),
+            })
+          } catch (error) {
+            console.error("[Auth] Error parsing user from storage event:", error)
+          }
+        }
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+    }
+  }, [])
+
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true)
 

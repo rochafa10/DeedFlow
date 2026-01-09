@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState } from "react"
 import {
   Search,
   Filter,
@@ -18,7 +18,6 @@ import {
   ShieldX,
   ShieldCheck,
   Gavel,
-  Download,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -290,7 +289,7 @@ const VALIDATION_CONFIG: Record<
   },
 }
 
-function PropertiesContent() {
+export default function PropertiesPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -362,64 +361,6 @@ function PropertiesContent() {
     startIndex + itemsPerPage
   )
 
-  // Export to CSV function
-  const exportToCSV = () => {
-    // CSV header
-    const headers = [
-      "Parcel ID",
-      "Address",
-      "City",
-      "State",
-      "County",
-      "Total Due",
-      "Sale Type",
-      "Property Type",
-      "Lot Size",
-      "Stage",
-      "Validation"
-    ]
-
-    // CSV rows from filtered properties
-    const rows = filteredProperties.map(property => [
-      property.parcelId,
-      property.address,
-      property.city,
-      property.state,
-      property.county,
-      property.totalDue.toFixed(2),
-      property.saleType,
-      property.propertyType,
-      property.lotSize,
-      STATUS_CONFIG[property.status as PropertyStatus].label,
-      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending"
-    ])
-
-    // Combine headers and rows
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
-    ].join("\n")
-
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-
-    // Generate filename with filters info
-    const filterInfo = []
-    if (statusFilter !== "all") filterInfo.push(statusFilter)
-    if (countyFilter !== "all") filterInfo.push(countyFilter)
-    const filterSuffix = filterInfo.length > 0 ? `_${filterInfo.join("_")}` : ""
-    const timestamp = new Date().toISOString().split("T")[0]
-    link.setAttribute("download", `properties${filterSuffix}_${timestamp}.csv`)
-
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
@@ -469,15 +410,6 @@ function PropertiesContent() {
                   {activeFilterCount}
                 </span>
               )}
-            </button>
-
-            {/* Export Button */}
-            <button
-              onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
             </button>
           </div>
 
@@ -798,22 +730,6 @@ function PropertiesContent() {
         </div>
       </main>
     </div>
-  )
-}
-
-function PropertiesLoading() {
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="text-slate-500">Loading properties...</div>
-    </div>
-  )
-}
-
-export default function PropertiesPage() {
-  return (
-    <Suspense fallback={<PropertiesLoading />}>
-      <PropertiesContent />
-    </Suspense>
   )
 }
 

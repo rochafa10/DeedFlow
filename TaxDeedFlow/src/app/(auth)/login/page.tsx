@@ -1,14 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Building2, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Building2, Mail, Lock, Eye, EyeOff, AlertCircle, Clock } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
-export default function LoginPage() {
+const MAX_LOGIN_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 30 * 1000 // 30 seconds
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login, isAuthenticated, isLoading: authLoading } = useAuth()
+
+  // Get redirect URL from query params
+  const redirectUrl = searchParams.get("redirect") || "/"
 
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
@@ -16,24 +23,74 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // Rate limiting state
+  const [loginAttempts, setLoginAttempts] = useState(0)
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null)
+  const [remainingLockoutTime, setRemainingLockoutTime] = useState(0)
+
+  // Check if user is currently locked out
+  const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil
+
+  // Update remaining lockout time
+  useEffect(() => {
+    if (!lockoutUntil) return
+
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, lockoutUntil - Date.now())
+      setRemainingLockoutTime(Math.ceil(remaining / 1000))
+
+      if (remaining <= 0) {
+        setLockoutUntil(null)
+        setLoginAttempts(0)
+        setError("")
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [lockoutUntil])
+
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push("/")
+      router.push(redirectUrl)
     }
-  }, [isAuthenticated, authLoading, router])
+  }, [isAuthenticated, authLoading, router, redirectUrl])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Check if locked out
+    if (isLockedOut) {
+      setError(`Too many login attempts. Please wait ${remainingLockoutTime} seconds.`)
+      return
+    }
+
     setError("")
     setIsLoading(true)
 
     const result = await login({ email, password })
 
     if (result.success) {
-      router.push("/")
+      // Reset attempts on successful login
+      setLoginAttempts(0)
+      setLockoutUntil(null)
+      router.push(redirectUrl)
     } else {
-      setError(result.error || "Login failed. Please try again.")
+      const newAttempts = loginAttempts + 1
+      setLoginAttempts(newAttempts)
+
+      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+        // Lock out the user
+        const lockoutTime = Date.now() + LOCKOUT_DURATION_MS
+        setLockoutUntil(lockoutTime)
+        setRemainingLockoutTime(LOCKOUT_DURATION_MS / 1000)
+        setError(`Too many failed attempts. Please wait 30 seconds before trying again.`)
+      } else {
+        const attemptsRemaining = MAX_LOGIN_ATTEMPTS - newAttempts
+        setError(
+          `${result.error || "Invalid credentials."} ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? "s" : ""} remaining.`
+        )
+      }
     }
 
     setIsLoading(false)
@@ -219,5 +276,21 @@ export default function LoginPage() {
         &copy; {new Date().getFullYear()} Tax Deed Flow. All rights reserved.
       </p>
     </div>
+  )
+}
+
+function LoginLoading() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginForm />
+    </Suspense>
   )
 }
