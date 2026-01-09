@@ -486,7 +486,10 @@ export default function PropertyDetailPage() {
   const params = useParams()
   const router = useRouter()
   const pathname = usePathname()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+
+  // Check if user can edit properties (admin and analyst can, viewer cannot)
+  const canEdit = user?.role === 'admin' || user?.role === 'analyst'
   const [activeTab, setActiveTab] = useState<TabType>("overview")
   const [property, setProperty] = useState<PropertyDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -853,7 +856,7 @@ export default function PropertyDetailPage() {
               <span>By: {property.lastModifiedBy}</span>
             </div>
             <div className="flex items-center gap-2">
-              {!isEditing ? (
+              {canEdit && !isEditing && (
                 <button
                   onClick={startEditing}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
@@ -861,7 +864,8 @@ export default function PropertyDetailPage() {
                   <Edit3 className="h-4 w-4" />
                   Edit
                 </button>
-              ) : (
+              )}
+              {canEdit && isEditing && (
                 <>
                   <button
                     onClick={saveChanges}
@@ -894,24 +898,28 @@ export default function PropertyDetailPage() {
                 <Heart className={`h-4 w-4 ${isInWatchlist ? "fill-current" : ""}`} />
                 {isInWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}
               </button>
-              {/* Demo button to simulate concurrent edit - always visible */}
-              <button
-                onClick={simulateOtherUserEdit}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors"
-                title="Simulates another user editing this record (increments version)"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Simulate User B Edit
-              </button>
-              {/* Demo button to simulate delete by another user */}
-              <button
-                onClick={simulateOtherUserDelete}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                title="Simulates another user deleting this record"
-              >
-                <X className="h-4 w-4" />
-                Simulate User B Delete
-              </button>
+              {/* Demo button to simulate concurrent edit - only visible to editors */}
+              {canEdit && (
+                <button
+                  onClick={simulateOtherUserEdit}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors"
+                  title="Simulates another user editing this record (increments version)"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Simulate User B Edit
+                </button>
+              )}
+              {/* Demo button to simulate delete by another user - only visible to editors */}
+              {canEdit && (
+                <button
+                  onClick={simulateOtherUserDelete}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                  title="Simulates another user deleting this record"
+                >
+                  <X className="h-4 w-4" />
+                  Simulate User B Delete
+                </button>
+              )}
             </div>
           </div>
 
@@ -1556,7 +1564,7 @@ export default function PropertyDetailPage() {
                       </span>
                     )}
                   </h3>
-                  {!isEditingNotes && (
+                  {canEdit && !isEditingNotes && (
                     <button
                       onClick={() => {
                         setNotesValue("")
@@ -1716,16 +1724,18 @@ export default function PropertyDetailPage() {
                                 </div>
                                 <p className="text-slate-700">{note.text}</p>
                               </div>
-                              <button
-                                onClick={() => {
-                                  setNoteToDelete(note.id)
-                                  setShowDeleteConfirm(true)
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="Delete note"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {canEdit && (
+                                <button
+                                  onClick={() => {
+                                    setNoteToDelete(note.id)
+                                    setShowDeleteConfirm(true)
+                                  }}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Delete note"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         )
