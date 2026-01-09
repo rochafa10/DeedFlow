@@ -74,6 +74,14 @@ export default function SignupPage() {
       // Simulate API call - in production, this would call Supabase auth
       await new Promise(resolve => setTimeout(resolve, 1000))
 
+      // Check for existing email (demo simulation)
+      // In production, this would be returned from the Supabase API
+      const existingEmails = ["demo@taxdeedflow.com", "admin@taxdeedflow.com", "test@example.com"]
+      if (existingEmails.includes(formData.email.toLowerCase())) {
+        setError("An account with this email address already exists. Please try logging in instead, or use a different email address.")
+        return
+      }
+
       // Show success message
       setSuccess(true)
 
@@ -83,7 +91,17 @@ export default function SignupPage() {
         router.replace("/login")
       }, 2000)
     } catch (err) {
-      setError("An error occurred during registration")
+      // Handle specific error types with clear messages
+      const errorMessage = err instanceof Error ? err.message : String(err)
+
+      // Check for duplicate/constraint errors from database
+      if (errorMessage.includes("duplicate") || errorMessage.includes("unique") || errorMessage.includes("already exists")) {
+        setError("An account with this email address already exists. Please try logging in instead, or use a different email address.")
+      } else if (errorMessage.includes("constraint")) {
+        setError("This information conflicts with an existing record. Please check your details and try again.")
+      } else {
+        setError("An error occurred during registration. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }
