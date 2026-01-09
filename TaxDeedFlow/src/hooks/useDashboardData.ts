@@ -23,8 +23,8 @@ export function useDashboardData() {
   return useQuery<DashboardResponse, Error>({
     queryKey: ["dashboard", "stats"],
     queryFn: fetchDashboardStats,
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Refetch every minute
+    staleTime: 5 * 1000, // 5 seconds
+    refetchInterval: 10 * 1000, // Refetch every 10 seconds for real-time updates
     retry: 2,
   })
 }
