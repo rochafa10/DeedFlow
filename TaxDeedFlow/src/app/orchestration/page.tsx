@@ -17,6 +17,7 @@ import {
   ChevronRight,
   XCircle,
   X,
+  Sparkles,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -131,6 +132,17 @@ const MOCK_ACTIVE_AGENTS = [
     propertiesProcessed: 252,
   },
 ]
+
+// Mock AI session plan
+const SESSION_PLAN = {
+  recommendations: [
+    { id: 1, task: "Regrid Scraping", county: "Somerset", priority: "High", items: 2400, estimatedTime: "4 hours", reason: "Highest priority backlog" },
+    { id: 2, task: "Visual Validation", county: "Westmoreland", priority: "Medium", items: 150, estimatedTime: "45 min", reason: "Properties awaiting validation" },
+    { id: 3, task: "PDF Parsing", county: "Blair", priority: "Medium", items: 12, estimatedTime: "30 min", reason: "New documents available" },
+  ],
+  totalItems: 2562,
+  estimatedDuration: "~5 hours",
+}
 
 type SessionStatus = "active" | "completed" | "failed" | "paused"
 
@@ -476,6 +488,94 @@ export default function OrchestrationPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* AI Session Plan */}
+        <div className="mt-6 bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  AI Session Plan
+                </h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Recommended work based on priority and resource availability
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {SESSION_PLAN.recommendations.map((rec) => (
+              <div
+                key={rec.id}
+                className="px-4 py-3 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-purple-100 text-purple-700 font-semibold text-sm">
+                      {rec.id}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-900">
+                          {rec.task}
+                        </span>
+                        <span className="text-slate-400">-</span>
+                        <span className="text-slate-700">{rec.county}</span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                            rec.priority === "High"
+                              ? "bg-red-100 text-red-700"
+                              : rec.priority === "Medium"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-green-100 text-green-700"
+                          )}
+                        >
+                          {rec.priority}
+                        </span>
+                      </div>
+                      <div className="text-sm text-slate-500 mt-0.5">
+                        {rec.reason}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-slate-900">
+                      {rec.items.toLocaleString()} items
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Est. {rec.estimatedTime}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 bg-slate-50 border-t border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-slate-600">
+                <span>
+                  <span className="font-medium text-slate-900">
+                    {SESSION_PLAN.totalItems.toLocaleString()}
+                  </span>{" "}
+                  total items
+                </span>
+                <span className="text-slate-300">|</span>
+                <span>
+                  <span className="font-medium text-slate-900">
+                    {SESSION_PLAN.estimatedDuration}
+                  </span>{" "}
+                  estimated
+                </span>
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+                <Play className="h-4 w-4" />
+                Execute Plan
+              </button>
             </div>
           </div>
         </div>
