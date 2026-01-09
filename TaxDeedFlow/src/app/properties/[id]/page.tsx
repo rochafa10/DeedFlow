@@ -29,6 +29,8 @@ import {
   RefreshCw,
   Heart,
   Map,
+  StickyNote,
+  Trash2,
 } from "lucide-react"
 import { WatchlistItem } from "@/app/watchlist/page"
 import { toast } from "sonner"
@@ -69,6 +71,7 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
     minimumBid: 5234.56,
     latitude: 40.3015,
     longitude: -79.5389,
+    notes: "Good starter property. Check with county about any outstanding liens before bidding. Neighbor mentioned roof was replaced in 2020.",
     version: 1,
     lastModifiedAt: "2026-01-08T10:30:00Z",
     lastModifiedBy: "Demo User",
@@ -97,6 +100,23 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
     minimumBid: 12450.0,
     latitude: 40.3045,
     longitude: -79.5412,
+    images: [
+      {
+        url: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop",
+        caption: "Front view of commercial building",
+        source: "Regrid Aerial",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop",
+        caption: "Building entrance and parking lot",
+        source: "Google Street View",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&h=600&fit=crop",
+        caption: "Aerial view showing lot boundaries",
+        source: "Regrid Aerial",
+      },
+    ],
     version: 1,
     lastModifiedAt: "2026-01-07T15:45:00Z",
     lastModifiedBy: "Demo User",
@@ -155,6 +175,80 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
       imagesAnalyzed: 4,
       recommendation: "Property is suitable for investment consideration",
     },
+    propertyNotes: [
+      {
+        id: "note-1",
+        type: "opportunity",
+        text: "Great location near schools and shopping. Could be a good rental property.",
+        createdAt: "2026-01-05T10:00:00Z",
+        createdBy: "Demo User",
+      },
+      {
+        id: "note-2",
+        type: "concern",
+        text: "Neighbors mentioned occasional flooding in the backyard during heavy rain.",
+        createdAt: "2026-01-06T14:30:00Z",
+        createdBy: "Demo User",
+      },
+      {
+        id: "note-3",
+        type: "action",
+        text: "Need to verify property survey before bidding. Contact county assessor.",
+        createdAt: "2026-01-07T09:15:00Z",
+        createdBy: "Demo User",
+      },
+      {
+        id: "note-4",
+        type: "general",
+        text: "Drove by property on 1/8 - looks well maintained with recent landscaping updates.",
+        createdAt: "2026-01-08T16:00:00Z",
+        createdBy: "Demo User",
+      },
+    ],
+    activityLog: [
+      {
+        id: "activity-1",
+        action: "Property Created",
+        details: "Property parsed from Blair County tax sale list PDF",
+        timestamp: "2026-01-02T08:30:00Z",
+        user: "Parser Agent",
+      },
+      {
+        id: "activity-2",
+        action: "Regrid Data Added",
+        details: "Property enriched with Regrid parcel data and aerial imagery",
+        timestamp: "2026-01-03T10:15:00Z",
+        user: "Regrid Scraper Agent",
+      },
+      {
+        id: "activity-3",
+        action: "Note Added",
+        details: "Added opportunity note about rental potential",
+        timestamp: "2026-01-05T10:00:00Z",
+        user: "Demo User",
+      },
+      {
+        id: "activity-4",
+        action: "Note Added",
+        details: "Added concern note about flooding",
+        timestamp: "2026-01-06T14:30:00Z",
+        user: "Demo User",
+      },
+      {
+        id: "activity-5",
+        action: "Validation Completed",
+        details: "Visual validation passed with 92% confidence score",
+        timestamp: "2026-01-08T14:30:00Z",
+        user: "Visual Validator Agent",
+      },
+      {
+        id: "activity-6",
+        action: "Added to Watchlist",
+        details: "Property added to watchlist for upcoming auction",
+        timestamp: "2026-01-08T15:45:00Z",
+        user: "Demo User",
+      },
+    ],
   },
   "4": {
     id: "4",
@@ -183,6 +277,50 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
     version: 1,
     lastModifiedAt: "2026-01-06T09:15:00Z",
     lastModifiedBy: "Demo User",
+  },
+  "5": {
+    id: "5",
+    parcelId: "07-02-003-0022",
+    address: "555 Industrial Blvd",
+    city: "Altoona",
+    county: "Blair",
+    state: "PA",
+    zipCode: "16601",
+    totalDue: 15890.75,
+    status: "validated",
+    propertyType: "Industrial",
+    lotSize: "2.1 acres",
+    saleType: "Tax Deed",
+    validation: "caution",
+    yearBuilt: 1955,
+    bedrooms: null,
+    bathrooms: null,
+    squareFeet: 12000,
+    assessedValue: 275000,
+    taxYear: 2024,
+    saleDate: "Mar 11, 2026",
+    minimumBid: 15890.75,
+    latitude: 40.5187,
+    longitude: -78.3947,
+    version: 1,
+    lastModifiedAt: "2026-01-09T11:00:00Z",
+    lastModifiedBy: "Visual Validator Agent",
+    validationData: {
+      status: "caution",
+      confidenceScore: 58,
+      validatedAt: "2026-01-09T11:00:00Z",
+      validatedBy: "Visual Validator Agent",
+      findings: [
+        { type: "warning", message: "Former industrial site - potential environmental contamination concerns" },
+        { type: "negative", message: "Visible roof damage detected in aerial imagery" },
+        { type: "warning", message: "Adjacent to active railroad - noise and access concerns" },
+        { type: "negative", message: "Building appears vacant for extended period - possible vandalism or deterioration" },
+        { type: "info", message: "Zoning allows for commercial redevelopment" },
+        { type: "positive", message: "Large lot size provides flexibility for future use" },
+      ],
+      imagesAnalyzed: 6,
+      recommendation: "Proceed with caution. Environmental assessment and structural inspection strongly recommended before bidding.",
+    },
   },
 }
 
@@ -245,6 +383,30 @@ interface PropertyDetail {
   // Location coordinates
   latitude?: number
   longitude?: number
+  // Property images
+  images?: {
+    url: string
+    caption: string
+    source: string
+  }[]
+  // User notes (legacy single note for backward compatibility)
+  notes?: string
+  // User notes with types
+  propertyNotes?: {
+    id: string
+    type: "general" | "concern" | "opportunity" | "action"
+    text: string
+    createdAt: string
+    createdBy: string
+  }[]
+  // Activity log
+  activityLog?: {
+    id: string
+    action: string
+    details: string
+    timestamp: string
+    user: string
+  }[]
   // Concurrency control fields
   version: number
   lastModifiedAt: string
@@ -302,7 +464,16 @@ const VALIDATION_CONFIG: Record<
   },
 }
 
-type TabType = "overview" | "location" | "regrid" | "validation" | "images" | "analysis" | "history"
+type TabType = "overview" | "location" | "regrid" | "validation" | "images" | "notes" | "analysis" | "history"
+
+type NoteType = "general" | "concern" | "opportunity" | "action"
+
+const NOTE_TYPE_CONFIG: Record<NoteType, { label: string; color: string; bgColor: string }> = {
+  general: { label: "General", color: "text-slate-700", bgColor: "bg-slate-100" },
+  concern: { label: "Concern", color: "text-red-700", bgColor: "bg-red-100" },
+  opportunity: { label: "Opportunity", color: "text-green-700", bgColor: "bg-green-100" },
+  action: { label: "Action", color: "text-blue-700", bgColor: "bg-blue-100" },
+}
 
 // Conflict dialog state interface
 interface ConflictState {
@@ -335,6 +506,15 @@ export default function PropertyDetailPage() {
 
   // Watchlist state
   const [isInWatchlist, setIsInWatchlist] = useState(false)
+  const [enlargedImage, setEnlargedImage] = useState<{ url: string; caption: string } | null>(null)
+
+  // Notes editing state
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [notesValue, setNotesValue] = useState("")
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [noteTypeFilter, setNoteTypeFilter] = useState<"all" | "general" | "concern" | "opportunity" | "action">("all")
+  const [newNoteType, setNewNoteType] = useState<"general" | "concern" | "opportunity" | "action">("general")
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
 
   const propertyId = params.id as string
 
@@ -643,6 +823,7 @@ export default function PropertyDetailPage() {
     { id: "regrid" as const, label: "Regrid Data", icon: <Building2 className="h-4 w-4" /> },
     { id: "validation" as const, label: "Validation", icon: <Shield className="h-4 w-4" /> },
     { id: "images" as const, label: "Images", icon: <ImageIcon className="h-4 w-4" /> },
+    { id: "notes" as const, label: "Notes", icon: <StickyNote className="h-4 w-4" /> },
     { id: "analysis" as const, label: "Analysis", icon: <BarChart3 className="h-4 w-4" /> },
     { id: "history" as const, label: "History", icon: <History className="h-4 w-4" /> },
   ]
@@ -1314,12 +1495,257 @@ export default function PropertyDetailPage() {
             )}
 
             {activeTab === "images" && (
-              <div className="text-center py-12 text-slate-500">
-                <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No images available for this property yet.</p>
-                <p className="text-sm mt-2">
-                  Images will be loaded from Regrid after enrichment.
-                </p>
+              property.images && property.images.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Property Images ({property.images.length})
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {property.images.map((image, index) => (
+                      <div
+                        key={index}
+                        className="relative group cursor-pointer rounded-lg overflow-hidden border border-slate-200 bg-slate-100"
+                        onClick={() => setEnlargedImage({ url: image.url, caption: image.caption })}
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.caption}
+                          className="w-full h-48 object-cover transition-transform group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="bg-white/90 rounded-full p-2">
+                              <ExternalLink className="h-5 w-5 text-slate-700" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-white">
+                          <p className="text-sm font-medium text-slate-900 truncate">
+                            {image.caption}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Source: {image.source}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No images available for this property yet.</p>
+                  <p className="text-sm mt-2">
+                    Images will be loaded from Regrid after enrichment.
+                  </p>
+                </div>
+              )
+            )}
+
+            {activeTab === "notes" && (
+              <div className="space-y-4">
+                {/* Header with Add Note button */}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Property Notes
+                    {property.propertyNotes && property.propertyNotes.length > 0 && (
+                      <span className="ml-2 text-sm font-normal text-slate-500">
+                        ({property.propertyNotes.length} notes)
+                      </span>
+                    )}
+                  </h3>
+                  {!isEditingNotes && (
+                    <button
+                      onClick={() => {
+                        setNotesValue("")
+                        setNewNoteType("general")
+                        setIsEditingNotes(true)
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Add Note
+                    </button>
+                  )}
+                </div>
+
+                {/* Type Filter (only show if there are notes) */}
+                {property.propertyNotes && property.propertyNotes.length > 0 && !isEditingNotes && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-slate-500">Filter by type:</span>
+                    <button
+                      onClick={() => setNoteTypeFilter("all")}
+                      className={cn(
+                        "px-3 py-1 text-sm rounded-full transition-colors",
+                        noteTypeFilter === "all"
+                          ? "bg-primary text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      )}
+                    >
+                      All
+                    </button>
+                    {(["general", "concern", "opportunity", "action"] as const).map((type) => {
+                      const config = NOTE_TYPE_CONFIG[type]
+                      const count = property.propertyNotes?.filter((n) => n.type === type).length || 0
+                      if (count === 0) return null
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setNoteTypeFilter(type)}
+                          className={cn(
+                            "px-3 py-1 text-sm rounded-full transition-colors",
+                            noteTypeFilter === type
+                              ? `${config.bgColor} ${config.color} ring-2 ring-offset-1`
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          )}
+                        >
+                          {config.label} ({count})
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Add/Edit Note Form */}
+                {isEditingNotes && (
+                  <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-slate-700">Note Type:</label>
+                      <select
+                        value={newNoteType}
+                        onChange={(e) => setNewNoteType(e.target.value as NoteType)}
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        {(["general", "concern", "opportunity", "action"] as const).map((type) => (
+                          <option key={type} value={type}>
+                            {NOTE_TYPE_CONFIG[type].label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <textarea
+                      value={notesValue}
+                      onChange={(e) => setNotesValue(e.target.value)}
+                      placeholder="Add your note about this property..."
+                      className="w-full h-32 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setIsEditingNotes(false)
+                          setNotesValue("")
+                        }}
+                        className="px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!notesValue.trim()) {
+                            toast.error("Note cannot be empty")
+                            return
+                          }
+                          // Add new note to property
+                          const newNote = {
+                            id: `note-${Date.now()}`,
+                            type: newNoteType,
+                            text: notesValue.trim(),
+                            createdAt: new Date().toISOString(),
+                            createdBy: "Demo User",
+                          }
+                          const existingNotes = mockPropertyStore[property.id].propertyNotes || []
+                          mockPropertyStore[property.id] = {
+                            ...mockPropertyStore[property.id],
+                            propertyNotes: [...existingNotes, newNote],
+                            version: mockPropertyStore[property.id].version + 1,
+                            lastModifiedAt: new Date().toISOString(),
+                            lastModifiedBy: "Demo User",
+                          }
+                          setProperty({ ...mockPropertyStore[property.id] })
+                          setIsEditingNotes(false)
+                          setNotesValue("")
+                          toast.success("Note added", {
+                            description: `${NOTE_TYPE_CONFIG[newNoteType].label} note has been added.`,
+                          })
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Save className="h-4 w-4" />
+                        Save Note
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes List */}
+                {!isEditingNotes && property.propertyNotes && property.propertyNotes.length > 0 ? (
+                  <div className="space-y-3">
+                    {property.propertyNotes
+                      .filter((note) => noteTypeFilter === "all" || note.type === noteTypeFilter)
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .map((note) => {
+                        const config = NOTE_TYPE_CONFIG[note.type]
+                        return (
+                          <div
+                            key={note.id}
+                            className={cn(
+                              "rounded-lg border p-4",
+                              config.bgColor,
+                              "border-slate-200"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span
+                                    className={cn(
+                                      "px-2 py-0.5 text-xs font-medium rounded-full",
+                                      config.bgColor,
+                                      config.color
+                                    )}
+                                  >
+                                    {config.label}
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    {new Date(note.createdAt).toLocaleDateString()} at{" "}
+                                    {new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                </div>
+                                <p className="text-slate-700">{note.text}</p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setNoteToDelete(note.id)
+                                  setShowDeleteConfirm(true)
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Delete note"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    {/* Show message if filter returns no results */}
+                    {property.propertyNotes.filter((note) => noteTypeFilter === "all" || note.type === noteTypeFilter).length === 0 && (
+                      <div className="text-center py-8 text-slate-500">
+                        <p>No {noteTypeFilter} notes found.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : !isEditingNotes ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <StickyNote className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No notes for this property yet.</p>
+                    <p className="text-sm mt-2">
+                      Click "Add Note" to add your observations and reminders.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -1334,13 +1760,61 @@ export default function PropertyDetailPage() {
             )}
 
             {activeTab === "history" && (
-              <div className="text-center py-12 text-slate-500">
-                <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No history available yet.</p>
-                <p className="text-sm mt-2">
-                  Pipeline activity will be tracked here.
-                </p>
-              </div>
+              property.activityLog && property.activityLog.length > 0 ? (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Activity Log
+                    <span className="ml-2 text-sm font-normal text-slate-500">
+                      ({property.activityLog.length} activities)
+                    </span>
+                  </h3>
+                  <div className="relative">
+                    {/* Timeline line */}
+                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200" />
+
+                    {/* Activity items */}
+                    <div className="space-y-4">
+                      {property.activityLog
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                        .map((activity) => (
+                          <div key={activity.id} className="relative pl-10">
+                            {/* Timeline dot */}
+                            <div className="absolute left-2.5 w-3 h-3 bg-primary rounded-full border-2 border-white" />
+
+                            <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <div className="font-medium text-slate-900">
+                                    {activity.action}
+                                  </div>
+                                  <p className="text-sm text-slate-600 mt-1">
+                                    {activity.details}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(activity.timestamp).toLocaleDateString()} at{" "}
+                                  {new Date(activity.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                                <span>by {activity.user}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No activity history available yet.</p>
+                  <p className="text-sm mt-2">
+                    Pipeline activity will be tracked here.
+                  </p>
+                </div>
+              )
             )}
           </div>
         </div>
@@ -1484,6 +1958,111 @@ export default function PropertyDetailPage() {
                 className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Go to Properties List
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {enlargedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          onClick={() => setEnlargedImage(null)}
+        >
+          <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setEnlargedImage(null)}
+              className="absolute -top-12 right-0 p-2 text-white hover:text-slate-300 transition-colors"
+              aria-label="Close image"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            <img
+              src={enlargedImage.url}
+              alt={enlargedImage.caption}
+              className="w-full rounded-lg shadow-2xl"
+            />
+            <p className="text-white text-center mt-4 text-lg">
+              {enlargedImage.caption}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Note Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowDeleteConfirm(false)}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Delete Note
+                </h2>
+                <p className="text-sm text-slate-600">
+                  Are you sure you want to delete this note?
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4">
+              <p className="text-sm text-slate-600">
+                This action cannot be undone. The note will be permanently removed from this property.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-lg">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (noteToDelete) {
+                    // Delete specific note from propertyNotes array
+                    const existingNotes = mockPropertyStore[property.id].propertyNotes || []
+                    mockPropertyStore[property.id] = {
+                      ...mockPropertyStore[property.id],
+                      propertyNotes: existingNotes.filter((n) => n.id !== noteToDelete),
+                      version: mockPropertyStore[property.id].version + 1,
+                      lastModifiedAt: new Date().toISOString(),
+                      lastModifiedBy: "Demo User",
+                    }
+                  } else {
+                    // Delete legacy single note
+                    mockPropertyStore[property.id] = {
+                      ...mockPropertyStore[property.id],
+                      notes: undefined,
+                      version: mockPropertyStore[property.id].version + 1,
+                      lastModifiedAt: new Date().toISOString(),
+                      lastModifiedBy: "Demo User",
+                    }
+                  }
+                  setProperty({ ...mockPropertyStore[property.id] })
+                  setShowDeleteConfirm(false)
+                  setNoteToDelete(null)
+                  toast.success("Note deleted", {
+                    description: "The note has been removed from this property.",
+                  })
+                }}
+                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Note
               </button>
             </div>
           </div>

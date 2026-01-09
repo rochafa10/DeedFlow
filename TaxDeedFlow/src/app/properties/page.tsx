@@ -23,11 +23,17 @@ import {
   ArrowUp,
   ArrowDown,
   Calendar,
+  Bookmark,
+  BookmarkPlus,
+  X,
+  Trash2,
+  Star,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
+import { formatDate, DATE_FORMAT_KEY } from "@/lib/utils"
 
 // Mock property data for demo
 const MOCK_PROPERTIES = [
@@ -337,6 +343,29 @@ const VALIDATION_CONFIG: Record<
 type SortField = "saleDate" | "totalDue" | "county" | "parcelId" | null
 type SortDirection = "asc" | "desc"
 
+// Saved filter type
+interface SavedFilter {
+  id: string
+  name: string
+  filters: {
+    status: PropertyStatus | "all"
+    county: string
+    dateRange: string
+    searchQuery: string
+  }
+  createdAt: string
+  isDefault?: boolean
+}
+
+// localStorage key for saved filters
+const SAVED_FILTERS_KEY = "taxdeedflow_saved_filters"
+
+// localStorage key for page size preference
+const PAGE_SIZE_KEY = "taxdeedflow_page_size"
+
+// Page size options
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
+
 function PropertiesContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
@@ -349,7 +378,12 @@ function PropertiesContent() {
   const [showFilters, setShowFilters] = useState(false)
   const [sortField, setSortField] = useState<SortField>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
-  const itemsPerPage = 10
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
+  const [showSaveFilterModal, setShowSaveFilterModal] = useState(false)
+  const [newFilterName, setNewFilterName] = useState("")
+  const [showSavedFilters, setShowSavedFilters] = useState(false)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [dateFormatPreference, setDateFormatPreference] = useState("MMM DD, YYYY")
 
   // Get unique counties for filter dropdown
   const uniqueCounties = Array.from(new Set(MOCK_PROPERTIES.map(p => p.county))).sort()
@@ -358,7 +392,7 @@ function PropertiesContent() {
   const validStatuses: PropertyStatus[] = ["parsed", "enriched", "validated", "approved"]
 
   // Function to update URL parameters
-  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; dateRange?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null }) => {
+  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; dateRange?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null; pageSize?: number | null }) => {
     const params = new URLSearchParams(searchParams.toString())
 
     if (updates.stage !== undefined) {
@@ -414,6 +448,14 @@ function PropertiesContent() {
         params.set("dir", updates.dir)
       } else {
         params.delete("dir")
+      }
+    }
+
+    if (updates.pageSize !== undefined) {
+      if (updates.pageSize && updates.pageSize !== 10) {
+        params.set("pageSize", updates.pageSize.toString())
+      } else {
+        params.delete("pageSize")
       }
     }
 
@@ -511,12 +553,152 @@ function PropertiesContent() {
     }
   }, [searchParams])
 
+  // Read page size from URL params or localStorage
+  useEffect(() => {
+    const pageSizeParam = searchParams.get("pageSize")
+    if (pageSizeParam) {
+      const parsedSize = parseInt(pageSizeParam, 10)
+      if (PAGE_SIZE_OPTIONS.includes(parsedSize)) {
+        setItemsPerPage(parsedSize)
+        return
+      }
+    }
+    // Fall back to localStorage if no URL param
+    try {
+      const stored = localStorage.getItem(PAGE_SIZE_KEY)
+      if (stored) {
+        const parsedSize = parseInt(stored, 10)
+        if (PAGE_SIZE_OPTIONS.includes(parsedSize)) {
+          setItemsPerPage(parsedSize)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load page size preference:", err)
+    }
+  }, [searchParams])
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/login")
     }
   }, [isAuthenticated, authLoading, router])
+
+  // Load saved filters from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SAVED_FILTERS_KEY)
+      if (stored) {
+        setSavedFilters(JSON.parse(stored))
+      }
+    } catch (err) {
+      console.error("Failed to load saved filters:", err)
+    }
+  }, [])
+
+  // Load date format preference from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(DATE_FORMAT_KEY)
+      if (stored) {
+        setDateFormatPreference(stored)
+      }
+    } catch (err) {
+      console.error("Failed to load date format preference:", err)
+    }
+
+    // Listen for storage changes (when settings page updates the preference)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === DATE_FORMAT_KEY && e.newValue) {
+        setDateFormatPreference(e.newValue)
+      }
+    }
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [])
+
+  // Save filter function
+  const handleSaveFilter = () => {
+    if (!newFilterName.trim()) return
+
+    const newFilter: SavedFilter = {
+      id: `filter-${Date.now()}`,
+      name: newFilterName.trim(),
+      filters: {
+        status: statusFilter,
+        county: countyFilter,
+        dateRange: dateRangeFilter,
+        searchQuery: searchQuery.trim(),
+      },
+      createdAt: new Date().toISOString(),
+    }
+
+    const updatedFilters = [...savedFilters, newFilter]
+    setSavedFilters(updatedFilters)
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(updatedFilters))
+    setNewFilterName("")
+    setShowSaveFilterModal(false)
+  }
+
+  // Delete saved filter function
+  const handleDeleteFilter = (filterId: string) => {
+    const updatedFilters = savedFilters.filter((f) => f.id !== filterId)
+    setSavedFilters(updatedFilters)
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(updatedFilters))
+  }
+
+  // Apply saved filter function
+  const handleApplyFilter = (filter: SavedFilter) => {
+    setStatusFilter(filter.filters.status)
+    setCountyFilter(filter.filters.county)
+    setDateRangeFilter(filter.filters.dateRange)
+    setSearchQuery(filter.filters.searchQuery)
+    setCurrentPage(1)
+    setShowFilters(true)
+    updateUrlParams({
+      stage: filter.filters.status === "all" ? null : filter.filters.status,
+      county: filter.filters.county === "all" ? null : filter.filters.county,
+      dateRange: filter.filters.dateRange === "all" ? null : filter.filters.dateRange,
+      q: filter.filters.searchQuery || null,
+      page: null,
+    })
+  }
+
+  // Check if current filters match a saved filter
+  const hasActiveFilters = statusFilter !== "all" || countyFilter !== "all" || dateRangeFilter !== "all" || searchQuery.trim() !== ""
+
+  // Set filter as default
+  const handleSetAsDefault = (filterId: string) => {
+    const updatedFilters = savedFilters.map((f) => ({
+      ...f,
+      isDefault: f.id === filterId,
+    }))
+    setSavedFilters(updatedFilters)
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(updatedFilters))
+  }
+
+  // Remove default from filter
+  const handleRemoveDefault = (filterId: string) => {
+    const updatedFilters = savedFilters.map((f) => ({
+      ...f,
+      isDefault: f.id === filterId ? false : f.isDefault,
+    }))
+    setSavedFilters(updatedFilters)
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(updatedFilters))
+  }
+
+  // Apply default filter on initial load (only if no URL params)
+  useEffect(() => {
+    // Only apply default filter if there are no URL params
+    const hasUrlParams = searchParams.get("stage") || searchParams.get("county") || searchParams.get("dateRange") || searchParams.get("q")
+    if (hasUrlParams) return
+
+    const defaultFilter = savedFilters.find((f) => f.isDefault)
+    if (defaultFilter) {
+      handleApplyFilter(defaultFilter)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedFilters.length]) // Only run when savedFilters is loaded
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -645,6 +827,19 @@ function PropertiesContent() {
     }
   }
 
+  // Handle page size change
+  const handlePageSizeChange = (newSize: number) => {
+    setItemsPerPage(newSize)
+    setCurrentPage(1)
+    // Save to localStorage for persistence
+    try {
+      localStorage.setItem(PAGE_SIZE_KEY, newSize.toString())
+    } catch (err) {
+      console.error("Failed to save page size preference:", err)
+    }
+    updateUrlParams({ pageSize: newSize, page: null })
+  }
+
   // Export to CSV function
   const exportToCSV = () => {
     // CSV header
@@ -766,6 +961,104 @@ function PropertiesContent() {
               <Download className="h-4 w-4" />
               Export CSV
             </button>
+
+            {/* Save Filter Button */}
+            {hasActiveFilters && (
+              <button
+                onClick={() => setShowSaveFilterModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              >
+                <BookmarkPlus className="h-4 w-4" />
+                Save Filter
+              </button>
+            )}
+
+            {/* Saved Filters Button */}
+            {savedFilters.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSavedFilters(!showSavedFilters)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
+                    showSavedFilters
+                      ? "bg-amber-500 text-white border-amber-500"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  )}
+                >
+                  <Bookmark className="h-4 w-4" />
+                  Saved ({savedFilters.length})
+                </button>
+
+                {/* Saved Filters Dropdown */}
+                {showSavedFilters && (
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg border border-slate-200 shadow-lg z-20">
+                    <div className="p-3 border-b border-slate-200">
+                      <h4 className="font-medium text-slate-900">Saved Filters</h4>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {savedFilters.map((filter) => (
+                        <div
+                          key={filter.id}
+                          className={cn(
+                            "p-3 border-b border-slate-100 last:border-b-0 hover:bg-slate-50",
+                            filter.isDefault && "bg-amber-50"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <button
+                              onClick={() => {
+                                handleApplyFilter(filter)
+                                setShowSavedFilters(false)
+                              }}
+                              className="flex-1 text-left"
+                            >
+                              <div className="flex items-center gap-1.5 font-medium text-slate-900 text-sm">
+                                {filter.isDefault && (
+                                  <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                )}
+                                {filter.name}
+                                {filter.isDefault && (
+                                  <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Default</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-500 mt-1">
+                                {[
+                                  filter.filters.status !== "all" && `Status: ${STATUS_CONFIG[filter.filters.status].label}`,
+                                  filter.filters.county !== "all" && `County: ${filter.filters.county}`,
+                                  filter.filters.dateRange !== "all" && `Date: ${DATE_RANGES.find(r => r.value === filter.filters.dateRange)?.label}`,
+                                  filter.filters.searchQuery && `Search: "${filter.filters.searchQuery}"`,
+                                ].filter(Boolean).join(" · ") || "No filters"}
+                              </div>
+                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => filter.isDefault ? handleRemoveDefault(filter.id) : handleSetAsDefault(filter.id)}
+                                className={cn(
+                                  "p-1 rounded",
+                                  filter.isDefault
+                                    ? "text-amber-500 hover:text-amber-600 hover:bg-amber-100"
+                                    : "text-slate-400 hover:text-amber-500 hover:bg-amber-50"
+                                )}
+                                title={filter.isDefault ? "Remove as default" : "Set as default"}
+                              >
+                                <Star className={cn("h-4 w-4", filter.isDefault && "fill-current")} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFilter(filter.id)}
+                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                title="Delete filter"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Expanded Filters */}
@@ -1068,11 +1361,7 @@ function PropertiesContent() {
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 text-slate-400" />
                           <span className="text-sm text-slate-700">
-                            {new Date(property.saleDate).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                            {formatDate(property.saleDate, dateFormatPreference)}
                           </span>
                         </div>
                       </td>
@@ -1181,12 +1470,32 @@ function PropertiesContent() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between">
+          {/* Pagination and Page Size */}
+          <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-4">
               <p className="text-sm text-slate-500">
                 Page {validCurrentPage} of {totalPages}
               </p>
+              {/* Page Size Selector */}
+              <div className="flex items-center gap-2">
+                <label htmlFor="pageSize" className="text-sm text-slate-500">
+                  Show:
+                </label>
+                <select
+                  id="pageSize"
+                  value={itemsPerPage}
+                  onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
+                  className="px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {totalPages > 1 && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -1223,9 +1532,111 @@ function PropertiesContent() {
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {/* Save Filter Modal */}
+        {showSaveFilterModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => {
+                setShowSaveFilterModal(false)
+                setNewFilterName("")
+              }}
+            />
+            {/* Modal */}
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Save Filter
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowSaveFilterModal(false)
+                    setNewFilterName("")
+                  }}
+                  className="p-1 hover:bg-slate-100 rounded-lg"
+                >
+                  <X className="h-5 w-5 text-slate-500" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Filter Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newFilterName}
+                    onChange={(e) => setNewFilterName(e.target.value)}
+                    placeholder="e.g., High Value Blair County"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSaveFilter()
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Preview of current filters */}
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <div className="text-xs font-medium text-slate-500 mb-2">Current Filters:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {statusFilter !== "all" && (
+                      <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
+                        Status: {STATUS_CONFIG[statusFilter].label}
+                      </span>
+                    )}
+                    {countyFilter !== "all" && (
+                      <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
+                        County: {countyFilter}
+                      </span>
+                    )}
+                    {dateRangeFilter !== "all" && (
+                      <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
+                        Date: {DATE_RANGES.find(r => r.value === dateRangeFilter)?.label}
+                      </span>
+                    )}
+                    {searchQuery.trim() && (
+                      <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
+                        Search: &quot;{searchQuery.trim()}&quot;
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-200">
+                <button
+                  onClick={() => {
+                    setShowSaveFilterModal(false)
+                    setNewFilterName("")
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveFilter}
+                  disabled={!newFilterName.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <BookmarkPlus className="h-4 w-4" />
+                  Save Filter
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

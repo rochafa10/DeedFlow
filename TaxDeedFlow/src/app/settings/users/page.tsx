@@ -111,6 +111,12 @@ export default function SettingsUsersPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [editingUser, setEditingUser] = useState<typeof MOCK_USERS[0] | null>(null)
+  const [editForm, setEditForm] = useState({ name: "", email: "", role: "" })
+  const [isSaving, setIsSaving] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteForm, setInviteForm] = useState({ name: "", email: "", role: "analyst" })
+  const [isInviting, setIsInviting] = useState(false)
 
   // Check if user is admin
   const isAdmin = user?.role === "admin"
@@ -133,6 +139,71 @@ export default function SettingsUsersPage() {
       console.error("Failed to delete user:", error)
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  // Handle opening edit modal
+  const handleEditUser = (userToEdit: typeof MOCK_USERS[0]) => {
+    setEditingUser(userToEdit)
+    setEditForm({
+      name: userToEdit.name,
+      email: userToEdit.email,
+      role: userToEdit.role,
+    })
+    setOpenMenuId(null)
+  }
+
+  // Handle saving user edits
+  const handleSaveUser = async () => {
+    if (!editingUser || isSaving) return
+
+    setIsSaving(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Update user in list
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
+          u.id === editingUser.id
+            ? { ...u, name: editForm.name, email: editForm.email, role: editForm.role }
+            : u
+        )
+      )
+      setEditingUser(null)
+    } catch (error) {
+      console.error("Failed to save user:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Handle inviting new user
+  const handleInviteUser = async () => {
+    if (!inviteForm.name || !inviteForm.email || isInviting) return
+
+    setIsInviting(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Add new user to list
+      const newUser = {
+        id: `user-${Date.now()}`,
+        name: inviteForm.name,
+        email: inviteForm.email,
+        role: inviteForm.role,
+        status: "invited",
+        lastActive: null,
+        createdAt: new Date().toISOString(),
+      }
+      setUsers(prevUsers => [...prevUsers, newUser])
+      setShowInviteModal(false)
+      setInviteForm({ name: "", email: "", role: "analyst" })
+    } catch (error) {
+      console.error("Failed to invite user:", error)
+    } finally {
+      setIsInviting(false)
     }
   }
 
@@ -262,7 +333,10 @@ export default function SettingsUsersPage() {
                   <h2 className="text-lg font-semibold text-slate-900">User Management</h2>
                   <p className="text-sm text-slate-500">Manage team members and permissions</p>
                 </div>
-                <button className="flex items-center gap-2 px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                >
                   <UserPlus className="h-4 w-4" />
                   Invite User
                 </button>
@@ -295,6 +369,9 @@ export default function SettingsUsersPage() {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Created
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Last Active
@@ -349,6 +426,15 @@ export default function SettingsUsersPage() {
                           </td>
                           <td className="px-6 py-4">
                             <span className="text-sm text-slate-700">
+                              {new Date(user.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-slate-700">
                               {user.lastActive
                                 ? new Date(user.lastActive).toLocaleDateString("en-US", {
                                     month: "short",
@@ -371,7 +457,10 @@ export default function SettingsUsersPage() {
                               </button>
                               {openMenuId === user.id && (
                                 <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10">
-                                  <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                  <button
+                                    onClick={() => handleEditUser(user)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                  >
                                     <Edit className="h-4 w-4" />
                                     Edit User
                                   </button>
@@ -437,6 +526,167 @@ export default function SettingsUsersPage() {
           </div>
         </div>
       </main>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">Edit User</h3>
+              <p className="text-sm text-slate-500">Update user information and role</p>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Name Field */}
+              <div>
+                <label htmlFor="edit-name" className="block text-sm font-medium text-slate-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  id="edit-name"
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              {/* Email Field */}
+              <div>
+                <label htmlFor="edit-email" className="block text-sm font-medium text-slate-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  id="edit-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              {/* Role Field */}
+              <div>
+                <label htmlFor="edit-role" className="block text-sm font-medium text-slate-700 mb-1">
+                  Role
+                </label>
+                <select
+                  id="edit-role"
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="analyst">Analyst</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={() => setEditingUser(null)}
+                disabled={isSaving}
+                className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveUser}
+                disabled={isSaving}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  isSaving
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    : "bg-primary text-white hover:bg-primary/90"
+                )}
+              >
+                <Save className="h-4 w-4" />
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite User Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">Invite New User</h3>
+              <p className="text-sm text-slate-500">Send an invitation to a new team member</p>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Name Field */}
+              <div>
+                <label htmlFor="invite-name" className="block text-sm font-medium text-slate-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  id="invite-name"
+                  type="text"
+                  value={inviteForm.name}
+                  onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                  placeholder="Enter full name"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              {/* Email Field */}
+              <div>
+                <label htmlFor="invite-email" className="block text-sm font-medium text-slate-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  id="invite-email"
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  placeholder="Enter email address"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              {/* Role Field */}
+              <div>
+                <label htmlFor="invite-role" className="block text-sm font-medium text-slate-700 mb-1">
+                  Role
+                </label>
+                <select
+                  id="invite-role"
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="analyst">Analyst</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowInviteModal(false)
+                  setInviteForm({ name: "", email: "", role: "analyst" })
+                }}
+                disabled={isInviting}
+                className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInviteUser}
+                disabled={isInviting || !inviteForm.name || !inviteForm.email}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  isInviting || !inviteForm.name || !inviteForm.email
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    : "bg-primary text-white hover:bg-primary/90"
+                )}
+              >
+                <UserPlus className="h-4 w-4" />
+                {isInviting ? "Sending Invite..." : "Send Invite"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

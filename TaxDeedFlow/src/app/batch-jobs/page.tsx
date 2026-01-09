@@ -97,11 +97,19 @@ const MOCK_JOB_HISTORY = [
     status: "failed",
     totalItems: 845,
     processedItems: 234,
+    failedItems: 611,
     startedAt: "2026-01-06T10:00:00Z",
     completedAt: "2026-01-06T11:15:00Z",
     duration: "1h 15m",
     successRate: 28,
     errorMessage: "Rate limit exceeded - API quota reached",
+    errorLog: [
+      { timestamp: "2026-01-06T10:45:12Z", property: "23-04-001-0015", error: "API rate limit exceeded", details: "Google Street View API returned 429 Too Many Requests" },
+      { timestamp: "2026-01-06T10:45:13Z", property: "23-04-001-0016", error: "API rate limit exceeded", details: "Google Street View API returned 429 Too Many Requests" },
+      { timestamp: "2026-01-06T10:48:22Z", property: "23-04-002-0031", error: "Image not found", details: "No Street View available for this location" },
+      { timestamp: "2026-01-06T10:52:45Z", property: "23-04-003-0089", error: "Connection timeout", details: "Request timed out after 30 seconds" },
+      { timestamp: "2026-01-06T11:01:33Z", property: "23-04-005-0102", error: "API rate limit exceeded", details: "Google Street View API returned 429 Too Many Requests" },
+    ],
   },
   {
     id: "job-h004",
@@ -197,6 +205,9 @@ export default function BatchJobsPage() {
   const [newJobType, setNewJobType] = useState("")
   const [newJobCounty, setNewJobCounty] = useState("")
   const [newJobBatchSize, setNewJobBatchSize] = useState(50)
+
+  // Job detail modal state
+  const [selectedJob, setSelectedJob] = useState<typeof MOCK_JOB_HISTORY[0] | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -644,6 +655,7 @@ export default function BatchJobsPage() {
                               </button>
                             )}
                             <button
+                              onClick={() => setSelectedJob(job)}
                               className="p-1.5 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 transition-colors"
                               title="View Details"
                             >
@@ -769,6 +781,149 @@ export default function BatchJobsPage() {
                 )}
               >
                 Create Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Job Detail Modal */}
+      {selectedJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setSelectedJob(null)}
+          />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">{selectedJob.name}</h2>
+                <p className="text-sm text-slate-500">{selectedJob.county}, {selectedJob.state}</p>
+              </div>
+              <button
+                onClick={() => setSelectedJob(null)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4 overflow-y-auto flex-1">
+              {/* Job Summary */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <div className="text-xs text-slate-500 mb-1">Status</div>
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded",
+                    STATUS_CONFIG[selectedJob.status as JobStatus].bgColor,
+                    STATUS_CONFIG[selectedJob.status as JobStatus].color
+                  )}>
+                    {STATUS_CONFIG[selectedJob.status as JobStatus].icon}
+                    {STATUS_CONFIG[selectedJob.status as JobStatus].label}
+                  </span>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <div className="text-xs text-slate-500 mb-1">Duration</div>
+                  <div className="font-medium text-slate-900">{selectedJob.duration || "-"}</div>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <div className="text-xs text-slate-500 mb-1">Processed</div>
+                  <div className="font-medium text-slate-900">
+                    {selectedJob.processedItems}/{selectedJob.totalItems} items
+                  </div>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <div className="text-xs text-slate-500 mb-1">Success Rate</div>
+                  <div className={cn(
+                    "font-medium",
+                    selectedJob.successRate >= 90 ? "text-green-600" :
+                    selectedJob.successRate >= 50 ? "text-amber-600" : "text-red-600"
+                  )}>
+                    {selectedJob.successRate}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Error Summary (if failed) */}
+              {selectedJob.status === "failed" && selectedJob.errorMessage && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-medium text-red-800">Job Failed</h3>
+                      <p className="text-sm text-red-700 mt-1">{selectedJob.errorMessage}</p>
+                      {(selectedJob as any).failedItems && (
+                        <p className="text-sm text-red-600 mt-2">
+                          {(selectedJob as any).failedItems} items failed to process
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Log (if available) */}
+              {(selectedJob as any).errorLog && (selectedJob as any).errorLog.length > 0 && (
+                <div>
+                  <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    Error Log
+                    <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">
+                      {(selectedJob as any).errorLog.length} errors
+                    </span>
+                  </h3>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="bg-slate-800 text-slate-200 text-xs p-3 font-mono max-h-64 overflow-y-auto">
+                      {(selectedJob as any).errorLog.map((err: any, index: number) => (
+                        <div key={index} className="mb-3 last:mb-0">
+                          <div className="text-slate-400">
+                            [{new Date(err.timestamp).toLocaleTimeString()}] Property: {err.property}
+                          </div>
+                          <div className="text-red-400 font-semibold">{err.error}</div>
+                          <div className="text-slate-300 text-xs">{err.details}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Showing first {(selectedJob as any).errorLog.length} errors. Full log available in system logs.
+                  </p>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="mt-6 pt-4 border-t border-slate-200">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-slate-500">Started:</span>{" "}
+                    <span className="text-slate-900">
+                      {new Date(selectedJob.startedAt).toLocaleString()}
+                    </span>
+                  </div>
+                  {selectedJob.completedAt && (
+                    <div>
+                      <span className="text-slate-500">Completed:</span>{" "}
+                      <span className="text-slate-900">
+                        {new Date(selectedJob.completedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-lg flex-shrink-0">
+              {selectedJob.status === "failed" && (
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Retry Job
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedJob(null)}
+                className="px-4 py-2 text-slate-700 text-sm font-medium hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

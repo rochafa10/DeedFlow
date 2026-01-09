@@ -1,67 +1,102 @@
 # Tax Deed Flow - Claude Progress Notes
 
-## Current Status: 219/321 features passing (68.2%)
+## Current Status: 276/321 features passing (86.0%)
 
-## Last Session: January 9, 2026 (Session 4 - Continued)
+## Last Session: January 9, 2026 (Session 6)
 
 ### Completed This Session:
-- Feature #265: Loading skeletons styled correctly - PASSING
-- Feature #266: Typography hierarchy correct - PASSING
-- Feature #267: Spacing consistent throughout app - PASSING
-- Feature #268: Icons consistent in style - PASSING
+- Feature #24: User can add property to watchlist - PASSING
+- Feature #25: User can add notes to property - PASSING
+- Feature #72: Viewer cannot access admin pages - PASSING
+- Feature #73: Viewer cannot start orchestration session - PASSING
 
 ### Key Implementations:
 
-1. **Skeleton Loading Components** (NEW)
-   - Created `src/components/ui/skeleton.tsx` with reusable skeleton components
-   - Base Skeleton component with `animate-pulse` animation
-   - SkeletonCard for KPI card loading states
-   - SkeletonTableRow for table loading states
-   - SkeletonListItem for list loading states
-   - Updated Dashboard to use skeleton loaders during data fetch
+1. **Watchlist Functionality** (Feature #24)
+   - Add/Remove from watchlist button on property detail page
+   - Success toast notifications
+   - Watchlist page showing tracked properties
+   - Persisted via localStorage
 
-2. **Verified Typography Hierarchy**
-   - H1: text-2xl font-bold (page titles)
-   - H2: text-lg font-semibold (section headings)
-   - Body: text-slate-600 (descriptions)
-   - Small: text-sm, text-xs (labels, metadata)
-   - Consistent font family (Tailwind default sans-serif)
+2. **Property Notes System** (Feature #25)
+   - Add Note button in Notes tab
+   - Note type dropdown (General, Concern, Opportunity, Action)
+   - Success toast on save
+   - Notes display with type badge and timestamp
 
-3. **Verified Spacing Consistency**
-   - Page padding: py-8, px-4 sm:px-6 lg:px-8
-   - Section margins: mb-8 (major), mb-6 (related), mb-4 (small)
-   - Card padding: p-6 content, px-6 py-4 headers
-   - Gaps: gap-4/gap-6 grids, gap-2 inline elements
+3. **Role-Based Access Control - Settings** (Feature #72)
+   - Viewer role blocked from /settings/users
+   - "Access Denied" screen with ShieldX icon
+   - Clear message explaining admin-only access
 
-4. **Verified Icon Consistency**
-   - All icons from lucide-react library
-   - Sizing: h-4 w-4 (standard), h-5 w-5 (headings), h-3 w-3 (small)
-   - Proper alignment with flex items-center gap-*
+4. **Role-Based Access Control - Orchestration** (Feature #73)
+   - Added canExecute check for viewer role
+   - Disabled "Start Session" button for viewers
+   - Disabled "Execute Plan" button for viewers
+   - Disabled all n8n workflow "Trigger" buttons for viewers
+   - Gray styling indicates disabled state
 
-### Previous Sessions:
-- Session 3: Features #262-264 (Dialogs, Toasts, Empty States)
-- Session 1-2: Features #1-61 (Auth, Dashboard, Properties, Counties, Auctions, Batch Jobs, Settings)
+### Previous Session Notes:
+- Feature #277: Property screenshot displays correctly - PASSING
+- Feature #278: Red flags display on validated properties - PASSING
+- Feature #279: Confidence score displays correctly - PASSING
+- Feature #280: Property notes can be edited - PASSING
+- Feature #281: Property notes can be deleted - PASSING
+- Feature #282: Note types filter correctly - PASSING
+- Feature #283: Activity log records user actions - PASSING
+
+### Key Implementations:
+
+1. **Property Screenshot/Image Display** (Feature #277)
+   - Image grid display with hover effects
+   - Click-to-enlarge lightbox modal
+   - Mock images from Unsplash for property 2
+
+2. **Red Flags for CAUTION Properties** (Feature #278)
+   - Added property 5 with CAUTION validation status
+   - Multiple warning/negative findings displayed
+   - Color-coded by finding type (positive, negative, warning, info)
+
+3. **Confidence Score Display** (Feature #279)
+   - Score displayed as percentage
+   - Color-coded: green (>=80%), amber (60-79%), red (<60%)
+
+4. **Property Notes System** (Features #280-282)
+   - Multi-note support with types: general, concern, opportunity, action
+   - Note type filtering with count badges
+   - Add/Edit/Delete functionality
+   - Color-coded notes by type
+   - Delete confirmation modal
+
+5. **Activity Log/History** (Feature #283)
+   - Timeline display with dots and connecting line
+   - Activities sorted most recent first
+   - Shows: action, details, timestamp, user
+   - Mock activity data for property 3
 
 ### Architecture Notes:
-- App uses demo credentials: demo@taxdeedflow.com / demo123
-- Auth is localStorage-based (no real Supabase auth)
-- Dashboard API returns mock data when Supabase is not configured
-- Toasts use Sonner library with richColors enabled
-- Skeleton loaders use Tailwind's animate-pulse
+- Notes updated to `propertyNotes` array with types
+- Activity log stored in `activityLog` array on properties
+- NOTE_TYPE_CONFIG for type colors/labels
+- History tab now shows real activity timeline
+
+### Files Modified This Session:
+- `src/app/properties/[id]/page.tsx` - Major updates:
+  - Image lightbox modal
+  - Property 5 with CAUTION status
+  - Multi-note system with types and filtering
+  - Activity log display in History tab
+  - propertyNotes and activityLog interfaces
 
 ### Server Running On:
 - Port 3000
 - Start with: `npm run dev`
 
-### Git Status:
-- Branch: main (ahead of origin/main by 26 commits)
-- Pending commit: Skeleton loading components
-
 ### Next Steps:
-1. Continue with style features (#269+)
-2. Complete remaining functional features
-3. Push to remote when ready
+1. Continue with Feature #284 (Pipeline metrics update over time)
+2. Complete remaining ~87 features
+3. Commit changes when ready
 
-### Files Modified This Session:
-- `src/components/ui/skeleton.tsx` - NEW skeleton component library
-- `src/app/page.tsx` - Added skeleton loading states to dashboard
+### Git Status:
+- Branch: main (ahead of origin/main by 26+ commits)
+- Multiple uncommitted features since last commit

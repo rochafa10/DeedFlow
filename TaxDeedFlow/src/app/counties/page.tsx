@@ -330,6 +330,9 @@ export default function CountiesPage() {
                     Next Auction
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Last Researched
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -428,6 +431,25 @@ export default function CountiesPage() {
                           <span className="text-sm text-slate-400">-</span>
                         )}
                       </td>
+                      {/* Last Researched */}
+                      <td className="px-4 py-4">
+                        {county.researchedAt ? (
+                          <div>
+                            <span className="text-sm text-slate-700">
+                              {new Date(county.researchedAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                            <div className="text-xs text-slate-500">
+                              {Math.floor((Date.now() - new Date(county.researchedAt).getTime()) / (1000 * 60 * 60 * 24))} days ago
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400 italic">Not researched</span>
+                        )}
+                      </td>
                       {/* Actions */}
                       <td className="px-4 py-4">
                         <button
@@ -443,7 +465,7 @@ export default function CountiesPage() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-8 text-center text-slate-500"
                     >
                       No counties found matching your criteria

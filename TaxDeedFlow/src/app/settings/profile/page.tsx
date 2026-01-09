@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   X,
   Users,
+  Calendar,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -25,6 +26,17 @@ import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { toast } from "sonner"
 
 type Theme = "light" | "dark" | "system"
+
+// Date format options
+const DATE_FORMAT_OPTIONS = [
+  { value: "MM/DD/YYYY", label: "MM/DD/YYYY", description: "US format", example: "01/15/2026" },
+  { value: "DD/MM/YYYY", label: "DD/MM/YYYY", description: "International format", example: "15/01/2026" },
+  { value: "YYYY-MM-DD", label: "YYYY-MM-DD", description: "ISO format", example: "2026-01-15" },
+  { value: "MMM DD, YYYY", label: "MMM DD, YYYY", description: "Long format", example: "Jan 15, 2026" },
+]
+
+// localStorage key for date format
+const DATE_FORMAT_KEY = "taxdeedflow_date_format"
 
 export default function SettingsProfilePage() {
   const router = useRouter()
@@ -36,6 +48,7 @@ export default function SettingsProfilePage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [theme, setTheme] = useState<Theme>("system")
+  const [dateFormat, setDateFormat] = useState("MMM DD, YYYY")
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -45,7 +58,7 @@ export default function SettingsProfilePage() {
   }, [])
 
   // Track initial values to detect changes
-  const initialValuesRef = useRef({ name: "", email: "", theme: "system" as Theme })
+  const initialValuesRef = useRef({ name: "", email: "", theme: "system" as Theme, dateFormat: "MMM DD, YYYY" })
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   // Use the unsaved changes hook
@@ -59,6 +72,12 @@ export default function SettingsProfilePage() {
     let initialEmail = "demo@taxdeedflow.com"
     // Use the global theme from next-themes
     let initialTheme: Theme = (currentTheme as Theme) || "system"
+    // Check for saved date format
+    let initialDateFormat = "MMM DD, YYYY"
+    const savedDateFormat = localStorage.getItem(DATE_FORMAT_KEY)
+    if (savedDateFormat && DATE_FORMAT_OPTIONS.some(opt => opt.value === savedDateFormat)) {
+      initialDateFormat = savedDateFormat
+    }
 
     if (savedProfile) {
       const profile = JSON.parse(savedProfile)
@@ -72,17 +91,18 @@ export default function SettingsProfilePage() {
     setName(initialName)
     setEmail(initialEmail)
     setTheme(initialTheme)
+    setDateFormat(initialDateFormat)
 
     // Store initial values for dirty checking
-    initialValuesRef.current = { name: initialName, email: initialEmail, theme: initialTheme }
+    initialValuesRef.current = { name: initialName, email: initialEmail, theme: initialTheme, dateFormat: initialDateFormat }
   }, [user, currentTheme])
 
   // Check for unsaved changes whenever form values change
   useEffect(() => {
     const initial = initialValuesRef.current
-    const isDirty = name !== initial.name || email !== initial.email || theme !== initial.theme
+    const isDirty = name !== initial.name || email !== initial.email || theme !== initial.theme || dateFormat !== initial.dateFormat
     setHasUnsavedChanges(isDirty)
-  }, [name, email, theme])
+  }, [name, email, theme, dateFormat])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -112,10 +132,12 @@ export default function SettingsProfilePage() {
     // Save to localStorage and apply theme globally
     setTimeout(() => {
       localStorage.setItem("userProfile", JSON.stringify({ name, email, theme }))
+      // Save date format preference separately
+      localStorage.setItem(DATE_FORMAT_KEY, dateFormat)
       // Apply theme globally via next-themes
       setGlobalTheme(theme)
       // Update initial values so form is no longer dirty
-      initialValuesRef.current = { name, email, theme }
+      initialValuesRef.current = { name, email, theme, dateFormat }
       setHasUnsavedChanges(false)
       setIsSaving(false)
       setSaveSuccess(true)
@@ -278,6 +300,54 @@ export default function SettingsProfilePage() {
                         {option.icon}
                         {option.label}
                       </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date Format Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Date Format
+                    </div>
+                  </label>
+                  <p className="text-sm text-slate-500 mb-3 dark:text-slate-400">
+                    Choose how dates are displayed throughout the application
+                  </p>
+                  <div className="space-y-2">
+                    {DATE_FORMAT_OPTIONS.map((option) => (
+                      <label
+                        key={option.value}
+                        className={cn(
+                          "flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors",
+                          dateFormat === option.value
+                            ? "border-primary bg-primary/5"
+                            : "border-slate-200 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="dateFormat"
+                            value={option.value}
+                            checked={dateFormat === option.value}
+                            onChange={(e) => setDateFormat(e.target.value)}
+                            className="h-4 w-4 text-primary focus:ring-primary"
+                          />
+                          <div>
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {option.label}
+                            </span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">
+                              ({option.description})
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-sm text-slate-500 dark:text-slate-400 font-mono">
+                          {option.example}
+                        </span>
+                      </label>
                     ))}
                   </div>
                 </div>

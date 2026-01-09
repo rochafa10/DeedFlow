@@ -19,6 +19,10 @@ import {
   X,
   Sparkles,
   Users,
+  Zap,
+  ArrowRight,
+  Workflow,
+  Loader2,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -73,23 +77,27 @@ const INITIAL_SESSIONS = [
   },
 ]
 
-// Mock work queue
+// Mock work queue - ordered by priority with auction urgency
 const MOCK_WORK_QUEUE = [
   {
     id: "work-001",
-    type: "regrid_scraping",
-    county: "Somerset",
+    type: "visual_validation",
+    county: "Westmoreland",
     priority: 1,
-    itemsRemaining: 2400,
-    estimatedTime: "4 hours",
+    itemsRemaining: 150,
+    estimatedTime: "45 min",
+    daysUntilAuction: 7,
+    urgency: "critical", // auction in 7 days
   },
   {
     id: "work-002",
-    type: "visual_validation",
-    county: "Westmoreland",
+    type: "regrid_scraping",
+    county: "Blair",
     priority: 2,
-    itemsRemaining: 150,
-    estimatedTime: "45 min",
+    itemsRemaining: 252,
+    estimatedTime: "4 hours",
+    daysUntilAuction: 61,
+    urgency: "high", // auction in ~2 months
   },
   {
     id: "work-003",
@@ -98,16 +106,37 @@ const MOCK_WORK_QUEUE = [
     priority: 3,
     itemsRemaining: 12,
     estimatedTime: "30 min",
+    daysUntilAuction: 61,
+    urgency: "medium",
   },
   {
     id: "work-004",
     type: "regrid_scraping",
-    county: "Philadelphia",
+    county: "Somerset",
     priority: 4,
+    itemsRemaining: 2400,
+    estimatedTime: "8 hours",
+    daysUntilAuction: 242,
+    urgency: "low", // auction far away
+  },
+  {
+    id: "work-005",
+    type: "regrid_scraping",
+    county: "Philadelphia",
+    priority: 5,
     itemsRemaining: 4200,
-    estimatedTime: "7 hours",
+    estimatedTime: "14 hours",
+    daysUntilAuction: 96,
+    urgency: "medium",
   },
 ]
+
+const URGENCY_CONFIG: Record<string, { label: string; color: string }> = {
+  critical: { label: "CRITICAL", color: "bg-red-100 text-red-700" },
+  high: { label: "HIGH", color: "bg-amber-100 text-amber-700" },
+  medium: { label: "MEDIUM", color: "bg-blue-100 text-blue-700" },
+  low: { label: "LOW", color: "bg-slate-100 text-slate-600" },
+}
 
 // Mock active agents
 const MOCK_ACTIVE_AGENTS = [
@@ -141,16 +170,120 @@ const MOCK_AGENT_ASSIGNMENTS = [
   { id: 3, agent: "Parser Agent", task: "PDF Parsing - Blair", status: "idle", progress: 0, processed: 0, total: 12 },
 ]
 
-// Mock AI session plan
+// Session plan constraints
+const SESSION_LIMITS = {
+  maxProperties: 150,
+  maxAgents: 3,
+}
+
+// Mock AI session plan - respects session limits
 const SESSION_PLAN = {
   recommendations: [
-    { id: 1, task: "Regrid Scraping", county: "Somerset", priority: "High", items: 2400, estimatedTime: "4 hours", reason: "Highest priority backlog" },
-    { id: 2, task: "Visual Validation", county: "Westmoreland", priority: "Medium", items: 150, estimatedTime: "45 min", reason: "Properties awaiting validation" },
-    { id: 3, task: "PDF Parsing", county: "Blair", priority: "Medium", items: 12, estimatedTime: "30 min", reason: "New documents available" },
+    { id: 1, task: "Regrid Scraping", county: "Somerset", priority: "High", items: 50, estimatedTime: "1 hour", reason: "Highest priority backlog", agent: "Regrid Scraper" },
+    { id: 2, task: "Visual Validation", county: "Westmoreland", priority: "Medium", items: 50, estimatedTime: "30 min", reason: "Properties awaiting validation", agent: "Visual Validator" },
+    { id: 3, task: "PDF Parsing", county: "Blair", priority: "Medium", items: 12, estimatedTime: "30 min", reason: "New documents available", agent: "Parser Agent" },
   ],
-  totalItems: 2562,
-  estimatedDuration: "~5 hours",
+  totalItems: 112, // Under 150 limit
+  estimatedDuration: "~2 hours",
+  constraints: {
+    propertiesUsed: 112,
+    maxProperties: 150,
+    agentsUsed: 3,
+    maxAgents: 3,
+  },
 }
+
+// Mock bottleneck data - simulates detected pipeline bottlenecks
+const MOCK_BOTTLENECKS = [
+  {
+    id: "bottleneck-001",
+    stage: "Regrid Scraping",
+    severity: "critical",
+    backlogCount: 6600,
+    throughputRate: 50, // items per hour
+    estimatedClearTime: "132 hours",
+    affectedCounties: ["Somerset", "Philadelphia"],
+    recommendation: "Increase Regrid Scraper agent capacity or add parallel instances",
+    trend: "increasing", // backlog is growing
+  },
+  {
+    id: "bottleneck-002",
+    stage: "Visual Validation",
+    severity: "warning",
+    backlogCount: 150,
+    throughputRate: 100, // items per hour
+    estimatedClearTime: "1.5 hours",
+    affectedCounties: ["Westmoreland"],
+    recommendation: "Schedule visual validation batch during next session",
+    trend: "stable",
+  },
+  {
+    id: "bottleneck-003",
+    stage: "Title Research",
+    severity: "info",
+    backlogCount: 45,
+    throughputRate: 20, // items per hour
+    estimatedClearTime: "2.25 hours",
+    affectedCounties: ["Blair"],
+    recommendation: "Low priority - can be addressed in regular workflow",
+    trend: "decreasing",
+  },
+]
+
+type BottleneckSeverity = "critical" | "warning" | "info"
+
+const BOTTLENECK_SEVERITY_CONFIG: Record<BottleneckSeverity, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
+  critical: {
+    label: "Critical",
+    color: "text-red-700",
+    bgColor: "bg-red-50 border-red-200",
+    icon: <AlertTriangle className="h-5 w-5 text-red-600" />,
+  },
+  warning: {
+    label: "Warning",
+    color: "text-amber-700",
+    bgColor: "bg-amber-50 border-amber-200",
+    icon: <AlertTriangle className="h-5 w-5 text-amber-600" />,
+  },
+  info: {
+    label: "Info",
+    color: "text-blue-700",
+    bgColor: "bg-blue-50 border-blue-200",
+    icon: <Zap className="h-5 w-5 text-blue-600" />,
+  },
+}
+
+// Mock n8n workflows
+const N8N_WORKFLOWS = [
+  {
+    id: "TDF-001",
+    name: "Data Integrity Check",
+    description: "Run audit, check for missing data, and generate work queues",
+    lastRun: "2026-01-09T06:00:00Z",
+    status: "success",
+  },
+  {
+    id: "TDF-002",
+    name: "Daily Pipeline Review",
+    description: "Morning summary of pipeline status and priorities",
+    lastRun: "2026-01-09T06:30:00Z",
+    status: "success",
+  },
+  {
+    id: "TDF-003",
+    name: "Regrid Batch Scraper",
+    description: "Automated property data scraping from Regrid",
+    lastRun: "2026-01-08T14:00:00Z",
+    status: "success",
+  },
+  {
+    id: "TDF-004",
+    name: "PDF Parser",
+    description: "Parse property list PDFs and extract data",
+    lastRun: "2026-01-07T10:00:00Z",
+    status: "failed",
+  },
+]
 
 type SessionStatus = "active" | "completed" | "failed" | "paused"
 
@@ -209,9 +342,12 @@ const ASSIGNMENT_STATUS_CONFIG: Record<string, { label: string; color: string }>
 }
 
 export default function OrchestrationPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
   const router = useRouter()
   const [isSessionActive, setIsSessionActive] = useState(false)
+
+  // Check if user can execute (admin or analyst only)
+  const canExecute = user?.role === "admin" || user?.role === "analyst"
   const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -222,6 +358,10 @@ export default function OrchestrationPage() {
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false)
   const [endSessionStatus, setEndSessionStatus] = useState("completed")
   const [endSessionNotes, setEndSessionNotes] = useState("")
+
+  // n8n workflow state
+  const [triggeringWorkflow, setTriggeringWorkflow] = useState<string | null>(null)
+  const [workflowFeedback, setWorkflowFeedback] = useState<{ id: string; success: boolean; message: string } | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -306,6 +446,29 @@ export default function OrchestrationPage() {
     handleCloseEndDialog()
   }
 
+  // Trigger n8n workflow
+  const handleTriggerWorkflow = (workflowId: string, workflowName: string) => {
+    setTriggeringWorkflow(workflowId)
+    setWorkflowFeedback(null)
+
+    // Simulate workflow trigger with delay
+    setTimeout(() => {
+      // Simulate success/failure (randomly fail for PDF Parser to show error state)
+      const success = workflowId !== "TDF-004"
+      setTriggeringWorkflow(null)
+      setWorkflowFeedback({
+        id: workflowId,
+        success,
+        message: success
+          ? `Workflow "${workflowName}" triggered successfully!`
+          : `Failed to trigger "${workflowName}". Check n8n dashboard for details.`,
+      })
+
+      // Clear feedback after 5 seconds
+      setTimeout(() => setWorkflowFeedback(null), 5000)
+    }, 1500)
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
@@ -325,7 +488,14 @@ export default function OrchestrationPage() {
             {isSessionActive ? (
               <button
                 onClick={handleStopSession}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                disabled={!canExecute}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+                  canExecute
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                )}
+                title={!canExecute ? "Viewers cannot stop sessions" : undefined}
               >
                 <Pause className="h-4 w-4" />
                 Stop Session
@@ -333,7 +503,14 @@ export default function OrchestrationPage() {
             ) : (
               <button
                 onClick={handleOpenDialog}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                disabled={!canExecute}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+                  canExecute
+                    ? "bg-primary text-white hover:bg-primary/90"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                )}
+                title={!canExecute ? "Viewers cannot start sessions" : undefined}
               >
                 <Play className="h-4 w-4" />
                 Start Session
@@ -489,6 +666,121 @@ export default function OrchestrationPage() {
           </div>
         </div>
 
+        {/* Bottleneck Detection Section */}
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
+          <div className="px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-red-50 to-amber-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-600" />
+                  Bottleneck Detection
+                </h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Pipeline stages with backlogs requiring attention
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Last checked: Just now</span>
+                <button className="text-sm text-primary hover:underline flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3" />
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {MOCK_BOTTLENECKS.map((bottleneck) => {
+              const severityConfig = BOTTLENECK_SEVERITY_CONFIG[bottleneck.severity as BottleneckSeverity]
+              return (
+                <div
+                  key={bottleneck.id}
+                  className={cn(
+                    "px-4 py-4 border-l-4",
+                    severityConfig.bgColor
+                  )}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      {severityConfig.icon}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-slate-900">
+                            {bottleneck.stage}
+                          </span>
+                          <span
+                            className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                              bottleneck.severity === "critical"
+                                ? "bg-red-100 text-red-700"
+                                : bottleneck.severity === "warning"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-blue-100 text-blue-700"
+                            )}
+                          >
+                            {severityConfig.label}
+                          </span>
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 text-xs",
+                              bottleneck.trend === "increasing"
+                                ? "text-red-600"
+                                : bottleneck.trend === "decreasing"
+                                ? "text-green-600"
+                                : "text-slate-500"
+                            )}
+                          >
+                            {bottleneck.trend === "increasing" ? "↑" : bottleneck.trend === "decreasing" ? "↓" : "→"}
+                            {bottleneck.trend}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-2">
+                          <div>
+                            <span className="text-slate-500">Backlog:</span>{" "}
+                            <span className="font-medium text-slate-900">
+                              {bottleneck.backlogCount.toLocaleString()} items
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Throughput:</span>{" "}
+                            <span className="font-medium text-slate-900">
+                              {bottleneck.throughputRate}/hr
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Est. Clear:</span>{" "}
+                            <span className="font-medium text-slate-900">
+                              {bottleneck.estimatedClearTime}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Counties:</span>{" "}
+                            <span className="font-medium text-slate-900">
+                              {bottleneck.affectedCounties.join(", ")}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2 p-2 bg-white/50 rounded border border-slate-200">
+                          <ArrowRight className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-slate-700">
+                            <span className="font-medium">Recommendation:</span> {bottleneck.recommendation}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {MOCK_BOTTLENECKS.length === 0 && (
+            <div className="px-4 py-8 text-center text-slate-500">
+              <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              <p className="font-medium text-slate-900">No bottlenecks detected</p>
+              <p className="text-sm">All pipeline stages are operating within normal parameters</p>
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Work Queue Panel */}
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
@@ -512,13 +804,16 @@ export default function OrchestrationPage() {
                       Priority
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Agent
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Task
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       County
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Auction
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Urgency
                     </th>
                     <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Pending
@@ -528,7 +823,7 @@ export default function OrchestrationPage() {
                 <tbody className="divide-y divide-slate-100">
                   {MOCK_WORK_QUEUE.map((item) => {
                     const typeLabel = WORK_TYPE_LABELS[item.type] || item.type
-                    const agentName = typeLabel.split(" ")[0]
+                    const urgencyConfig = URGENCY_CONFIG[item.urgency] || URGENCY_CONFIG.low
                     return (
                       <tr key={item.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2">
@@ -537,13 +832,28 @@ export default function OrchestrationPage() {
                           </span>
                         </td>
                         <td className="px-4 py-2 text-sm text-slate-900">
-                          {agentName}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-slate-700">
                           {typeLabel}
                         </td>
                         <td className="px-4 py-2 text-sm text-slate-700">
                           {item.county}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={cn(
+                            "text-sm",
+                            item.daysUntilAuction <= 14 ? "text-red-600 font-medium" :
+                            item.daysUntilAuction <= 60 ? "text-amber-600" :
+                            "text-slate-600"
+                          )}>
+                            {item.daysUntilAuction} days
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                            urgencyConfig.color
+                          )}>
+                            {urgencyConfig.label}
+                          </span>
                         </td>
                         <td className="px-4 py-2 text-sm font-medium text-slate-900 text-right">
                           {item.itemsRemaining.toLocaleString()}
@@ -617,6 +927,27 @@ export default function OrchestrationPage() {
                   Recommended work based on priority and resource availability
                 </p>
               </div>
+              {/* Session Constraints */}
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-xs text-slate-500">Properties</div>
+                  <div className="text-sm font-medium">
+                    <span className={SESSION_PLAN.constraints.propertiesUsed <= SESSION_PLAN.constraints.maxProperties ? "text-green-600" : "text-red-600"}>
+                      {SESSION_PLAN.constraints.propertiesUsed}
+                    </span>
+                    <span className="text-slate-400">/{SESSION_PLAN.constraints.maxProperties} max</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-slate-500">Agents</div>
+                  <div className="text-sm font-medium">
+                    <span className={SESSION_PLAN.constraints.agentsUsed <= SESSION_PLAN.constraints.maxAgents ? "text-green-600" : "text-red-600"}>
+                      {SESSION_PLAN.constraints.agentsUsed}
+                    </span>
+                    <span className="text-slate-400">/{SESSION_PLAN.constraints.maxAgents} max</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div className="divide-y divide-slate-100">
@@ -684,11 +1015,118 @@ export default function OrchestrationPage() {
                   estimated
                 </span>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+              <button
+                disabled={!canExecute}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  canExecute
+                    ? "bg-purple-600 text-white hover:bg-purple-700"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                )}
+                title={!canExecute ? "Viewers cannot execute plans" : undefined}
+              >
                 <Play className="h-4 w-4" />
                 Execute Plan
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* n8n Workflows Section */}
+        <div className="mt-6 bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-orange-50 to-amber-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <Workflow className="h-4 w-4 text-orange-600" />
+                  n8n Workflows
+                </h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Automated workflows for routine tasks
+                </p>
+              </div>
+              <a
+                href="https://n8n.lfb-investments.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline"
+              >
+                Open n8n Dashboard →
+              </a>
+            </div>
+          </div>
+          {/* Workflow Feedback */}
+          {workflowFeedback && (
+            <div
+              className={cn(
+                "px-4 py-3 flex items-center gap-2 border-b",
+                workflowFeedback.success
+                  ? "bg-green-50 border-green-200 text-green-700"
+                  : "bg-red-50 border-red-200 text-red-700"
+              )}
+            >
+              {workflowFeedback.success ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              <span className="text-sm">{workflowFeedback.message}</span>
+            </div>
+          )}
+          <div className="divide-y divide-slate-100">
+            {N8N_WORKFLOWS.map((workflow) => (
+              <div
+                key={workflow.id}
+                className="px-4 py-3 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "h-2 w-2 rounded-full",
+                        workflow.status === "success" ? "bg-green-500" : "bg-red-500"
+                      )}
+                    />
+                    <div>
+                      <div className="font-medium text-slate-900">
+                        {workflow.name}
+                      </div>
+                      <div className="text-sm text-slate-500">
+                        {workflow.description}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        Last run: {new Date(workflow.lastRun).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleTriggerWorkflow(workflow.id, workflow.name)}
+                    disabled={triggeringWorkflow === workflow.id || !canExecute}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
+                      !canExecute
+                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        : triggeringWorkflow === workflow.id
+                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                    )}
+                    title={!canExecute ? "Viewers cannot trigger workflows" : undefined}
+                  >
+                    {triggeringWorkflow === workflow.id ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Triggering...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3.5 w-3.5" />
+                        Trigger
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

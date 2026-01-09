@@ -9,6 +9,8 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ExternalLink,
   Filter,
   Search,
@@ -225,6 +227,14 @@ export default function AuctionsPage() {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
   }
 
+  const prevYear = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear() - 1, currentMonth.getMonth(), 1))
+  }
+
+  const nextYear = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear() + 1, currentMonth.getMonth(), 1))
+  }
+
   const handleDateClick = (dateStr: string, auctions: typeof MOCK_AUCTIONS) => {
     setSelectedDate(dateStr)
     setSelectedAuctions(auctions)
@@ -326,18 +336,38 @@ export default function AuctionsPage() {
                   <Calendar className="h-4 w-4" />
                   {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                 </h2>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  {/* Year navigation - previous */}
+                  <button
+                    onClick={prevYear}
+                    className="p-1 rounded hover:bg-slate-200 transition-colors"
+                    title="Previous year"
+                  >
+                    <ChevronsLeft className="h-5 w-5 text-slate-600" />
+                  </button>
+                  {/* Month navigation - previous */}
                   <button
                     onClick={prevMonth}
                     className="p-1 rounded hover:bg-slate-200 transition-colors"
+                    title="Previous month"
                   >
                     <ChevronLeft className="h-5 w-5 text-slate-600" />
                   </button>
+                  {/* Month navigation - next */}
                   <button
                     onClick={nextMonth}
                     className="p-1 rounded hover:bg-slate-200 transition-colors"
+                    title="Next month"
                   >
                     <ChevronRight className="h-5 w-5 text-slate-600" />
+                  </button>
+                  {/* Year navigation - next */}
+                  <button
+                    onClick={nextYear}
+                    className="p-1 rounded hover:bg-slate-200 transition-colors"
+                    title="Next year"
+                  >
+                    <ChevronsRight className="h-5 w-5 text-slate-600" />
                   </button>
                 </div>
               </div>

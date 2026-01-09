@@ -29,6 +29,7 @@ export default function DashboardPage() {
     isLoading: dataLoading,
     error,
     refetch,
+    dataUpdatedAt,
   } = useDashboardData()
 
   // Redirect to login if not authenticated
@@ -70,6 +71,16 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Last updated indicator */}
+            {dataUpdatedAt && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Activity className="h-3 w-3" aria-hidden="true" />
+                <span>
+                  Updated {new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+                <span className="text-slate-400">• Auto-refreshes every 10s</span>
+              </div>
+            )}
             {/* Data source indicator */}
             <div
               className={cn(
