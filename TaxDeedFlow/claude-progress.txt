@@ -1,56 +1,69 @@
 # Tax Deed Flow - Claude Progress Notes
 
-## Current Status: 9/321 features passing (2.8%)
+## Current Status: 37/321 features passing (11.5%)
 
 ## Last Session: January 9, 2026
 
 ### Completed This Session:
-- Feature #9: Dashboard KPI cards display real data - PASSING
-  - Created Supabase client at `/src/lib/supabase/client.ts` with fallback for missing credentials
-  - Created API endpoint `/api/dashboard/stats` that queries database tables
-  - Created `useDashboardData` hook using React Query for data fetching
-  - Updated dashboard page to use API data instead of hardcoded values
-  - Added "Demo Mode" / "Live Data" indicator showing data source
-  - Added Refresh button for manual data refresh
+- Feature #37: Session history displays past sessions - PASSING
+- Feature #38: Auction calendar page loads correctly - PASSING
+- Feature #39: Auction calendar shows auction dates - PASSING
+
+### Key Implementations:
+
+1. **Orchestration Dialog Fix**
+   - Fixed Start Session dialog scrolling issue
+   - Added max-height and overflow-y-auto to dialog body
+   - Footer now stays visible with flex-shrink-0
+   - Dialog works correctly on smaller viewports
+
+2. **Auctions Page** (NEW - `src/app/auctions/page.tsx`)
+   - Full auction calendar with month navigation
+   - Calendar shows auction dates marked with county names
+   - Click on date shows details modal with:
+     - County name and state
+     - Days until auction (color-coded by urgency)
+     - Auction type (Tax Deed/Tax Lien)
+     - Platform and location
+     - Property count
+     - Registration deadline
+     - Deposit required
+     - Link to county details
+   - Alerts panel with critical/warning/info alerts
+   - Quick stats (Upcoming Auctions, This Month)
+   - Searchable upcoming auctions table
+   - Color coding: red (<=7 days), amber (<=30 days), normal (>30 days)
+
+### Previous Session Completed:
+- Feature #16-23: Properties page and detail features
+- Feature #9-15: Dashboard features
 
 ### Key Files Created/Modified:
-- `src/lib/supabase/client.ts` - Supabase client with graceful fallback
-- `src/app/api/dashboard/stats/route.ts` - Dashboard stats API endpoint
-- `src/hooks/useDashboardData.ts` - React Query hook for dashboard data
-- `src/types/dashboard.ts` - TypeScript types for dashboard data
-- `src/app/page.tsx` - Updated to fetch from API
-- `src/app/providers.tsx` - Added QueryClientProvider
-
-### Regression Tests Verified:
-- Feature #1: App loads without errors - PASSING
-- Feature #6: Signup page renders correctly - PASSING
-- Feature #7: User can create new account - PASSING
+- `src/app/auctions/page.tsx` - NEW: Auction calendar page
+- `src/app/orchestration/page.tsx` - Fixed dialog scrolling
+- `src/app/properties/page.tsx` - Properties pipeline page
 
 ### Architecture Notes:
 - The app uses demo credentials for development (demo@taxdeedflow.com / demo123)
 - Auth is localStorage-based for now (no real Supabase auth yet)
 - Dashboard API returns mock data when Supabase is not configured
-- When Supabase env vars are set, it will query real tables:
-  - counties
-  - properties
-  - property_visual_validation
-  - upcoming_sales
-  - regrid_data
+- Auctions page uses mock auction data
+- Sessions are stored in React state (not persisted to DB)
 
 ### Known Issues:
 - Supabase is not configured (missing env vars) - using mock data mode
 - Auth uses demo credentials only (no real user registration)
-- County progress table shows "No county data available" in mock mode
+- Session data resets on page refresh (state-based, not DB)
 
 ### Next Steps:
-1. Work on next feature in queue (use feature_get_next)
-2. Consider implementing real Supabase auth integration
-3. Add county progress data to the API endpoint
+1. Continue with auction-related features (filtering, navigation)
+2. Work on remaining orchestration features
+3. Add more interactivity to existing pages
 
 ### Server Running On:
 - Port 3001 (3000 was in use)
 - Start with: `npm run dev`
 
 ### Git Status:
-- Latest commit: c6700c7 "Implement dashboard KPI cards with real data API"
-- Branch: main (1 commit ahead of origin/main)
+- Branch: main (ahead of origin/main)
+- Multiple uncommitted changes ready to commit
