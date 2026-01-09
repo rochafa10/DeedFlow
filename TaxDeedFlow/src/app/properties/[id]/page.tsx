@@ -987,6 +987,21 @@ export default function PropertyDetailPage() {
                     <option value="Land">Land</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Pipeline Stage
+                  </label>
+                  <select
+                    value={editFormData.status || property.status || ""}
+                    onChange={(e) => updateField("status", e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="parsed">Parsed</option>
+                    <option value="enriched">Enriched</option>
+                    <option value="validated">Validated</option>
+                    <option value="approved">Approved</option>
+                  </select>
+                </div>
               </div>
               <div className="text-sm text-slate-500">
                 You are editing version {originalVersion}. If another user saves changes before you, you will see a conflict warning.
