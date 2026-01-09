@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Building2, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
@@ -19,6 +19,10 @@ export default function SignupPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
 
+  // Refs for accessibility
+  const errorRef = useRef<HTMLDivElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
@@ -26,6 +30,13 @@ export default function SignupPage() {
     }))
     setError("") // Clear error when user types
   }
+
+  // Focus on error message when it appears for accessibility
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.focus()
+    }
+  }, [error])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -106,10 +117,18 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* Error Message */}
+            {/* Error Message - Accessible with ARIA live region */}
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div
+                ref={errorRef}
+                role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
+                tabIndex={-1}
+                id="signup-error"
+                className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="text-sm text-red-700">{error}</p>
               </div>
             )}
@@ -123,12 +142,15 @@ export default function SignupPage() {
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <input
+                    ref={nameInputRef}
                     id="name"
                     name="name"
                     type="text"
                     value={formData.name}
                     onChange={handleChange}
                     placeholder="John Doe"
+                    aria-describedby={error ? "signup-error" : undefined}
+                    aria-invalid={error && error.includes("Name") ? "true" : undefined}
                     className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
                     disabled={isLoading}
                   />
@@ -149,6 +171,8 @@ export default function SignupPage() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="you@example.com"
+                    aria-describedby={error ? "signup-error" : undefined}
+                    aria-invalid={error && error.includes("Email") ? "true" : undefined}
                     className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
                     disabled={isLoading}
                   />
@@ -169,6 +193,8 @@ export default function SignupPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Create a password"
+                    aria-describedby={error && error.includes("Password") ? "signup-error password-hint" : "password-hint"}
+                    aria-invalid={error && error.includes("Password") ? "true" : undefined}
                     className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
                     disabled={isLoading}
                   />
@@ -181,7 +207,7 @@ export default function SignupPage() {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">Must be at least 6 characters</p>
+                <p id="password-hint" className="mt-1 text-xs text-slate-500">Must be at least 6 characters</p>
               </div>
 
               {/* Confirm Password Field */}
@@ -198,6 +224,8 @@ export default function SignupPage() {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="Confirm your password"
+                    aria-describedby={error && error.includes("match") ? "signup-error" : undefined}
+                    aria-invalid={error && error.includes("match") ? "true" : undefined}
                     className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
                     disabled={isLoading}
                   />

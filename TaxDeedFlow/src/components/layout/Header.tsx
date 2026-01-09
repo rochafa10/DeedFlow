@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, LogOut, User, ChevronDown, Bell, Check, X } from "lucide-react"
+import { Building2, LogOut, User, ChevronDown, Bell, Check, X, Menu } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 
@@ -56,6 +56,7 @@ export function Header() {
   const { user, logout, isAuthenticated } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS)
   const router = useRouter()
 
@@ -100,6 +101,15 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100 transition-colors"
+              aria-label="Open menu"
+              aria-expanded={showMobileMenu}
+            >
+              <Menu className="h-6 w-6 text-slate-600" />
+            </button>
             <Building2 className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold text-slate-900">Tax Deed Flow</span>
           </div>
@@ -277,6 +287,71 @@ export function Header() {
           )}
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {showMobileMenu && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setShowMobileMenu(false)}
+          />
+
+          {/* Slide-out Menu */}
+          <nav className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 md:hidden transform transition-transform">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-6 w-6 text-primary" />
+                <span className="font-bold text-slate-900">Tax Deed Flow</span>
+              </div>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="p-2 rounded-lg hover:bg-slate-100"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="py-4">
+              <a
+                href="/"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Dashboard
+              </a>
+              <a
+                href="/properties"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Properties
+              </a>
+              <a
+                href="/counties"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Counties
+              </a>
+              <a
+                href="/auctions"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Auctions
+              </a>
+              <a
+                href="/orchestration"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Orchestration
+              </a>
+            </div>
+          </nav>
+        </>
+      )}
     </header>
   )
 }

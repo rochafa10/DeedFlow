@@ -28,6 +28,21 @@ import { useEffect } from "react"
 // Mock property data for demo
 const MOCK_PROPERTIES = [
   {
+    id: "0",
+    parcelId: "10-01-001-0000-ABCD-EFGH-IJKL-MNOP",
+    address: "12345 North Extremely Long Street Name Boulevard Apartment Complex Unit Building Section A",
+    city: "Greensburg Township Municipality",
+    county: "Westmoreland",
+    state: "PA",
+    totalDue: 999999.99,
+    status: "validated",
+    propertyType: "Commercial Industrial Mixed-Use Development Property",
+    lotSize: "125.75 acres",
+    saleType: "Tax Deed",
+    validation: "caution",
+    saleDate: "2026-01-16",
+  },
+  {
     id: "1",
     parcelId: "10-01-001-0001",
     address: "123 Main St",
@@ -1017,6 +1032,7 @@ function PropertiesContent() {
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={validCurrentPage === 1}
                   className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Previous page"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -1042,6 +1058,7 @@ function PropertiesContent() {
                   }
                   disabled={validCurrentPage === totalPages}
                   className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Next page"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>

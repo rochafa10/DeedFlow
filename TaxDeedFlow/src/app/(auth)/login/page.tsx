@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, Suspense } from "react"
+import { useState, useEffect, useCallback, Suspense, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Building2, Mail, Lock, Eye, EyeOff, AlertCircle, Clock } from "lucide-react"
@@ -27,6 +27,10 @@ function LoginForm() {
   const [loginAttempts, setLoginAttempts] = useState(0)
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null)
   const [remainingLockoutTime, setRemainingLockoutTime] = useState(0)
+
+  // Refs for accessibility
+  const errorRef = useRef<HTMLDivElement>(null)
+  const emailInputRef = useRef<HTMLInputElement>(null)
 
   // Check if user is currently locked out
   const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil
@@ -56,6 +60,13 @@ function LoginForm() {
       router.replace(redirectUrl)
     }
   }, [isAuthenticated, authLoading, router, redirectUrl])
+
+  // Focus on error message when it appears for accessibility
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.focus()
+    }
+  }, [error])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -136,10 +147,18 @@ function LoginForm() {
           </p>
         </div>
 
-        {/* Error Message */}
+        {/* Error Message - Accessible with ARIA live region */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+          <div
+            ref={errorRef}
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+            tabIndex={-1}
+            id="login-error"
+            className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" aria-hidden="true" />
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
@@ -153,6 +172,7 @@ function LoginForm() {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <input
+                ref={emailInputRef}
                 id="email"
                 name="email"
                 type="email"
@@ -160,6 +180,8 @@ function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                aria-describedby={error ? "login-error" : undefined}
+                aria-invalid={error ? "true" : undefined}
                 className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors text-slate-900 placeholder:text-slate-400"
                 placeholder="you@example.com"
               />
@@ -181,6 +203,8 @@ function LoginForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                aria-describedby={error ? "login-error" : undefined}
+                aria-invalid={error ? "true" : undefined}
                 className="w-full pl-10 pr-12 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors text-slate-900 placeholder:text-slate-400"
                 placeholder="Enter your password"
               />
