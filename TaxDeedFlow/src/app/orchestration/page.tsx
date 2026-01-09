@@ -380,37 +380,55 @@ export default function OrchestrationPage() {
                 </button>
               </div>
             </div>
-            <div className="divide-y divide-slate-100">
-              {MOCK_WORK_QUEUE.map((item) => (
-                <div
-                  key={item.id}
-                  className="px-4 py-3 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-slate-900">
-                        {WORK_TYPE_LABELS[item.type] || item.type}
-                      </div>
-                      <div className="text-sm text-slate-500">
-                        {item.county} County
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-slate-900">
-                        {item.itemsRemaining.toLocaleString()} items
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        ~{item.estimatedTime}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                      Priority {item.priority}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Agent
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Task
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      County
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Pending
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {MOCK_WORK_QUEUE.map((item) => {
+                    const typeLabel = WORK_TYPE_LABELS[item.type] || item.type
+                    const agentName = typeLabel.split(" ")[0]
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                            {item.priority}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-sm text-slate-900">
+                          {agentName}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-slate-700">
+                          {typeLabel}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-slate-700">
+                          {item.county}
+                        </td>
+                        <td className="px-4 py-2 text-sm font-medium text-slate-900 text-right">
+                          {item.itemsRemaining.toLocaleString()}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
 
