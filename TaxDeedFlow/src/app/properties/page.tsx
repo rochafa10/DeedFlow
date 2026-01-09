@@ -38,6 +38,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import { formatDate, DATE_FORMAT_KEY } from "@/lib/utils"
+import { mockDataStore, type MockProperty } from "@/lib/mockDataStore"
 
 // Mock property data for demo
 const MOCK_PROPERTIES = [
@@ -389,9 +390,37 @@ function PropertiesContent() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [dateFormatPreference, setDateFormatPreference] = useState("MMM DD, YYYY")
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set())
+  const [properties, setProperties] = useState<MockProperty[]>(() => mockDataStore.getProperties())
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Subscribe to mock data store changes
+  useEffect(() => {
+    const unsubscribe = mockDataStore.subscribe(() => {
+      setProperties(mockDataStore.getProperties())
+    })
+    return unsubscribe
+  }, [])
+
+  // Handle delete property
+  const handleDeleteProperty = (propertyId: string) => {
+    setIsDeleting(true)
+    // Simulate async operation
+    setTimeout(() => {
+      mockDataStore.deleteProperty(propertyId)
+      setDeleteConfirmId(null)
+      setIsDeleting(false)
+      // Remove from selected properties if it was selected
+      setSelectedProperties(prev => {
+        const next = new Set(prev)
+        next.delete(propertyId)
+        return next
+      })
+    }, 300)
+  }
 
   // Get unique counties for filter dropdown
-  const uniqueCounties = Array.from(new Set(MOCK_PROPERTIES.map(p => p.county))).sort()
+  const uniqueCounties = Array.from(new Set(properties.map(p => p.county))).sort()
 
   // Valid status values for URL param validation
   const validStatuses: PropertyStatus[] = ["parsed", "enriched", "validated", "approved"]
@@ -757,7 +786,7 @@ function PropertiesContent() {
 
   // Filter properties based on search, status, county, and date range
   const trimmedSearch = searchQuery.trim().toLowerCase()
-  const filteredProperties = MOCK_PROPERTIES.filter((property) => {
+  const filteredProperties = properties.filter((property) => {
     const matchesSearch =
       trimmedSearch === "" ||
       property.address.toLowerCase().includes(trimmedSearch) ||
@@ -1299,7 +1328,7 @@ function PropertiesContent() {
           <div className="hidden sm:flex items-center gap-2">
             {(["parsed", "enriched", "validated", "approved"] as const).map(
               (status) => {
-                const count = MOCK_PROPERTIES.filter(
+                const count = properties.filter(
                   (p) => p.status === status
                 ).length
                 return (
@@ -1556,13 +1585,22 @@ function PropertiesContent() {
                       </td>
                       {/* Actions */}
                       <td className="px-4 py-4">
-                        <button
-                          onClick={() => router.push(`/properties/${property.id}`)}
-                          className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
-                        >
-                          View
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => router.push(`/properties/${property.id}`)}
+                            className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
+                          >
+                            View
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(property.id)}
+                            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium"
+                            title="Delete property"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1781,6 +1819,69 @@ function PropertiesContent() {
                 >
                   <BookmarkPlus className="h-4 w-4" />
                   Save Filter
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => !isDeleting && setDeleteConfirmId(null)}
+            />
+            {/* Modal */}
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <div className="flex items-center gap-2 text-red-600">
+                  <Trash2 className="h-5 w-5" />
+                  <h3 className="font-semibold">Delete Property</h3>
+                </div>
+                <button
+                  onClick={() => !isDeleting && setDeleteConfirmId(null)}
+                  className="text-slate-400 hover:text-slate-600"
+                  disabled={isDeleting}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <p className="text-slate-600">
+                  Are you sure you want to delete this property? This action cannot be undone.
+                </p>
+                {(() => {
+                  const propertyToDelete = properties.find(p => p.id === deleteConfirmId)
+                  return propertyToDelete ? (
+                    <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                      <div className="font-medium text-slate-900">{propertyToDelete.address}</div>
+                      <div className="text-sm text-slate-500">{propertyToDelete.parcelId}</div>
+                    </div>
+                  ) : null
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-200">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteProperty(deleteConfirmId)}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeleting ? "Deleting..." : "Delete Property"}
                 </button>
               </div>
             </div>

@@ -14,10 +14,25 @@ export interface AuthResult {
   error?: string
 }
 
+// Valid user IDs for demo mode
+// In production, this would validate against a database or JWT signature
+const VALID_USER_IDS = new Set([
+  "demo-user-1",      // Admin user
+  "viewer-user-1",    // Viewer user
+  "analyst-user-1",   // Analyst user
+])
+
+// Valid email addresses that must match the user ID
+const VALID_USER_EMAILS: Record<string, string> = {
+  "demo-user-1": "demo@taxdeedflow.com",
+  "viewer-user-1": "viewer@taxdeedflow.com",
+  "analyst-user-1": "analyst@taxdeedflow.com",
+}
+
 /**
  * Validate authentication for API requests
  * Checks for X-User-Token header containing serialized user info
- * In demo mode, this simulates auth checking
+ * In demo mode, this validates against known demo users
  */
 export async function validateApiAuth(request: NextRequest): Promise<AuthResult> {
   // Check for auth header (custom header for demo purposes)
@@ -62,16 +77,44 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
   if (userToken) {
     try {
       const user = JSON.parse(userToken)
-      if (user && user.id && user.email) {
+
+      // Validate that user has required fields
+      if (!user || !user.id || !user.email) {
         return {
-          authenticated: true,
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name || "Unknown",
-            role: user.role || "viewer",
-          },
+          authenticated: false,
+          error: "Invalid token: missing required fields.",
         }
+      }
+
+      // SECURITY: Validate that the user ID is a known valid ID
+      // This prevents arbitrary tokens from being accepted
+      if (!VALID_USER_IDS.has(user.id)) {
+        console.log("[API Auth] Invalid user ID rejected:", user.id)
+        return {
+          authenticated: false,
+          error: "Invalid or expired token.",
+        }
+      }
+
+      // SECURITY: Validate that the email matches the expected email for this user ID
+      // This prevents token tampering where someone changes their role/email
+      const expectedEmail = VALID_USER_EMAILS[user.id]
+      if (expectedEmail && user.email !== expectedEmail) {
+        console.log("[API Auth] Email mismatch rejected. Expected:", expectedEmail, "Got:", user.email)
+        return {
+          authenticated: false,
+          error: "Invalid or expired token.",
+        }
+      }
+
+      return {
+        authenticated: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name || "Unknown",
+          role: user.role || "viewer",
+        },
       }
     } catch {
       return {

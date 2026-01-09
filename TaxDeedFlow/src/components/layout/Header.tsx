@@ -121,7 +121,9 @@ export function Header() {
             <a href="/properties" className="text-sm font-medium text-slate-600 hover:text-slate-900">Properties</a>
             <a href="/counties" className="text-sm font-medium text-slate-600 hover:text-slate-900">Counties</a>
             <a href="/auctions" className="text-sm font-medium text-slate-600 hover:text-slate-900">Auctions</a>
+            <a href="/batch-jobs" className="text-sm font-medium text-slate-600 hover:text-slate-900">Batch Jobs</a>
             <a href="/orchestration" className="text-sm font-medium text-slate-600 hover:text-slate-900">Orchestration</a>
+            <a href="/data-integrity" className="text-sm font-medium text-slate-600 hover:text-slate-900">Data Integrity</a>
           </nav>
           {isAuthenticated && (
             <div className="flex items-center gap-2">
@@ -347,11 +349,25 @@ export function Header() {
                 Auctions
               </a>
               <a
+                href="/batch-jobs"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Batch Jobs
+              </a>
+              <a
                 href="/orchestration"
                 onClick={() => setShowMobileMenu(false)}
                 className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
                 Orchestration
+              </a>
+              <a
+                href="/data-integrity"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Data Integrity
               </a>
             </div>
           </nav>

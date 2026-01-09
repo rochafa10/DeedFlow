@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/auth/api-auth"
+import { validateCsrf, csrfErrorResponse } from "@/lib/auth/csrf"
 import { createServerClient } from "@/lib/supabase/client"
 
 // Mock batch jobs data for development
@@ -93,9 +94,16 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/batch-jobs
- * Create a new batch job - requires authentication AND non-viewer role
+ * Create a new batch job - requires authentication, CSRF validation, AND non-viewer role
  */
 export async function POST(request: NextRequest) {
+  // CSRF Protection: Validate request origin
+  const csrfResult = await validateCsrf(request)
+  if (!csrfResult.valid) {
+    console.log("[API Batch Jobs] CSRF validation failed:", csrfResult.error)
+    return csrfErrorResponse(csrfResult.error)
+  }
+
   // Validate authentication
   const authResult = await validateApiAuth(request)
 
