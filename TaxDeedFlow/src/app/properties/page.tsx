@@ -28,6 +28,10 @@ import {
   X,
   Trash2,
   Star,
+  CheckSquare,
+  Square,
+  Heart,
+  MinusSquare,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -384,6 +388,7 @@ function PropertiesContent() {
   const [showSavedFilters, setShowSavedFilters] = useState(false)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [dateFormatPreference, setDateFormatPreference] = useState("MMM DD, YYYY")
+  const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set())
 
   // Get unique counties for filter dropdown
   const uniqueCounties = Array.from(new Set(MOCK_PROPERTIES.map(p => p.county))).sort()
@@ -840,6 +845,87 @@ function PropertiesContent() {
     updateUrlParams({ pageSize: newSize, page: null })
   }
 
+  // Bulk selection handlers
+  const handleSelectProperty = (propertyId: string) => {
+    setSelectedProperties(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(propertyId)) {
+        newSet.delete(propertyId)
+      } else {
+        newSet.add(propertyId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAll = () => {
+    const currentPageIds = paginatedProperties.map(p => p.id)
+    const allCurrentPageSelected = currentPageIds.every(id => selectedProperties.has(id))
+
+    if (allCurrentPageSelected) {
+      // Deselect all on current page
+      setSelectedProperties(prev => {
+        const newSet = new Set(prev)
+        currentPageIds.forEach(id => newSet.delete(id))
+        return newSet
+      })
+    } else {
+      // Select all on current page
+      setSelectedProperties(prev => {
+        const newSet = new Set(prev)
+        currentPageIds.forEach(id => newSet.add(id))
+        return newSet
+      })
+    }
+  }
+
+  const handleClearSelection = () => {
+    setSelectedProperties(new Set())
+  }
+
+  const handleBulkAddToWatchlist = () => {
+    // In a real app, this would call an API
+    console.log("Adding to watchlist:", Array.from(selectedProperties))
+    alert(`Added ${selectedProperties.size} properties to watchlist`)
+    setSelectedProperties(new Set())
+  }
+
+  const handleBulkExport = () => {
+    // Export only selected properties
+    const selectedProps = sortedProperties.filter(p => selectedProperties.has(p.id))
+    const headers = [
+      "Parcel ID", "Address", "City", "State", "County", "Total Due",
+      "Sale Date", "Sale Type", "Property Type", "Lot Size", "Stage", "Validation"
+    ]
+    const rows = selectedProps.map(property => [
+      property.parcelId, property.address, property.city, property.state,
+      property.county, property.totalDue.toFixed(2), property.saleDate,
+      property.saleType, property.propertyType, property.lotSize,
+      STATUS_CONFIG[property.status as PropertyStatus].label,
+      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending"
+    ])
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `selected-properties-${new Date().toISOString().split("T")[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  // Check if all properties on current page are selected
+  const allCurrentPageSelected = paginatedProperties.length > 0 &&
+    paginatedProperties.every(p => selectedProperties.has(p.id))
+  const someCurrentPageSelected = paginatedProperties.some(p => selectedProperties.has(p.id))
+
   // Export to CSV function
   const exportToCSV = () => {
     // CSV header
@@ -1241,12 +1327,61 @@ function PropertiesContent() {
           </div>
         </div>
 
+        {/* Bulk Selection Action Bar */}
+        {selectedProperties.size > 0 && (
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-primary">
+                {selectedProperties.size} {selectedProperties.size === 1 ? "property" : "properties"} selected
+              </span>
+              <button
+                onClick={handleClearSelection}
+                className="text-xs text-slate-500 hover:text-slate-700 underline"
+              >
+                Clear selection
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBulkAddToWatchlist}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
+              >
+                <Heart className="h-4 w-4" />
+                Add to Watchlist
+              </button>
+              <button
+                onClick={handleBulkExport}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Export Selected
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Properties Table */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-10">
+                    <button
+                      onClick={handleSelectAll}
+                      className="flex items-center justify-center hover:text-slate-700 transition-colors"
+                      aria-label={allCurrentPageSelected ? "Deselect all" : "Select all"}
+                      title={allCurrentPageSelected ? "Deselect all on page" : "Select all on page"}
+                    >
+                      {allCurrentPageSelected ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : someCurrentPageSelected ? (
+                        <MinusSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </button>
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     <button
                       onClick={() => handleSort("parcelId")}
@@ -1319,7 +1454,21 @@ function PropertiesContent() {
               <tbody className="divide-y divide-slate-200">
                 {paginatedProperties.length > 0 ? (
                   paginatedProperties.map((property) => (
-                    <tr key={property.id} className="hover:bg-slate-50">
+                    <tr key={property.id} className={cn("hover:bg-slate-50", selectedProperties.has(property.id) && "bg-primary/5")}>
+                      {/* Checkbox */}
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={() => handleSelectProperty(property.id)}
+                          className="flex items-center justify-center hover:text-primary transition-colors"
+                          aria-label={selectedProperties.has(property.id) ? "Deselect property" : "Select property"}
+                        >
+                          {selectedProperties.has(property.id) ? (
+                            <CheckSquare className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Square className="h-4 w-4 text-slate-400" />
+                          )}
+                        </button>
+                      </td>
                       {/* Parcel ID */}
                       <td className="px-4 py-4">
                         <span className="text-sm font-mono text-slate-700">
@@ -1420,7 +1569,7 @@ function PropertiesContent() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={10}
                       className="px-4 py-16 text-center"
                     >
                       <div className="flex flex-col items-center justify-center">
