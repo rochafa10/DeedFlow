@@ -14,6 +14,7 @@ import {
   Edit2,
   Check,
   X,
+  ShieldX,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -21,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext"
 // Watchlist item type
 export interface WatchlistItem {
   id: string
+  userId: string  // Track which user owns this item
   propertyId: string
   parcelId: string
   address: string
@@ -34,30 +36,46 @@ export interface WatchlistItem {
   addedAt: string
 }
 
-// Get watchlist from localStorage
-const getWatchlist = (): WatchlistItem[] => {
-  if (typeof window === "undefined") return []
-  const stored = localStorage.getItem("watchlist")
+// Get user-specific watchlist key
+const getWatchlistKey = (userId: string): string => {
+  return `watchlist_${userId}`
+}
+
+// Get watchlist from localStorage for a specific user
+const getWatchlist = (userId: string | undefined): WatchlistItem[] => {
+  if (typeof window === "undefined" || !userId) return []
+  const key = getWatchlistKey(userId)
+  const stored = localStorage.getItem(key)
   return stored ? JSON.parse(stored) : []
 }
 
-// Save watchlist to localStorage
-const saveWatchlist = (items: WatchlistItem[]) => {
-  localStorage.setItem("watchlist", JSON.stringify(items))
+// Save watchlist to localStorage for a specific user
+const saveWatchlist = (userId: string, items: WatchlistItem[]) => {
+  const key = getWatchlistKey(userId)
+  localStorage.setItem(key, JSON.stringify(items))
+}
+
+// Validate user owns the watchlist item
+const validateOwnership = (item: WatchlistItem, userId: string): boolean => {
+  return item.userId === userId
 }
 
 export default function WatchlistPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [editingMaxBid, setEditingMaxBid] = useState<string | null>(null)
   const [tempMaxBid, setTempMaxBid] = useState("")
+  const [accessDenied, setAccessDenied] = useState(false)
 
-  // Load watchlist from localStorage
+  // Load watchlist from localStorage for current user
   useEffect(() => {
-    setWatchlist(getWatchlist())
-  }, [])
+    if (user?.id) {
+      const userWatchlist = getWatchlist(user.id)
+      setWatchlist(userWatchlist)
+    }
+  }, [user?.id])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -65,6 +83,26 @@ export default function WatchlistPage() {
       router.push("/login")
     }
   }, [isAuthenticated, authLoading, router])
+
+  // Check for URL parameter access attempt (e.g., /watchlist?itemId=xxx)
+  useEffect(() => {
+    if (!user?.id) return
+
+    const params = new URLSearchParams(window.location.search)
+    const itemId = params.get("itemId")
+
+    if (itemId) {
+      // Check if this item exists and belongs to current user
+      const allItems = getWatchlist(user.id)
+      const item = allItems.find((i) => i.id === itemId)
+
+      if (!item) {
+        // Item not found in user's watchlist - could be trying to access another user's item
+        setAccessDenied(true)
+        console.log("[Security] Access denied: Attempted to access watchlist item that doesn't belong to user")
+      }
+    }
+  }, [user?.id])
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -80,6 +118,40 @@ export default function WatchlistPage() {
     return null
   }
 
+  // Show access denied if trying to access another user's data
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-lg border border-red-200 p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <ShieldX className="h-8 w-8 text-red-600" />
+              </div>
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">
+              Access Denied
+            </h2>
+            <p className="text-slate-600 mb-4">
+              You don't have permission to access this watchlist item. You can only view items in your own watchlist.
+            </p>
+            <button
+              onClick={() => {
+                setAccessDenied(false)
+                router.push("/watchlist")
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Heart className="h-4 w-4" />
+              View My Watchlist
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   // Filter watchlist by search term
   const filteredWatchlist = watchlist.filter(
     (item) =>
@@ -89,21 +161,37 @@ export default function WatchlistPage() {
       item.city.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Remove item from watchlist
+  // Remove item from watchlist (only if owned by current user)
   const removeFromWatchlist = (id: string) => {
+    if (!user?.id) return
+
+    const itemToRemove = watchlist.find((item) => item.id === id)
+    if (!itemToRemove || !validateOwnership(itemToRemove, user.id)) {
+      console.log("[Security] Attempted to remove item not owned by user")
+      return
+    }
+
     const updated = watchlist.filter((item) => item.id !== id)
     setWatchlist(updated)
-    saveWatchlist(updated)
+    saveWatchlist(user.id, updated)
   }
 
-  // Update max bid
+  // Update max bid (only if owned by current user)
   const updateMaxBid = (id: string) => {
+    if (!user?.id) return
+
+    const itemToUpdate = watchlist.find((item) => item.id === id)
+    if (!itemToUpdate || !validateOwnership(itemToUpdate, user.id)) {
+      console.log("[Security] Attempted to update item not owned by user")
+      return
+    }
+
     const bid = tempMaxBid ? parseFloat(tempMaxBid) : null
     const updated = watchlist.map((item) =>
       item.id === id ? { ...item, maxBid: bid } : item
     )
     setWatchlist(updated)
-    saveWatchlist(updated)
+    saveWatchlist(user.id, updated)
     setEditingMaxBid(null)
     setTempMaxBid("")
   }
