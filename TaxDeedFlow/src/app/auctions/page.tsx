@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  Users,
+  Timer,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
@@ -429,6 +431,94 @@ export default function AuctionsPage() {
           </div>
         </div>
 
+        {/* Registration Deadlines Panel */}
+        <div className="mt-6 bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+            <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Registration Deadlines
+            </h2>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {MOCK_AUCTIONS.map((auction) => {
+              const daysUntilRegistration = getDaysUntil(auction.registrationDeadline)
+              let status: "CLOSED" | "URGENT" | "SOON" | "OPEN"
+              let statusColor: string
+              let statusBg: string
+
+              if (daysUntilRegistration < 0) {
+                status = "CLOSED"
+                statusColor = "text-slate-500"
+                statusBg = "bg-slate-100"
+              } else if (daysUntilRegistration <= 3) {
+                status = "URGENT"
+                statusColor = "text-red-700"
+                statusBg = "bg-red-100"
+              } else if (daysUntilRegistration <= 14) {
+                status = "SOON"
+                statusColor = "text-amber-700"
+                statusBg = "bg-amber-100"
+              } else {
+                status = "OPEN"
+                statusColor = "text-green-700"
+                statusBg = "bg-green-100"
+              }
+
+              return (
+                <div key={auction.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                      <Timer className={cn(
+                        "h-5 w-5",
+                        status === "CLOSED" ? "text-slate-400" :
+                        status === "URGENT" ? "text-red-500" :
+                        status === "SOON" ? "text-amber-500" :
+                        "text-green-500"
+                      )} />
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">
+                        {auction.county}, {auction.state}
+                      </div>
+                      <div className="text-sm text-slate-500">
+                        Deadline: {new Date(auction.registrationDeadline).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className={cn(
+                        "text-sm font-medium",
+                        daysUntilRegistration < 0 ? "text-slate-500" :
+                        daysUntilRegistration <= 3 ? "text-red-600" :
+                        daysUntilRegistration <= 14 ? "text-amber-600" :
+                        "text-slate-700"
+                      )}>
+                        {daysUntilRegistration < 0
+                          ? "Closed"
+                          : daysUntilRegistration === 0
+                          ? "Today"
+                          : `${daysUntilRegistration} days`}
+                      </div>
+                    </div>
+                    <span className={cn(
+                      "px-2 py-1 text-xs font-semibold rounded",
+                      statusBg,
+                      statusColor
+                    )}>
+                      {status}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Upcoming Auctions List */}
         <div className="mt-6 bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
@@ -553,7 +643,7 @@ export default function AuctionsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <button
-                          onClick={() => router.push(`/counties/${auction.id}`)}
+                          onClick={() => router.push(`/auctions/${auction.id}`)}
                           className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
                         >
                           View
@@ -672,11 +762,11 @@ export default function AuctionsPage() {
                         <button
                           onClick={() => {
                             setShowDateDetails(false)
-                            router.push(`/counties/${auction.id}`)
+                            router.push(`/auctions/${auction.id}`)
                           }}
                           className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
                         >
-                          View County Details
+                          View Auction Details
                           <ExternalLink className="h-3.5 w-3.5" />
                         </button>
                       </div>
