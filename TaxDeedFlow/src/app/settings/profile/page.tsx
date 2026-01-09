@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useTheme } from "next-themes"
 import {
   User,
   Mail,
@@ -16,16 +17,20 @@ import {
   Key,
   AlertTriangle,
   X,
+  Users,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { toast } from "sonner"
 
 type Theme = "light" | "dark" | "system"
 
 export default function SettingsProfilePage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading, user } = useAuth()
+  const { theme: currentTheme, setTheme: setGlobalTheme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
   // Form state
   const [name, setName] = useState("")
@@ -33,6 +38,11 @@ export default function SettingsProfilePage() {
   const [theme, setTheme] = useState<Theme>("system")
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Track initial values to detect changes
   const initialValuesRef = useRef({ name: "", email: "", theme: "system" as Theme })
@@ -47,13 +57,13 @@ export default function SettingsProfilePage() {
     const savedProfile = localStorage.getItem("userProfile")
     let initialName = "Demo User"
     let initialEmail = "demo@taxdeedflow.com"
-    let initialTheme: Theme = "system"
+    // Use the global theme from next-themes
+    let initialTheme: Theme = (currentTheme as Theme) || "system"
 
     if (savedProfile) {
       const profile = JSON.parse(savedProfile)
       initialName = profile.name || "Demo User"
       initialEmail = profile.email || "demo@taxdeedflow.com"
-      initialTheme = profile.theme || "system"
     } else if (user) {
       initialName = user.name || "Demo User"
       initialEmail = user.email || "demo@taxdeedflow.com"
@@ -65,7 +75,7 @@ export default function SettingsProfilePage() {
 
     // Store initial values for dirty checking
     initialValuesRef.current = { name: initialName, email: initialEmail, theme: initialTheme }
-  }, [user])
+  }, [user, currentTheme])
 
   // Check for unsaved changes whenever form values change
   useEffect(() => {
@@ -99,14 +109,20 @@ export default function SettingsProfilePage() {
   const handleSave = () => {
     setIsSaving(true)
     setSaveSuccess(false)
-    // Save to localStorage
+    // Save to localStorage and apply theme globally
     setTimeout(() => {
       localStorage.setItem("userProfile", JSON.stringify({ name, email, theme }))
+      // Apply theme globally via next-themes
+      setGlobalTheme(theme)
       // Update initial values so form is no longer dirty
       initialValuesRef.current = { name, email, theme }
       setHasUnsavedChanges(false)
       setIsSaving(false)
       setSaveSuccess(true)
+      // Show success toast
+      toast.success("Profile updated successfully!", {
+        description: "Your changes have been saved.",
+      })
       // Clear success message after 3 seconds
       setTimeout(() => setSaveSuccess(false), 3000)
     }, 1000)
@@ -240,19 +256,23 @@ export default function SettingsProfilePage() {
 
                 {/* Theme Selector */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2 dark:text-slate-300">
                     Theme Preference
                   </label>
                   <div className="flex gap-2">
                     {THEME_OPTIONS.map((option) => (
                       <button
                         key={option.value}
-                        onClick={() => setTheme(option.value as Theme)}
+                        onClick={() => {
+                          setTheme(option.value as Theme)
+                          // Apply theme immediately for instant feedback
+                          setGlobalTheme(option.value)
+                        }}
                         className={cn(
                           "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
                           theme === option.value
                             ? "bg-primary text-white border-primary"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:border-slate-500"
                         )}
                       >
                         {option.icon}

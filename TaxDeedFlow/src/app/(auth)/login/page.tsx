@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Building2, Mail, Lock, Eye, EyeOff, AlertCircle, Clock } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "sonner"
 
 const MAX_LOGIN_ATTEMPTS = 5
 const LOCKOUT_DURATION_MS = 30 * 1000 // 30 seconds
@@ -86,6 +87,10 @@ function LoginForm() {
       // Reset attempts on successful login
       setLoginAttempts(0)
       setLockoutUntil(null)
+      // Show success toast
+      toast.success("Welcome back!", {
+        description: "You have been logged in successfully.",
+      })
       // Use router.replace to prevent browser back from returning to login form
       router.replace(redirectUrl)
     } else {
@@ -98,11 +103,17 @@ function LoginForm() {
         setLockoutUntil(lockoutTime)
         setRemainingLockoutTime(LOCKOUT_DURATION_MS / 1000)
         setError(`Too many failed attempts. Please wait 30 seconds before trying again.`)
+        toast.error("Account locked", {
+          description: "Too many failed attempts. Please wait 30 seconds.",
+        })
       } else {
         const attemptsRemaining = MAX_LOGIN_ATTEMPTS - newAttempts
         setError(
           `${result.error || "Invalid credentials."} ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? "s" : ""} remaining.`
         )
+        toast.error("Login failed", {
+          description: result.error || "Invalid email or password.",
+        })
       }
     }
 
