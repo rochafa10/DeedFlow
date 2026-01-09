@@ -27,10 +27,15 @@ import {
   Save,
   X,
   RefreshCw,
+  Heart,
+  Map,
 } from "lucide-react"
+import { WatchlistItem } from "@/app/watchlist/page"
+import { toast } from "sonner"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
+import { PropertyMap } from "@/components/map/PropertyMap"
 
 // Simulated "other user's" property IDs for testing access control
 // In production, this would be determined by the API based on user ownership/permissions
@@ -62,6 +67,8 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Jan 16, 2026",
     minimumBid: 5234.56,
+    latitude: 40.3015,
+    longitude: -79.5389,
     version: 1,
     lastModifiedAt: "2026-01-08T10:30:00Z",
     lastModifiedBy: "Demo User",
@@ -88,6 +95,8 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Jan 16, 2026",
     minimumBid: 12450.0,
+    latitude: 40.3045,
+    longitude: -79.5412,
     version: 1,
     lastModifiedAt: "2026-01-07T15:45:00Z",
     lastModifiedBy: "Demo User",
@@ -127,6 +136,8 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Jan 16, 2026",
     minimumBid: 3200.0,
+    latitude: 40.3121,
+    longitude: -79.3796,
     version: 2,
     lastModifiedAt: "2026-01-08T14:30:00Z",
     lastModifiedBy: "Visual Validator Agent",
@@ -167,6 +178,8 @@ let mockPropertyStore: Record<string, PropertyDetail> = {
     taxYear: 2024,
     saleDate: "Mar 11, 2026",
     minimumBid: 8750.25,
+    latitude: 40.4273,
+    longitude: -78.3897,
     version: 1,
     lastModifiedAt: "2026-01-06T09:15:00Z",
     lastModifiedBy: "Demo User",
@@ -229,6 +242,9 @@ interface PropertyDetail {
   minimumBid: number
   regridData?: RegridData
   validationData?: ValidationData
+  // Location coordinates
+  latitude?: number
+  longitude?: number
   // Concurrency control fields
   version: number
   lastModifiedAt: string
@@ -286,7 +302,7 @@ const VALIDATION_CONFIG: Record<
   },
 }
 
-type TabType = "overview" | "regrid" | "validation" | "images" | "analysis" | "history"
+type TabType = "overview" | "location" | "regrid" | "validation" | "images" | "analysis" | "history"
 
 // Conflict dialog state interface
 interface ConflictState {
@@ -317,7 +333,65 @@ export default function PropertyDetailPage() {
   })
   const [recordDeleted, setRecordDeleted] = useState(false)
 
+  // Watchlist state
+  const [isInWatchlist, setIsInWatchlist] = useState(false)
+
   const propertyId = params.id as string
+
+  // Check if property is in watchlist
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
+      setIsInWatchlist(watchlist.some((item) => item.propertyId === propertyId))
+    }
+  }, [propertyId])
+
+  // Add to watchlist
+  const addToWatchlist = () => {
+    if (!property) return
+    const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
+
+    // Check if already in watchlist
+    if (watchlist.some((item) => item.propertyId === propertyId)) {
+      toast.info("Already in watchlist", {
+        description: "This property is already in your watchlist.",
+      })
+      return
+    }
+
+    const newItem: WatchlistItem = {
+      id: `watchlist-${Date.now()}`,
+      propertyId: propertyId,
+      parcelId: property.parcelId,
+      address: property.address,
+      city: property.city,
+      county: property.county,
+      state: property.state,
+      totalDue: property.totalDue,
+      saleDate: property.saleDate,
+      maxBid: null,
+      notes: "",
+      addedAt: new Date().toISOString(),
+    }
+
+    watchlist.push(newItem)
+    localStorage.setItem("watchlist", JSON.stringify(watchlist))
+    setIsInWatchlist(true)
+    toast.success("Added to watchlist", {
+      description: `${property.parcelId} has been added to your watchlist.`,
+    })
+  }
+
+  // Remove from watchlist
+  const removeFromWatchlist = () => {
+    const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
+    const filtered = watchlist.filter((item) => item.propertyId !== propertyId)
+    localStorage.setItem("watchlist", JSON.stringify(filtered))
+    setIsInWatchlist(false)
+    toast.success("Removed from watchlist", {
+      description: "Property has been removed from your watchlist.",
+    })
+  }
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -565,6 +639,7 @@ export default function PropertyDetailPage() {
 
   const tabs = [
     { id: "overview" as const, label: "Overview", icon: <FileText className="h-4 w-4" /> },
+    { id: "location" as const, label: "Location", icon: <Map className="h-4 w-4" /> },
     { id: "regrid" as const, label: "Regrid Data", icon: <Building2 className="h-4 w-4" /> },
     { id: "validation" as const, label: "Validation", icon: <Shield className="h-4 w-4" /> },
     { id: "images" as const, label: "Images", icon: <ImageIcon className="h-4 w-4" /> },
@@ -625,6 +700,19 @@ export default function PropertyDetailPage() {
                   </button>
                 </>
               )}
+              {/* Watchlist button */}
+              <button
+                onClick={isInWatchlist ? removeFromWatchlist : addToWatchlist}
+                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  isInWatchlist
+                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+                title={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+              >
+                <Heart className={`h-4 w-4 ${isInWatchlist ? "fill-current" : ""}`} />
+                {isInWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}
+              </button>
               {/* Demo button to simulate concurrent edit - always visible */}
               <button
                 onClick={simulateOtherUserEdit}
@@ -909,6 +997,77 @@ export default function PropertyDetailPage() {
               </div>
             )}
 
+            {activeTab === "location" && (
+              property.latitude && property.longitude ? (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                      Property Location
+                    </h3>
+                    <PropertyMap
+                      latitude={property.latitude}
+                      longitude={property.longitude}
+                      address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
+                      parcelId={property.parcelId}
+                      totalDue={property.totalDue}
+                      className="h-[400px]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-slate-500">Latitude</div>
+                      <div className="font-medium text-slate-900 font-mono">
+                        {property.latitude.toFixed(6)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-slate-500">Longitude</div>
+                      <div className="font-medium text-slate-900 font-mono">
+                        {property.longitude.toFixed(6)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <a
+                      href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open in Google Maps
+                    </a>
+                    <a
+                      href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${property.latitude},${property.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Street View
+                    </a>
+                    <a
+                      href={`https://www.zillow.com/homes/${encodeURIComponent(property.address + ' ' + property.city + ' ' + property.state + ' ' + property.zipCode)}_rb/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View on Zillow
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <Map className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No location data available for this property yet.</p>
+                  <p className="text-sm mt-2">
+                    Coordinates will be available after Regrid enrichment.
+                  </p>
+                </div>
+              )
+            )}
+
             {activeTab === "regrid" && (
               property.regridData ? (
                 <div className="space-y-6">
@@ -1016,6 +1175,19 @@ export default function PropertyDetailPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  {/* View on Regrid Link */}
+                  <div className="pt-4 border-t border-slate-200">
+                    <a
+                      href={`https://app.regrid.com/search?q=${encodeURIComponent(property.parcelId)}&state=${property.state}&county=${encodeURIComponent(property.county)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View on Regrid
+                    </a>
                   </div>
                 </div>
               ) : (
