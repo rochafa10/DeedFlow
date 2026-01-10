@@ -13,7 +13,7 @@ before proceeding.
 
 ## REQUIRED FEATURE COUNT
 
-**CRITICAL:** You must create exactly **[FEATURE_COUNT]** features using the `feature_create_bulk` tool.
+**CRITICAL:** You must create exactly **250** features using the `feature_create_bulk` tool.
 
 This number was determined during spec creation and must be followed precisely. Do not create more or fewer features than specified.
 

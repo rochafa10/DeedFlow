@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { DateInput } from "@/components/ui/DateInput"
 
 // Mock batch job data
 const MOCK_ACTIVE_JOBS = [
@@ -208,6 +209,8 @@ export default function BatchJobsPage() {
   const [newJobType, setNewJobType] = useState("")
   const [newJobCounty, setNewJobCounty] = useState("")
   const [newJobBatchSize, setNewJobBatchSize] = useState(50)
+  const [scheduleDate, setScheduleDate] = useState("")
+  const [scheduleDateValid, setScheduleDateValid] = useState(false)
 
   // Job detail modal state
   const [selectedJob, setSelectedJob] = useState<typeof MOCK_JOB_HISTORY[0] | null>(null)
@@ -338,6 +341,8 @@ export default function BatchJobsPage() {
     setNewJobType("")
     setNewJobCounty("")
     setNewJobBatchSize(50)
+    setScheduleDate("")
+    setScheduleDateValid(false)
   }
 
   // Stats
@@ -770,6 +775,17 @@ export default function BatchJobsPage() {
                     <option value="low">Low</option>
                   </select>
                 </div>
+                <DateInput
+                  label="Schedule Date"
+                  placeholder="YYYY-MM-DD"
+                  value={scheduleDate}
+                  onChange={(value, isValid) => {
+                    setScheduleDate(value)
+                    setScheduleDateValid(isValid)
+                  }}
+                  minDate={new Date().toISOString().split('T')[0]}
+                  helpText="Optional: Leave empty to start immediately"
+                />
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-lg flex-shrink-0">

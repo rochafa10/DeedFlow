@@ -1,0 +1,432 @@
+<project_specification>
+  <project_name>Tax Deed Flow</project_name>
+
+  <overview>
+    Tax Deed Flow is a comprehensive web application for managing tax deed auction investments. It automates the research, analysis, and bidding process for tax lien and tax deed properties across multiple U.S. counties. The system coordinates 11 AI agents through a Master Orchestrator to maximize pipeline throughput while providing real-time visibility into all operations.
+  </overview>
+
+  <technology_stack>
+    <frontend>
+      <framework>Next.js 14+ (App Router)</framework>
+      <language>TypeScript 5.x</language>
+      <styling>Tailwind CSS 3.x</styling>
+      <component_library>shadcn/ui (based on Radix UI)</component_library>
+      <charts>Recharts or Tremor</charts>
+      <tables>TanStack Table v8</tables>
+      <forms>React Hook Form + Zod validation</forms>
+      <state_management>Zustand (global) + TanStack Query (server)</state_management>
+      <icons>Lucide React</icons>
+      <date_handling>date-fns</date_handling>
+    </frontend>
+    <backend>
+      <database>Supabase (PostgreSQL)</database>
+      <auth>Supabase Auth</auth>
+      <storage>Supabase Storage (screenshots, PDFs)</storage>
+      <realtime>Supabase Realtime (WebSockets)</realtime>
+      <edge_functions>Supabase Edge Functions (Deno)</edge_functions>
+    </backend>
+    <external_services>
+      <n8n>Workflow automation (self-hosted at https://n8n.lfb-investments.com)</n8n>
+      <perplexity>AI research</perplexity>
+      <google_search>Document finding</google_search>
+      <regrid>Property data enrichment</regrid>
+    </external_services>
+  </technology_stack>
+
+  <prerequisites>
+    <environment_setup>
+      - Node.js 18+ and pnpm
+      - Supabase project (existing: oiiwlzobizftprqspbzt)
+      - Environment variables for Supabase URL, anon key, service role key
+      - n8n instance URL and API key
+    </environment_setup>
+  </prerequisites>
+
+  <feature_count>250</feature_count>
+
+  <user_roles>
+    <role name="admin">
+      <permissions>
+        - Full system access
+        - User management
+        - System configuration
+        - All CRUD operations
+        - Run agents and jobs
+      </permissions>
+      <protected_routes>
+        - All routes accessible
+      </protected_routes>
+    </role>
+    <role name="analyst">
+      <permissions>
+        - View all data
+        - Edit properties
+        - Run agents
+        - Cannot manage users
+        - Cannot modify system config
+      </permissions>
+      <protected_routes>
+        - /settings/users (blocked)
+        - /settings/system (blocked)
+      </protected_routes>
+    </role>
+    <role name="viewer">
+      <permissions>
+        - View dashboards and reports only
+        - No edit capabilities
+        - No agent execution
+      </permissions>
+      <protected_routes>
+        - All write operations blocked
+      </protected_routes>
+    </role>
+  </user_roles>
+
+  <security_and_access_control>
+    <authentication>
+      <method>Email/Password (primary), Google OAuth (optional), Magic Link (optional)</method>
+      <session_timeout>Configurable</session_timeout>
+      <password_requirements>Standard secure password rules</password_requirements>
+    </authentication>
+    <sensitive_operations>
+      - Destructive operations require confirmation
+      - User deletion requires admin approval
+    </sensitive_operations>
+  </security_and_access_control>
+
+  <core_features>
+    <dashboard>
+      - Real-time pipeline overview with KPIs
+      - 5 KPI cards: Total Counties, Total Properties, Approved Properties, Pending Processing, Upcoming Auctions (7 days)
+      - Pipeline Funnel Chart showing stages: Parsed -> Enriched -> Validated -> Approved
+      - Upcoming Auctions Widget with mini calendar and countdown
+      - Bottleneck Alerts showing critical pipeline blockages
+      - Activity Feed with real-time system events
+      - County Progress Table with sortable columns and progress bars
+    </dashboard>
+
+    <orchestration_console>
+      - Session Control Bar with Start/End Session buttons
+      - Active Session Card showing progress, duration, ETA
+      - Work Queue Panel with prioritized work items
+      - Session Plan Panel with AI-recommended work
+      - Agent Assignments Table with real-time progress
+      - Session History with expandable details
+      - Start Session Dialog (session type, agent selection, county filter)
+      - End Session Dialog with summary
+    </orchestration_console>
+
+    <properties_pipeline>
+      - Data table with search, filters, pagination
+      - Stage filter tabs: All, Parsed, Enriched, Validated, Approved, Rejected
+      - Filter panel: County, Stage, Validation Status, Sale Type, Sale Date, Total Due
+      - Property columns: Parcel ID, Address, County, State, Total Due, Sale Type, Sale Date, Stage, Validation, Has Regrid, Actions
+      - Property Detail Page with tabs: Overview, Regrid Data, Validation, Notes, History
+      - Property Card component for grid view
+      - Bulk actions: Select All, Validate Selected, Export CSV
+      - Add to Watchlist functionality
+    </properties_pipeline>
+
+    <counties>
+      - County list with search and filters
+      - County columns: County Name, State, Properties, Progress, Next Auction
+      - County Detail Page with KPIs and tabs: Overview, Properties, Auctions, Documents, Notes
+      - Pipeline Progress visualization per county
+      - Quick Actions: Start Regrid Batch, View Properties, Download Docs
+    </counties>
+
+    <auction_calendar>
+      - Monthly calendar view with auction markers
+      - Active Alerts panel
+      - Registration Deadlines panel
+      - Upcoming Auctions list with countdown timers
+      - Color coding: Red (<7d), Yellow (<30d), Green (>30d)
+      - Auction Detail Page with Key Dates, Investor Briefing, Auction Rules
+      - Alerts Page with acknowledge functionality
+      - Rules Page by county/sale type
+    </auction_calendar>
+
+    <batch_jobs>
+      - Active Jobs table with progress bars
+      - Job History table
+      - Create New Job dialog
+      - Pause/Resume/Cancel controls
+      - Job types: regrid_scraping, visual_validation, property_condition, environmental_research, title_research, bid_strategy, pdf_parsing, county_research
+    </batch_jobs>
+
+    <data_integrity>
+      - Audit Summary cards: Critical, Warnings, Gaps, Info
+      - Issues Table with severity, category, count, fix actions
+      - Quick Actions: Fix Flag Mismatches, Clean Orphans, Update Status
+      - Full Audit report generation
+    </data_integrity>
+
+    <settings>
+      - Profile page: Name, Email, Theme, Default County, Table Page Size
+      - Notifications settings
+      - Integrations (n8n, API keys)
+      - User Management (admin only)
+      - System Configuration (admin only)
+    </settings>
+  </core_features>
+
+  <database_schema>
+    <existing_tables>
+      <counties>
+        - id, county_name, state_code, state_name, fips_code, population, timezone, last_researched_at, research_status, created_at, updated_at
+      </counties>
+      <properties>
+        - id, county_id, document_id, parcel_id, property_address, owner_name, tax_amount, total_due, tax_year, sale_type, sale_date, auction_status, has_regrid_data, has_screenshot, visual_validation_status, pipeline_stage, created_at, updated_at
+      </properties>
+      <regrid_data>
+        - id, property_id, regrid_id, property_type, property_class, land_use, zoning, lot_size_sqft, lot_size_acres, lot_dimensions, building_sqft, year_built, bedrooms, bathrooms, assessed_value, market_value, latitude, longitude, screenshot_url, raw_data, created_at, updated_at
+      </regrid_data>
+      <property_visual_validation>
+        - id, property_id, validation_status, confidence_score, structure_present, road_access, land_use_observed, lot_shape, red_flags, skip_reason, images_analyzed, regrid_screenshot_url, google_maps_url, street_view_url, zillow_url, findings, notes, validated_at, validated_by
+      </property_visual_validation>
+      <upcoming_sales>
+        - id, county_id, sale_type, sale_date, registration_deadline, platform, deposit_required, property_count, location, status, notes, created_at, updated_at
+      </upcoming_sales>
+      <documents>
+        - id, county_id, document_type, title, url, file_format, publication_date, year, property_count, parsing_status, parsed_at, created_at, updated_at
+      </documents>
+      <orchestration_sessions>
+        - id, started_at, ended_at, session_type, trigger_source, status, work_assigned, work_completed, total_items_processed, total_items_failed, notes, created_at
+      </orchestration_sessions>
+      <agent_assignments>
+        - id, session_id, agent_name, task_type, priority, property_ids, county_id, batch_size, status, assigned_at, started_at, completed_at, items_processed, items_failed, execution_method, n8n_execution_id, result_summary, notes
+      </agent_assignments>
+      <pipeline_metrics>
+        - id, recorded_at, stage, county_id, pending_count, completed_today, avg_processing_time_seconds, bottleneck_score
+      </pipeline_metrics>
+      <batch_jobs>
+        - id, job_type, county_id, status, batch_size, total_items, processed_items, failed_items, current_offset, last_processed_id, error_log, started_at, paused_at, completed_at, created_at
+      </batch_jobs>
+    </existing_tables>
+    <new_tables>
+      <user_preferences>
+        - id, user_id, theme, default_county_id, notifications_enabled, email_digest, dashboard_layout, table_preferences, created_at, updated_at
+      </user_preferences>
+      <activity_log>
+        - id, user_id, action, entity_type, entity_id, details, ip_address, user_agent, created_at
+      </activity_log>
+      <saved_filters>
+        - id, user_id, name, entity_type, filter_config, is_default, created_at
+      </saved_filters>
+      <notifications>
+        - id, user_id, type, title, message, link, read, created_at
+      </notifications>
+      <property_notes>
+        - id, property_id, user_id, note, note_type, created_at, updated_at
+      </property_notes>
+      <watchlist>
+        - id, user_id, property_id, max_bid, notes, alert_enabled, created_at
+      </watchlist>
+      <auction_rules>
+        - id, county_id, sale_type, registration_required, registration_deadline_days, registration_form_url, deposit_amount, deposit_refundable, deposit_payment_methods, minimum_bid_rule, minimum_bid_amount, bid_increment, buyers_premium_pct, payment_deadline_hours, payment_methods, financing_allowed, deed_recording_timeline, redemption_period_days, possession_timeline, as_is_sale, liens_survive, title_insurance_available, rules_source_url, last_verified_at, notes, raw_rules_text, created_at, updated_at
+      </auction_rules>
+      <auction_alerts>
+        - id, county_id, sale_id, alert_type, severity, title, message, days_until_event, acknowledged, acknowledged_at, acknowledged_by, created_at
+      </auction_alerts>
+      <auction_summaries>
+        - id, county_id, sale_id, summary_type, executive_summary, key_dates, requirements_summary, bidding_summary, risks_and_notes, recommended_actions, property_count, approved_count, total_tax_due, avg_minimum_bid, estimated_market_value, competition_level, generated_at, generated_by, created_at
+      </auction_summaries>
+    </new_tables>
+  </database_schema>
+
+  <api_endpoints_summary>
+    <dashboard>
+      - GET /api/dashboard - Returns full dashboard data
+      - GET /api/dashboard/stats - Returns dashboard statistics
+      - GET /api/dashboard/activity - Returns activity feed with limit/offset
+    </dashboard>
+    <properties>
+      - GET /api/properties - List with pagination, filters, search, sort
+      - GET /api/properties/[id] - Property full details
+      - PATCH /api/properties/[id] - Update property
+      - POST /api/properties/[id]/notes - Add property note
+      - POST /api/properties/[id]/watchlist - Add to watchlist
+    </properties>
+    <counties>
+      - GET /api/counties - List with pagination, filters
+      - GET /api/counties/[id] - County full details
+      - POST /api/counties/refresh - Refresh county data
+    </counties>
+    <orchestration>
+      - GET /api/orchestration/sessions - List sessions
+      - GET /api/orchestration/sessions/active - Get active session
+      - POST /api/orchestration/sessions - Create session
+      - PATCH /api/orchestration/sessions/[id] - Update session
+      - GET /api/orchestration/work-queue - Get work queue
+      - GET /api/orchestration/session-plan - Get recommended session plan
+      - GET /api/orchestration/bottlenecks - Get bottlenecks
+      - POST /api/orchestration/assignments - Create assignment
+    </orchestration>
+    <batch_jobs>
+      - GET /api/batch-jobs - List batch jobs
+      - POST /api/batch-jobs - Create batch job
+      - PATCH /api/batch-jobs/[id] - Update batch job (pause/resume)
+      - DELETE /api/batch-jobs/[id] - Delete batch job
+    </batch_jobs>
+    <data_integrity>
+      - GET /api/data-integrity/audit - Run audit
+      - POST /api/data-integrity/fix - Fix issues
+      - GET /api/data-integrity/agent-work-report - Get agent work report
+    </data_integrity>
+    <auctions>
+      - GET /api/auctions - List upcoming auctions
+      - GET /api/auctions/calendar - Calendar events
+      - GET /api/auctions/[saleId] - Auction details
+      - GET /api/auctions/alerts - Active alerts
+      - POST /api/auctions/alerts/acknowledge - Acknowledge alert
+    </auctions>
+  </api_endpoints_summary>
+
+  <ui_layout>
+    <main_structure>
+      - Left sidebar navigation (collapsible)
+      - Top header with user menu and settings
+      - Main content area
+      - Responsive: sidebar collapses to hamburger on mobile
+    </main_structure>
+    <navigation_items>
+      - Dashboard (home icon)
+      - Orchestration (play-circle icon)
+      - Properties (building icon)
+      - Counties (map icon)
+      - Auctions (calendar icon)
+      - Batch Jobs (layers icon)
+      - Data Integrity (shield-check icon)
+      - Settings (gear icon)
+    </navigation_items>
+  </ui_layout>
+
+  <design_system>
+    <color_palette>
+      - Primary: Blue (#3b82f6 family)
+      - Success/Approved: Green (#22c55e)
+      - Warning/Caution: Amber (#f59e0b)
+      - Error/Rejected: Red (#ef4444)
+      - Info: Blue (#3b82f6)
+      - Pending: Gray (#6b7280)
+      - Pipeline stages: slate, blue, violet, green
+    </color_palette>
+    <typography>
+      - Font: Inter, system-ui, sans-serif
+      - Sizes: xs(12px), sm(14px), base(16px), lg(18px), xl(20px), 2xl(24px), 3xl(30px), 4xl(36px)
+    </typography>
+    <dark_mode>
+      - Full dark mode support using Tailwind dark: variant
+      - CSS variables for theme colors
+    </dark_mode>
+  </design_system>
+
+  <realtime_features>
+    <subscriptions>
+      - batch_jobs: UPDATE events for progress tracking
+      - orchestration_sessions: UPDATE events for session monitoring
+      - agent_assignments: INSERT, UPDATE for assignment tracking
+      - activity_log: INSERT for activity feed
+      - notifications: INSERT for user notifications
+      - pipeline_metrics: INSERT for dashboard stats
+    </subscriptions>
+  </realtime_features>
+
+  <implementation_steps>
+    <step number="1">
+      <title>Project Foundation</title>
+      <tasks>
+        - Initialize Next.js 14+ project with TypeScript
+        - Configure Tailwind CSS and shadcn/ui
+        - Set up Supabase client (browser and server)
+        - Implement authentication flow with middleware
+        - Create base layout components (header, sidebar)
+        - Set up TanStack Query and Zustand stores
+      </tasks>
+    </step>
+    <step number="2">
+      <title>Dashboard Page</title>
+      <tasks>
+        - Create KPI card components
+        - Build pipeline funnel chart
+        - Implement upcoming auctions widget
+        - Build bottleneck alert cards
+        - Create activity feed with real-time updates
+        - Build county progress table
+      </tasks>
+    </step>
+    <step number="3">
+      <title>Properties Pipeline</title>
+      <tasks>
+        - Build data table with TanStack Table
+        - Implement filter panel
+        - Create property detail page with tabs
+        - Build property card component
+        - Implement bulk actions
+        - Add watchlist functionality
+      </tasks>
+    </step>
+    <step number="4">
+      <title>Orchestration Console</title>
+      <tasks>
+        - Build session control bar
+        - Create active session card
+        - Implement work queue panel
+        - Build session plan display
+        - Create agent assignments table
+        - Implement start/end session dialogs
+      </tasks>
+    </step>
+    <step number="5">
+      <title>Supporting Pages</title>
+      <tasks>
+        - Build counties list and detail pages
+        - Create auction calendar with events
+        - Implement batch jobs monitor
+        - Build data integrity tools
+        - Create settings pages
+      </tasks>
+    </step>
+    <step number="6">
+      <title>Real-time and Polish</title>
+      <tasks>
+        - Implement Supabase real-time subscriptions
+        - Add dark mode support
+        - Ensure responsive design
+        - Add loading states and error handling
+        - Implement notifications
+        - Performance optimization
+      </tasks>
+    </step>
+  </implementation_steps>
+
+  <success_criteria>
+    <functionality>
+      - All CRUD operations work correctly
+      - Real-time updates reflect immediately
+      - Pipeline stages tracked accurately
+      - Batch processing works reliably
+      - All 11 agents can be coordinated
+    </functionality>
+    <user_experience>
+      - Pages load in under 3 seconds
+      - Intuitive navigation
+      - Clear feedback for all actions
+      - Mobile-responsive design
+      - Dark mode available
+    </user_experience>
+    <technical_quality>
+      - TypeScript strict mode passes
+      - No console errors in production
+      - Proper error boundaries
+      - Secure authentication
+      - Clean code structure
+    </technical_quality>
+    <design_polish>
+      - Consistent styling throughout
+      - Proper spacing and alignment
+      - Accessible (WCAG AA)
+      - Professional appearance
+    </design_polish>
+  </success_criteria>
+</project_specification>
