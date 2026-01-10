@@ -38,6 +38,7 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 import { PropertyMap } from "@/components/map/PropertyMap"
+import { mockDataStore } from "@/lib/mockDataStore"
 
 // Simulated "other user's" property IDs for testing access control
 // In production, this would be determined by the API based on user ownership/permissions
@@ -519,7 +520,31 @@ export default function PropertyDetailPage() {
   const [newNoteType, setNewNoteType] = useState<"general" | "concern" | "opportunity" | "action">("general")
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
 
+  // Property delete state
+  const [showPropertyDeleteConfirm, setShowPropertyDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
   const propertyId = params.id as string
+
+  // Handle property deletion
+  const handleDeleteProperty = () => {
+    setIsDeleting(true)
+    // Delete from mock data store
+    const success = mockDataStore.deleteProperty(propertyId)
+    if (success) {
+      toast.success("Property deleted", {
+        description: "The property has been removed from the database.",
+      })
+      // Navigate back to properties list
+      router.push("/properties")
+    } else {
+      toast.error("Delete failed", {
+        description: "Could not delete the property. Please try again.",
+      })
+      setIsDeleting(false)
+      setShowPropertyDeleteConfirm(false)
+    }
+  }
 
   // Check if property is in watchlist
   useEffect(() => {
@@ -845,17 +870,17 @@ export default function PropertyDetailPage() {
         />
 
         {/* Property Header */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6 mb-6">
           {/* Version Info Banner */}
-          <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-4 text-sm text-slate-500">
+          <div className="flex flex-col gap-3 mb-4 pb-4 border-b border-slate-100">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-slate-500">
               <span>Version: {property.version}</span>
-              <span className="text-slate-300">|</span>
+              <span className="text-slate-300 hidden sm:inline">|</span>
               <span>Last modified: {new Date(property.lastModifiedAt).toLocaleString()}</span>
-              <span className="text-slate-300">|</span>
+              <span className="text-slate-300 hidden sm:inline">|</span>
               <span>By: {property.lastModifiedBy}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {canEdit && !isEditing && (
                 <button
                   onClick={startEditing}
@@ -896,7 +921,8 @@ export default function PropertyDetailPage() {
                 title={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
               >
                 <Heart className={`h-4 w-4 ${isInWatchlist ? "fill-current" : ""}`} />
-                {isInWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}
+                <span className="hidden sm:inline">{isInWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}</span>
+                <span className="sm:hidden">{isInWatchlist ? "Remove" : "Watchlist"}</span>
               </button>
               {/* Demo button to simulate concurrent edit - only visible to editors */}
               {canEdit && (
@@ -906,7 +932,8 @@ export default function PropertyDetailPage() {
                   title="Simulates another user editing this record (increments version)"
                 >
                   <RefreshCw className="h-4 w-4" />
-                  Simulate User B Edit
+                  <span className="hidden sm:inline">Simulate User B Edit</span>
+                  <span className="sm:hidden">Sim Edit</span>
                 </button>
               )}
               {/* Demo button to simulate delete by another user - only visible to editors */}
@@ -917,7 +944,20 @@ export default function PropertyDetailPage() {
                   title="Simulates another user deleting this record"
                 >
                   <X className="h-4 w-4" />
-                  Simulate User B Delete
+                  <span className="hidden sm:inline">Simulate User B Delete</span>
+                  <span className="sm:hidden">Sim Del</span>
+                </button>
+              )}
+              {/* Delete property button */}
+              {canEdit && (
+                <button
+                  onClick={() => setShowPropertyDeleteConfirm(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  title="Delete this property"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Delete Property</span>
+                  <span className="sm:hidden">Delete</span>
                 </button>
               )}
             </div>
@@ -2088,6 +2128,67 @@ export default function PropertyDetailPage() {
                 className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Delete Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Property Confirmation Modal */}
+      {showPropertyDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !isDeleting && setShowPropertyDeleteConfirm(false)}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Delete Property
+                </h2>
+                <p className="text-sm text-slate-600">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4">
+              <p className="text-slate-600 mb-4">
+                Are you sure you want to delete this property? It will be permanently removed from the database.
+              </p>
+              {property && (
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="font-medium text-slate-900">{property.address}</div>
+                  <div className="text-sm text-slate-500">{property.parcelId}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button
+                onClick={() => setShowPropertyDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProperty}
+                disabled={isDeleting}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting ? "Deleting..." : "Delete Property"}
               </button>
             </div>
           </div>
