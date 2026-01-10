@@ -240,12 +240,14 @@ export async function POST(request: NextRequest) {
       // Demo mode - just return success with mock ID
       const newJob = {
         id: `batch-${Date.now()}`,
-        ...body,
+        job_type: body.job_type,
+        county_id: body.county_id,
+        batch_size: body.batch_size || 50,
         status: "pending",
         total_items: body.total_items || 0,
         processed_items: 0,
+        failed_items: 0,
         created_at: new Date().toISOString(),
-        created_by: authResult.user?.email,
       }
 
       return NextResponse.json({
@@ -255,14 +257,30 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Calculate total_items based on job_type
+    let totalItems = body.total_items || 0
+
+    if (!totalItems || totalItems === 0) {
+      totalItems = await calculateTotalItems(supabase, body.job_type, body.county_id)
+    }
+
+    const batchSize = body.batch_size || 50
+    const totalBatches = Math.ceil(totalItems / batchSize)
+
     const { data, error } = await supabase
       .from("batch_jobs")
       .insert([
         {
-          ...body,
+          job_type: body.job_type,
+          county_id: body.county_id,
+          batch_size: batchSize,
           status: "pending",
+          total_items: totalItems,
           processed_items: 0,
-          created_by: authResult.user?.email,
+          failed_items: 0,
+          current_batch: 0,
+          total_batches: totalBatches,
+          error_count: 0,
         },
       ])
       .select()
@@ -293,5 +311,84 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
+  }
+}
+
+/**
+ * Calculate total items for a batch job based on job type and county
+ */
+async function calculateTotalItems(
+  supabase: any,
+  jobType: string,
+  countyId: string
+): Promise<number> {
+  try {
+    let query;
+
+    switch (jobType) {
+      case "regrid_scraping":
+        // Count properties that don't have Regrid data yet
+        query = supabase
+          .from("properties")
+          .select("id", { count: "exact", head: true })
+          .eq("county_id", countyId)
+          .eq("has_regrid_data", false)
+          .eq("auction_status", "active")
+        break
+
+      case "visual_validation":
+        // Count properties that have Regrid data but no visual validation
+        query = supabase
+          .from("properties")
+          .select("id", { count: "exact", head: true })
+          .eq("county_id", countyId)
+          .eq("has_regrid_data", true)
+          .is("visual_validation_status", null)
+          .eq("auction_status", "active")
+        break
+
+      case "pdf_parsing":
+        // Count documents that need parsing
+        query = supabase
+          .from("documents")
+          .select("id", { count: "exact", head: true })
+          .eq("county_id", countyId)
+          .eq("document_type", "property_list")
+          .in("parsing_status", ["pending", "failed"])
+        break
+
+      case "title_research":
+      case "property_condition":
+      case "environmental_research":
+      case "bid_strategy":
+        // Count approved properties that need this analysis
+        query = supabase
+          .from("properties")
+          .select("id", { count: "exact", head: true })
+          .eq("county_id", countyId)
+          .eq("visual_validation_status", "APPROVED")
+          .eq("auction_status", "active")
+        break
+
+      default:
+        // Default: count all active properties in county
+        query = supabase
+          .from("properties")
+          .select("id", { count: "exact", head: true })
+          .eq("county_id", countyId)
+          .eq("auction_status", "active")
+    }
+
+    const { count, error } = await query
+
+    if (error) {
+      console.error("[API Batch Jobs] Count error:", error)
+      return 0
+    }
+
+    return count || 0
+  } catch (error) {
+    console.error("[API Batch Jobs] Calculate total items error:", error)
+    return 0
   }
 }
