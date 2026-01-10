@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Database,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
@@ -713,8 +714,4 @@ function CountyRow({
       </td>
     </tr>
   )
-}
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ")
 }
