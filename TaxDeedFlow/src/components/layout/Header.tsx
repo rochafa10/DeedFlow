@@ -104,10 +104,10 @@ export function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - min 44x44px touch target */}
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="md:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100 transition-colors"
+              className="md:hidden min-w-[44px] min-h-[44px] p-2.5 -ml-2 rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
               aria-label="Open menu"
               aria-expanded={showMobileMenu}
             >
@@ -134,7 +134,7 @@ export function Header() {
                     setShowNotifications(!showNotifications)
                     setShowDropdown(false)
                   }}
-                  className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                  className="relative min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
                   aria-label="Notifications"
                 >
                   <Bell className="h-5 w-5 text-slate-600" aria-hidden="true" />
@@ -246,7 +246,7 @@ export function Header() {
                     setShowDropdown(!showDropdown)
                     setShowNotifications(false)
                   }}
-                  className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                  className="flex items-center gap-2 min-h-[44px] p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                   aria-label="User menu"
                   aria-expanded={showDropdown}
                 >
@@ -313,7 +313,7 @@ export function Header() {
               </div>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                className="p-2 rounded-lg hover:bg-slate-100"
+                className="min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-slate-100 flex items-center justify-center"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5 text-slate-600" aria-hidden="true" />

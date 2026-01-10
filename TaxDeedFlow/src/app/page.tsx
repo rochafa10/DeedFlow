@@ -63,14 +63,14 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 outline-none">
         {/* Page Title with Data Source Indicator */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
             <p className="text-slate-600 mt-1">
               Real-time pipeline overview and key metrics
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             {/* Last updated indicator */}
             {dataUpdatedAt && (
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -78,7 +78,7 @@ export default function DashboardPage() {
                 <span>
                   Updated {new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
-                <span className="text-slate-400">• Auto-refreshes every 10s</span>
+                <span className="text-slate-400 hidden sm:inline">• Auto-refreshes every 10s</span>
               </div>
             )}
             {/* Data source indicator */}
@@ -93,10 +93,10 @@ export default function DashboardPage() {
               <Database className="h-3 w-3" aria-hidden="true" />
               {dataSource === "database" ? "Live Data" : "Demo Mode"}
             </div>
-            {/* Refresh button */}
+            {/* Refresh button - min 44px touch target */}
             <button
               onClick={() => refetch()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50 transition-colors"
               disabled={dataLoading}
             >
               <RefreshCw

@@ -1049,11 +1049,11 @@ function PropertiesContent() {
               />
             </div>
 
-            {/* Filters Button */}
+            {/* Filters Button - min 44px touch target */}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
+                "flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg border text-sm font-medium transition-colors",
                 showFilters
                   ? "bg-primary text-white border-primary"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
@@ -1068,33 +1068,33 @@ function PropertiesContent() {
               )}
             </button>
 
-            {/* Export Button */}
+            {/* Export Button - min 44px touch target */}
             <button
               onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              className="flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg border text-sm font-medium transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
             >
               <Download className="h-4 w-4" />
               Export CSV
             </button>
 
-            {/* Save Filter Button */}
+            {/* Save Filter Button - min 44px touch target */}
             {hasActiveFilters && (
               <button
                 onClick={() => setShowSaveFilterModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                className="flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg border text-sm font-medium transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               >
                 <BookmarkPlus className="h-4 w-4" />
                 Save Filter
               </button>
             )}
 
-            {/* Saved Filters Button */}
+            {/* Saved Filters Button - min 44px touch target */}
             {savedFilters.length > 0 && (
               <div className="relative">
                 <button
                   onClick={() => setShowSavedFilters(!showSavedFilters)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
+                    "flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg border text-sm font-medium transition-colors",
                     showSavedFilters
                       ? "bg-amber-500 text-white border-amber-500"
                       : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
@@ -1683,11 +1683,11 @@ function PropertiesContent() {
               </div>
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={validCurrentPage === 1}
-                  className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -1698,7 +1698,7 @@ function PropertiesContent() {
                       key={page}
                       onClick={() => setCurrentPage(page)}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                        "min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-sm font-medium transition-colors",
                         validCurrentPage === page
                           ? "bg-primary text-white"
                           : "text-slate-600 hover:bg-slate-100"
@@ -1713,7 +1713,7 @@ function PropertiesContent() {
                     setCurrentPage((p) => Math.min(totalPages, p + 1))
                   }
                   disabled={validCurrentPage === totalPages}
-                  className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Next page"
                 >
                   <ChevronRight className="h-4 w-4" />
