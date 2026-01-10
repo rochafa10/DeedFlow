@@ -42,8 +42,8 @@ export default function DashboardPage() {
   // Show loading state while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-500 dark:text-slate-400">Loading...</div>
       </div>
     )
   }
@@ -57,7 +57,7 @@ export default function DashboardPage() {
   const dataSource = dashboardResponse?.source
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Header />
 
       {/* Main Content */}
@@ -65,8 +65,8 @@ export default function DashboardPage() {
         {/* Page Title with Data Source Indicator */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-slate-600 mt-1">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
               Real-time pipeline overview and key metrics
             </p>
           </div>
@@ -96,7 +96,7 @@ export default function DashboardPage() {
             {/* Refresh button - min 44px touch target */}
             <button
               onClick={() => refetch()}
-              className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               disabled={dataLoading}
             >
               <RefreshCw
@@ -121,7 +121,7 @@ export default function DashboardPage() {
             {/* Main Grid Skeletons */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Pipeline Funnel Skeleton */}
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Skeleton className="h-5 w-5" />
                   <Skeleton className="h-5 w-32" />
@@ -140,7 +140,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Upcoming Auctions Skeleton */}
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Skeleton className="h-5 w-5" />
                   <Skeleton className="h-5 w-36" />
@@ -165,7 +165,7 @@ export default function DashboardPage() {
             </div>
 
             {/* County Progress Table Skeleton */}
-            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
               <div className="p-6 border-b border-slate-200">
                 <Skeleton className="h-6 w-36" />
               </div>
@@ -243,8 +243,8 @@ export default function DashboardPage() {
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Pipeline Funnel */}
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   Pipeline Funnel
                 </h2>
@@ -277,8 +277,8 @@ export default function DashboardPage() {
               </div>
 
               {/* Upcoming Auctions */}
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   Upcoming Auctions
                 </h2>
@@ -306,8 +306,8 @@ export default function DashboardPage() {
             {/* Bottom Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Bottleneck Alerts */}
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden="true" />
                   Bottlenecks
                 </h2>
@@ -331,8 +331,8 @@ export default function DashboardPage() {
               </div>
 
               {/* Recent Activity */}
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <Activity className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   Recent Activity
                 </h2>
@@ -356,9 +356,9 @@ export default function DashboardPage() {
             </div>
 
             {/* County Progress Table */}
-            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
               <div className="p-6 border-b border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                   County Progress
                 </h2>
               </div>
@@ -441,20 +441,20 @@ function KpiCard({
   return (
     <div
       className={cn(
-        "bg-white rounded-lg border p-4",
-        urgent ? "border-red-200 bg-red-50" : "border-slate-200"
+        "bg-white dark:bg-slate-800 rounded-lg border p-4",
+        urgent ? "border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800" : "border-slate-200 dark:border-slate-700"
       )}
     >
       <div className="flex items-center justify-between mb-2">
         <span
           className={cn(
             "text-sm font-medium",
-            urgent ? "text-red-600" : "text-slate-500"
+            urgent ? "text-red-600 dark:text-red-400" : "text-slate-500 dark:text-slate-400"
           )}
         >
           {title}
         </span>
-        <span className={urgent ? "text-red-500" : "text-slate-400"}>
+        <span className={urgent ? "text-red-500 dark:text-red-400" : "text-slate-400 dark:text-slate-500"}>
           {icon}
         </span>
       </div>
@@ -462,17 +462,17 @@ function KpiCard({
         <span
           className={cn(
             "text-2xl font-bold",
-            urgent ? "text-red-700" : "text-slate-900"
+            urgent ? "text-red-700 dark:text-red-400" : "text-slate-900 dark:text-white"
           )}
         >
           {value}
         </span>
-        <span className="text-sm text-slate-500">{description}</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">{description}</span>
       </div>
       <div
         className={cn(
           "text-xs mt-2",
-          urgent ? "text-red-600 font-medium" : "text-slate-500"
+          urgent ? "text-red-600 dark:text-red-400 font-medium" : "text-slate-500 dark:text-slate-400"
         )}
       >
         {trend}

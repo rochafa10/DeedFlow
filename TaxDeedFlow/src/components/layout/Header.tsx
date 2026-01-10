@@ -100,30 +100,30 @@ export function Header() {
   return (
     <>
       <SkipLink />
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             {/* Mobile Menu Button - min 44x44px touch target */}
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="md:hidden min-w-[44px] min-h-[44px] p-2.5 -ml-2 rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
+              className="md:hidden min-w-[44px] min-h-[44px] p-2.5 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center"
               aria-label="Open menu"
               aria-expanded={showMobileMenu}
             >
-              <Menu className="h-6 w-6 text-slate-600" aria-hidden="true" />
+              <Menu className="h-6 w-6 text-slate-600 dark:text-slate-300" aria-hidden="true" />
             </button>
             <Building2 className="h-8 w-8 text-primary" aria-hidden="true" />
-            <span className="text-xl font-bold text-slate-900">Tax Deed Flow</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-white">Tax Deed Flow</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="/" className="text-sm font-medium text-primary">Dashboard</a>
-            <a href="/properties" className="text-sm font-medium text-slate-600 hover:text-slate-900">Properties</a>
-            <a href="/counties" className="text-sm font-medium text-slate-600 hover:text-slate-900">Counties</a>
-            <a href="/auctions" className="text-sm font-medium text-slate-600 hover:text-slate-900">Auctions</a>
-            <a href="/batch-jobs" className="text-sm font-medium text-slate-600 hover:text-slate-900">Batch Jobs</a>
-            <a href="/orchestration" className="text-sm font-medium text-slate-600 hover:text-slate-900">Orchestration</a>
-            <a href="/data-integrity" className="text-sm font-medium text-slate-600 hover:text-slate-900">Data Integrity</a>
+            <a href="/properties" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Properties</a>
+            <a href="/counties" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Counties</a>
+            <a href="/auctions" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Auctions</a>
+            <a href="/batch-jobs" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Batch Jobs</a>
+            <a href="/orchestration" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Orchestration</a>
+            <a href="/data-integrity" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Data Integrity</a>
           </nav>
           {isAuthenticated && (
             <div className="flex items-center gap-2">
@@ -134,10 +134,10 @@ export function Header() {
                     setShowNotifications(!showNotifications)
                     setShowDropdown(false)
                   }}
-                  className="relative min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
+                  className="relative min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center"
                   aria-label="Notifications"
                 >
-                  <Bell className="h-5 w-5 text-slate-600" aria-hidden="true" />
+                  <Bell className="h-5 w-5 text-slate-600 dark:text-slate-300" aria-hidden="true" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                       {unreadCount > 9 ? "9+" : unreadCount}
@@ -246,7 +246,7 @@ export function Header() {
                     setShowDropdown(!showDropdown)
                     setShowNotifications(false)
                   }}
-                  className="flex items-center gap-2 min-h-[44px] p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                  className="flex items-center gap-2 min-h-[44px] p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                   aria-label="User menu"
                   aria-expanded={showDropdown}
                 >
