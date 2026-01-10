@@ -286,7 +286,7 @@ function generatePlaceholderRegridData(
       address: address || null,
     },
     raw_html: null,
-    data_quality_score: 50, // Lower score for placeholder data
+    data_quality_score: 0.50, // Lower score for placeholder data (0.00-1.00 scale)
   }
 }
 
