@@ -109,6 +109,7 @@ export async function GET() {
       upcomingAuctionsResult,
       regridResult,
       validatedResult,
+      countyProgressResult,
     ] = await Promise.all([
       // Count counties
       supabase.from("counties").select("*", { count: "exact", head: true }),
@@ -129,7 +130,7 @@ export async function GET() {
           id,
           sale_date,
           property_count,
-          counties!inner(name, state)
+          counties!inner(county_name, state_code)
         `)
         .gte("sale_date", new Date().toISOString())
         .order("sale_date", { ascending: true })
@@ -142,6 +143,9 @@ export async function GET() {
       supabase
         .from("property_visual_validation")
         .select("*", { count: "exact", head: true }),
+
+      // Get county progress with property counts
+      supabase.rpc("get_county_progress_for_dashboard"),
     ])
 
     // Calculate stats
@@ -162,8 +166,8 @@ export async function GET() {
 
         return {
           id: auction.id,
-          county: auction.counties?.name ?? "Unknown",
-          state: auction.counties?.state ?? "??",
+          county: auction.counties?.county_name ?? "Unknown",
+          state: auction.counties?.state_code ?? "??",
           date: saleDate.toLocaleDateString("en-US", {
             month: "short",
             day: "2-digit",
@@ -220,7 +224,19 @@ export async function GET() {
         totalValidated
       ),
       recentActivity: [], // TODO: Implement activity feed from orchestration_sessions
-      countyProgress: [], // TODO: Implement county progress
+      countyProgress: (countyProgressResult.data ?? []).map((county: any) => ({
+        id: county.id,
+        county: county.county_name,
+        state: county.state_code,
+        total: county.total_properties,
+        regridCount: county.regrid_count,
+        regridPercentage: county.total_properties > 0
+          ? Math.round((county.regrid_count / county.total_properties) * 100)
+          : 0,
+        validated: county.validated_count,
+        approved: county.approved_count,
+        daysUntilAuction: county.days_until_auction,
+      })),
     }
 
     return NextResponse.json({

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
   Filter,
@@ -12,111 +12,26 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
+  Loader2,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
 
-// Mock county data for demo
-const MOCK_COUNTIES = [
-  {
-    id: "1",
-    name: "Westmoreland",
-    state: "PA",
-    status: "active",
-    propertyCount: 172,
-    progress: 85, // Pipeline progress percentage
-    nextAuctionDate: "Jan 16, 2026",
-    daysUntilAuction: 7,
-    documentsCount: 8,
-    researchedAt: "2026-01-05",
-  },
-  {
-    id: "2",
-    name: "Blair",
-    state: "PA",
-    status: "active",
-    propertyCount: 252,
-    progress: 62,
-    nextAuctionDate: "Mar 11, 2026",
-    daysUntilAuction: 62,
-    documentsCount: 12,
-    researchedAt: "2026-01-03",
-  },
-  {
-    id: "3",
-    name: "Somerset",
-    state: "PA",
-    status: "active",
-    propertyCount: 2663,
-    progress: 28,
-    nextAuctionDate: "Sep 08, 2026",
-    daysUntilAuction: 242,
-    documentsCount: 15,
-    researchedAt: "2026-01-02",
-  },
-  {
-    id: "4",
-    name: "Centre",
-    state: "PA",
-    status: "pending",
-    propertyCount: 0,
-    progress: 0,
-    nextAuctionDate: null,
-    daysUntilAuction: null,
-    documentsCount: 0,
-    researchedAt: null,
-  },
-  {
-    id: "5",
-    name: "Allegheny",
-    state: "PA",
-    status: "pending",
-    propertyCount: 0,
-    progress: 0,
-    nextAuctionDate: null,
-    daysUntilAuction: null,
-    documentsCount: 0,
-    researchedAt: null,
-  },
-  {
-    id: "6",
-    name: "Philadelphia",
-    state: "PA",
-    status: "active",
-    propertyCount: 4521,
-    progress: 45,
-    nextAuctionDate: "Apr 15, 2026",
-    daysUntilAuction: 97,
-    documentsCount: 22,
-    researchedAt: "2025-12-28",
-  },
-  {
-    id: "7",
-    name: "Cambria",
-    state: "PA",
-    status: "active",
-    propertyCount: 845,
-    progress: 72,
-    nextAuctionDate: "May 20, 2026",
-    daysUntilAuction: 132,
-    documentsCount: 9,
-    researchedAt: "2026-01-01",
-  },
-  {
-    id: "8",
-    name: "Bedford",
-    state: "PA",
-    status: "pending",
-    propertyCount: 0,
-    progress: 0,
-    nextAuctionDate: null,
-    daysUntilAuction: null,
-    documentsCount: 0,
-    researchedAt: null,
-  },
-]
+// County type from API
+interface County {
+  id: string
+  name: string
+  state: string
+  stateName: string | null
+  status: "active" | "pending" | "archived"
+  propertyCount: number
+  progress: number
+  nextAuctionDate: string | null
+  daysUntilAuction: number | null
+  documentsCount: number
+  researchedAt: string | null
+}
 
 type CountyStatus = "active" | "pending" | "archived"
 
@@ -149,8 +64,13 @@ export default function CountiesPage() {
   const [statusFilter, setStatusFilter] = useState<CountyStatus | "all">("all")
   const [showFilters, setShowFilters] = useState(false)
 
+  // Data fetching state
+  const [counties, setCounties] = useState<County[]>([])
+  const [isLoadingCounties, setIsLoadingCounties] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   // Get unique states for filter dropdown
-  const uniqueStates = Array.from(new Set(MOCK_COUNTIES.map(c => c.state))).sort()
+  const uniqueStates = Array.from(new Set(counties.map(c => c.state))).sort()
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -159,10 +79,41 @@ export default function CountiesPage() {
     }
   }, [isAuthenticated, authLoading, router])
 
+  // Fetch counties from API
+  useEffect(() => {
+    async function fetchCounties() {
+      if (!isAuthenticated) return
+
+      setIsLoadingCounties(true)
+      setLoadError(null)
+
+      try {
+        const response = await fetch("/api/counties")
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to fetch counties: ${response.status}`)
+        }
+
+        const result = await response.json()
+        setCounties(result.data || [])
+      } catch (error) {
+        console.error("Failed to fetch counties:", error)
+        setLoadError(error instanceof Error ? error.message : "Failed to load counties")
+      } finally {
+        setIsLoadingCounties(false)
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchCounties()
+    }
+  }, [isAuthenticated])
+
   // Show loading state while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-slate-500">Loading...</div>
       </div>
     )
@@ -173,8 +124,45 @@ export default function CountiesPage() {
     return null
   }
 
+  // Show loading state while fetching counties
+  if (isLoadingCounties) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-slate-500 dark:text-slate-400">Loading counties...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if loading failed
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-10 w-10 text-red-500" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Failed to load counties</h2>
+            <p className="text-slate-500 dark:text-slate-400">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Filter counties based on search and filters
-  const filteredCounties = MOCK_COUNTIES.filter((county) => {
+  const filteredCounties = counties.filter((county) => {
     const matchesSearch =
       searchQuery === "" ||
       county.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -193,7 +181,7 @@ export default function CountiesPage() {
   const activeFilterCount = [stateFilter !== "all", statusFilter !== "all"].filter(Boolean).length
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Header />
 
       {/* Main Content */}
@@ -297,10 +285,10 @@ export default function CountiesPage() {
 
         {/* Results Summary */}
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Showing{" "}
             <span className="font-medium">{filteredCounties.length}</span> of{" "}
-            <span className="font-medium">{MOCK_COUNTIES.length}</span>{" "}
+            <span className="font-medium">{counties.length}</span>{" "}
             counties
           </p>
         </div>

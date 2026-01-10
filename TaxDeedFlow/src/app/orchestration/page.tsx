@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Play,
   Pause,
@@ -27,7 +27,7 @@ import {
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { authFetch } from "@/lib/api/authFetch"
 
 // Session types
 const SESSION_TYPES = [
@@ -40,96 +40,98 @@ const SESSION_TYPES = [
   { value: "bid_strategy", label: "Bid Strategy", description: "Calculate optimal bid amounts" },
 ]
 
-// Mock session data - will be updated dynamically
-const INITIAL_SESSIONS = [
-  {
-    id: "session-001",
-    startedAt: "2026-01-09T08:30:00Z",
-    endedAt: "2026-01-09T10:45:00Z",
-    status: "completed",
-    type: "full_pipeline",
-    agentsUsed: 4,
-    propertiesProcessed: 156,
-    errors: 0,
-    notes: "",
-  },
-  {
-    id: "session-002",
-    startedAt: "2026-01-08T14:00:00Z",
-    endedAt: "2026-01-08T16:30:00Z",
-    status: "completed",
-    type: "regrid_scraping",
-    agentsUsed: 2,
-    propertiesProcessed: 89,
-    errors: 2,
-    notes: "",
-  },
-  {
-    id: "session-003",
-    startedAt: "2026-01-07T09:00:00Z",
-    endedAt: null,
-    status: "failed",
-    type: "visual_validation",
-    agentsUsed: 1,
-    propertiesProcessed: 45,
-    errors: 5,
-    notes: "",
-  },
-]
+// Interfaces for API data
+interface WorkQueueItem {
+  id: string
+  type: string
+  typeLabel: string
+  county: string
+  countyId: string
+  state: string
+  priority: number
+  itemsRemaining: number
+  batchSize: number
+  estimatedSessions: number
+  hasActiveJob: boolean
+  activeJobId?: string
+  daysUntilAuction?: number
+  urgency?: string
+}
 
-// Mock work queue - ordered by priority with auction urgency
-const MOCK_WORK_QUEUE = [
-  {
-    id: "work-001",
-    type: "visual_validation",
-    county: "Westmoreland",
-    priority: 1,
-    itemsRemaining: 150,
-    estimatedTime: "45 min",
-    daysUntilAuction: 7,
-    urgency: "critical", // auction in 7 days
-  },
-  {
-    id: "work-002",
-    type: "regrid_scraping",
-    county: "Blair",
-    priority: 2,
-    itemsRemaining: 252,
-    estimatedTime: "4 hours",
-    daysUntilAuction: 61,
-    urgency: "high", // auction in ~2 months
-  },
-  {
-    id: "work-003",
-    type: "pdf_parsing",
-    county: "Blair",
-    priority: 3,
-    itemsRemaining: 12,
-    estimatedTime: "30 min",
-    daysUntilAuction: 61,
-    urgency: "medium",
-  },
-  {
-    id: "work-004",
-    type: "regrid_scraping",
-    county: "Somerset",
-    priority: 4,
-    itemsRemaining: 2400,
-    estimatedTime: "8 hours",
-    daysUntilAuction: 242,
-    urgency: "low", // auction far away
-  },
-  {
-    id: "work-005",
-    type: "regrid_scraping",
-    county: "Philadelphia",
-    priority: 5,
-    itemsRemaining: 4200,
-    estimatedTime: "14 hours",
-    daysUntilAuction: 96,
-    urgency: "medium",
-  },
-]
+interface ActiveAgent {
+  id: string
+  name: string
+  type: string
+  status: string
+  currentTask: string | null
+  progress: number
+  lastActive: string | null
+}
+
+interface AgentAssignment {
+  id: string
+  sessionId: string
+  agent: string
+  task: string
+  taskType: string
+  county: string
+  countyId: string
+  state: string
+  priority: number
+  status: string
+  progress: number
+  itemsTotal: number
+  itemsProcessed: number
+  itemsFailed: number
+  executionMethod: string
+  assignedAt: string
+  startedAt: string | null
+  completedAt: string | null
+  errorMessage: string | null
+  notes: string | null
+}
+
+interface SessionPlan {
+  recommendations: Array<{
+    agent: string
+    task: string
+    county: string
+    countyId: string
+    itemCount: number
+    priority: number
+    note?: string
+  }>
+  totalItems: number
+  estimatedDuration: string
+  constraints: {
+    propertiesUsed: number
+    maxProperties: number
+    agentsUsed: number
+    maxAgents: number
+  }
+}
+
+interface Bottleneck {
+  id: string
+  stage: string
+  severity: string
+  backlogCount: number
+  description: string
+  impact: string
+  recommendation: string
+  estimatedSessions: number
+}
+
+interface PipelineStats {
+  totalProperties: number
+  withRegrid: number
+  validated: number
+  approved: number
+  activeProperties: number
+  regridPending: number
+  validationPending: number
+  completionPct: number
+}
 
 const URGENCY_CONFIG: Record<string, { label: string; color: string }> = {
   critical: { label: "CRITICAL", color: "bg-red-100 text-red-700" },
@@ -138,97 +140,11 @@ const URGENCY_CONFIG: Record<string, { label: string; color: string }> = {
   low: { label: "LOW", color: "bg-slate-100 text-slate-600" },
 }
 
-// Mock active agents
-const MOCK_ACTIVE_AGENTS = [
-  {
-    id: "agent-001",
-    name: "Regrid Scraper",
-    status: "idle",
-    lastActive: "2026-01-09T10:45:00Z",
-    propertiesProcessed: 156,
-  },
-  {
-    id: "agent-002",
-    name: "Visual Validator",
-    status: "idle",
-    lastActive: "2026-01-09T10:30:00Z",
-    propertiesProcessed: 89,
-  },
-  {
-    id: "agent-003",
-    name: "Parser Agent",
-    status: "idle",
-    lastActive: "2026-01-08T16:00:00Z",
-    propertiesProcessed: 252,
-  },
-]
-
-// Mock agent assignments
-const MOCK_AGENT_ASSIGNMENTS = [
-  { id: 1, agent: "Regrid Scraper", task: "Regrid Scraping - Somerset", status: "running", progress: 45, processed: 1080, total: 2400 },
-  { id: 2, agent: "Visual Validator", task: "Visual Validation - Westmoreland", status: "queued", progress: 0, processed: 0, total: 150 },
-  { id: 3, agent: "Parser Agent", task: "PDF Parsing - Blair", status: "idle", progress: 0, processed: 0, total: 12 },
-]
-
 // Session plan constraints
 const SESSION_LIMITS = {
   maxProperties: 150,
   maxAgents: 3,
 }
-
-// Mock AI session plan - respects session limits
-const SESSION_PLAN = {
-  recommendations: [
-    { id: 1, task: "Regrid Scraping", county: "Somerset", priority: "High", items: 50, estimatedTime: "1 hour", reason: "Highest priority backlog", agent: "Regrid Scraper" },
-    { id: 2, task: "Visual Validation", county: "Westmoreland", priority: "Medium", items: 50, estimatedTime: "30 min", reason: "Properties awaiting validation", agent: "Visual Validator" },
-    { id: 3, task: "PDF Parsing", county: "Blair", priority: "Medium", items: 12, estimatedTime: "30 min", reason: "New documents available", agent: "Parser Agent" },
-  ],
-  totalItems: 112, // Under 150 limit
-  estimatedDuration: "~2 hours",
-  constraints: {
-    propertiesUsed: 112,
-    maxProperties: 150,
-    agentsUsed: 3,
-    maxAgents: 3,
-  },
-}
-
-// Mock bottleneck data - simulates detected pipeline bottlenecks
-const MOCK_BOTTLENECKS = [
-  {
-    id: "bottleneck-001",
-    stage: "Regrid Scraping",
-    severity: "critical",
-    backlogCount: 6600,
-    throughputRate: 50, // items per hour
-    estimatedClearTime: "132 hours",
-    affectedCounties: ["Somerset", "Philadelphia"],
-    recommendation: "Increase Regrid Scraper agent capacity or add parallel instances",
-    trend: "increasing", // backlog is growing
-  },
-  {
-    id: "bottleneck-002",
-    stage: "Visual Validation",
-    severity: "warning",
-    backlogCount: 150,
-    throughputRate: 100, // items per hour
-    estimatedClearTime: "1.5 hours",
-    affectedCounties: ["Westmoreland"],
-    recommendation: "Schedule visual validation batch during next session",
-    trend: "stable",
-  },
-  {
-    id: "bottleneck-003",
-    stage: "Title Research",
-    severity: "info",
-    backlogCount: 45,
-    throughputRate: 20, // items per hour
-    estimatedClearTime: "2.25 hours",
-    affectedCounties: ["Blair"],
-    recommendation: "Low priority - can be addressed in regular workflow",
-    trend: "decreasing",
-  },
-]
 
 type BottleneckSeverity = "critical" | "warning" | "info"
 
@@ -253,35 +169,31 @@ const BOTTLENECK_SEVERITY_CONFIG: Record<BottleneckSeverity, { label: string; co
   },
 }
 
-// Mock n8n workflows
+// Static n8n workflows (these are config, not data from API)
 const N8N_WORKFLOWS = [
   {
     id: "TDF-001",
     name: "Data Integrity Check",
     description: "Run audit, check for missing data, and generate work queues",
-    lastRun: "2026-01-09T06:00:00Z",
-    status: "success",
+    webhookPath: "data-integrity",
   },
   {
     id: "TDF-002",
     name: "Daily Pipeline Review",
     description: "Morning summary of pipeline status and priorities",
-    lastRun: "2026-01-09T06:30:00Z",
-    status: "success",
+    webhookPath: "daily-review",
   },
   {
     id: "TDF-003",
     name: "Regrid Batch Scraper",
     description: "Automated property data scraping from Regrid",
-    lastRun: "2026-01-08T14:00:00Z",
-    status: "success",
+    webhookPath: "regrid-scraper",
   },
   {
     id: "TDF-004",
     name: "PDF Parser",
     description: "Parse property list PDFs and extract data",
-    lastRun: "2026-01-07T10:00:00Z",
-    status: "failed",
+    webhookPath: "pdf-parser",
   },
 ]
 
@@ -349,7 +261,7 @@ export default function OrchestrationPage() {
   // Check if user can execute (admin or analyst only)
   const canExecute = user?.role === "admin" || user?.role === "analyst"
   const [activeSession, setActiveSession] = useState<Session | null>(null)
-  const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS)
+  const [sessions, setSessions] = useState<Session[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedType, setSelectedType] = useState("full_pipeline")
   const [sessionNotes, setSessionNotes] = useState("")
@@ -363,12 +275,89 @@ export default function OrchestrationPage() {
   const [triggeringWorkflow, setTriggeringWorkflow] = useState<string | null>(null)
   const [workflowFeedback, setWorkflowFeedback] = useState<{ id: string; success: boolean; message: string } | null>(null)
 
+  // API data state
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [workQueue, setWorkQueue] = useState<WorkQueueItem[]>([])
+  const [activeAgents, setActiveAgents] = useState<ActiveAgent[]>([])
+  const [assignments, setAssignments] = useState<AgentAssignment[]>([])
+  const [sessionPlan, setSessionPlan] = useState<SessionPlan | null>(null)
+  const [bottlenecks, setBottlenecks] = useState<Bottleneck[]>([])
+  const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null)
+
+  // Fetch orchestration data from API
+  const fetchOrchestrationData = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const response = await authFetch("/api/orchestration")
+      if (!response.ok) {
+        throw new Error("Failed to fetch orchestration data")
+      }
+
+      const result = await response.json()
+      const data = result.data
+
+      // Update state from API response
+      if (data.activeSession) {
+        setActiveSession({
+          id: data.activeSession.id,
+          startedAt: data.activeSession.startedAt,
+          endedAt: null,
+          status: data.activeSession.status,
+          type: data.activeSession.type || "full_pipeline",
+          agentsUsed: data.activeSession.agentsUsed?.length || 0,
+          propertiesProcessed: data.activeSession.propertiesProcessed || 0,
+          errors: data.activeSession.propertiesFailed || 0,
+          notes: data.activeSession.notes || "",
+        })
+        setIsSessionActive(true)
+      }
+
+      // Transform sessions from API
+      const transformedSessions = (data.sessions || []).map((s: any) => ({
+        id: s.id,
+        startedAt: s.startedAt,
+        endedAt: s.endedAt,
+        status: s.status,
+        type: s.type || "full_pipeline",
+        agentsUsed: s.agentsUsed?.length || 0,
+        propertiesProcessed: s.propertiesProcessed || 0,
+        errors: s.propertiesFailed || 0,
+        notes: s.notes || "",
+      }))
+      setSessions(transformedSessions)
+
+      // Set other state from API
+      setWorkQueue(data.workQueue || [])
+      setActiveAgents(data.activeAgents || [])
+      setAssignments(data.assignments || [])
+      setSessionPlan(data.sessionPlan || null)
+      setBottlenecks(data.bottlenecks || [])
+      setPipelineStats(data.pipelineStats || null)
+
+    } catch (err) {
+      console.error("Error fetching orchestration data:", err)
+      setError(err instanceof Error ? err.message : "An error occurred")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/login")
     }
   }, [isAuthenticated, authLoading, router])
+
+  // Fetch data on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrchestrationData()
+    }
+  }, [isAuthenticated, fetchOrchestrationData])
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -579,7 +568,7 @@ export default function OrchestrationPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {MOCK_AGENT_ASSIGNMENTS.map((assignment) => {
+                  {assignments.map((assignment) => {
                     const statusConfig = ASSIGNMENT_STATUS_CONFIG[assignment.status] || ASSIGNMENT_STATUS_CONFIG.idle
                     return (
                       <tr key={assignment.id} className="hover:bg-slate-50">
@@ -606,9 +595,9 @@ export default function OrchestrationPage() {
                                 <div
                                   className={cn(
                                     "h-2 rounded-full transition-all",
-                                    assignment.status === "running"
+                                    assignment.status === "in_progress"
                                       ? "bg-green-500"
-                                      : assignment.status === "queued"
+                                      : assignment.status === "pending"
                                       ? "bg-amber-500"
                                       : "bg-slate-400"
                                   )}
@@ -617,7 +606,7 @@ export default function OrchestrationPage() {
                               </div>
                             </div>
                             <span className="text-sm text-slate-600 whitespace-nowrap">
-                              {assignment.processed.toLocaleString()}/{assignment.total.toLocaleString()} items
+                              {assignment.itemsProcessed.toLocaleString()}/{assignment.itemsTotal.toLocaleString()} items
                             </span>
                           </div>
                         </td>
@@ -647,7 +636,7 @@ export default function OrchestrationPage() {
               Queue Size
             </div>
             <div className="text-2xl font-bold text-slate-900">
-              {MOCK_WORK_QUEUE.reduce((sum, w) => sum + w.itemsRemaining, 0).toLocaleString()}
+              {workQueue.reduce((sum, w) => sum + w.itemsRemaining, 0).toLocaleString()}
             </div>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-4">
@@ -689,7 +678,7 @@ export default function OrchestrationPage() {
             </div>
           </div>
           <div className="divide-y divide-slate-100">
-            {MOCK_BOTTLENECKS.map((bottleneck) => {
+            {bottlenecks.map((bottleneck) => {
               const severityConfig = BOTTLENECK_SEVERITY_CONFIG[bottleneck.severity as BottleneckSeverity]
               return (
                 <div
@@ -719,21 +708,8 @@ export default function OrchestrationPage() {
                           >
                             {severityConfig.label}
                           </span>
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 text-xs",
-                              bottleneck.trend === "increasing"
-                                ? "text-red-600"
-                                : bottleneck.trend === "decreasing"
-                                ? "text-green-600"
-                                : "text-slate-500"
-                            )}
-                          >
-                            {bottleneck.trend === "increasing" ? "↑" : bottleneck.trend === "decreasing" ? "↓" : "→"}
-                            {bottleneck.trend}
-                          </span>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mb-2">
                           <div>
                             <span className="text-slate-500">Backlog:</span>{" "}
                             <span className="font-medium text-slate-900">
@@ -741,21 +717,15 @@ export default function OrchestrationPage() {
                             </span>
                           </div>
                           <div>
-                            <span className="text-slate-500">Throughput:</span>{" "}
+                            <span className="text-slate-500">Est. Sessions:</span>{" "}
                             <span className="font-medium text-slate-900">
-                              {bottleneck.throughputRate}/hr
+                              {bottleneck.estimatedSessions}
                             </span>
                           </div>
                           <div>
-                            <span className="text-slate-500">Est. Clear:</span>{" "}
+                            <span className="text-slate-500">Impact:</span>{" "}
                             <span className="font-medium text-slate-900">
-                              {bottleneck.estimatedClearTime}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Counties:</span>{" "}
-                            <span className="font-medium text-slate-900">
-                              {bottleneck.affectedCounties.join(", ")}
+                              {bottleneck.impact}
                             </span>
                           </div>
                         </div>
@@ -772,7 +742,7 @@ export default function OrchestrationPage() {
               )
             })}
           </div>
-          {MOCK_BOTTLENECKS.length === 0 && (
+          {bottlenecks.length === 0 && (
             <div className="px-4 py-8 text-center text-slate-500">
               <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
               <p className="font-medium text-slate-900">No bottlenecks detected</p>
@@ -821,9 +791,9 @@ export default function OrchestrationPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {MOCK_WORK_QUEUE.map((item) => {
-                    const typeLabel = WORK_TYPE_LABELS[item.type] || item.type
-                    const urgencyConfig = URGENCY_CONFIG[item.urgency] || URGENCY_CONFIG.low
+                  {workQueue.map((item) => {
+                    const typeLabel = item.typeLabel || WORK_TYPE_LABELS[item.type] || item.type
+                    const urgencyConfig = URGENCY_CONFIG[item.urgency || "low"] || URGENCY_CONFIG.low
                     return (
                       <tr key={item.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2">
@@ -838,14 +808,18 @@ export default function OrchestrationPage() {
                           {item.county}
                         </td>
                         <td className="px-4 py-2">
-                          <span className={cn(
-                            "text-sm",
-                            item.daysUntilAuction <= 14 ? "text-red-600 font-medium" :
-                            item.daysUntilAuction <= 60 ? "text-amber-600" :
-                            "text-slate-600"
-                          )}>
-                            {item.daysUntilAuction} days
-                          </span>
+                          {item.daysUntilAuction ? (
+                            <span className={cn(
+                              "text-sm",
+                              item.daysUntilAuction <= 14 ? "text-red-600 font-medium" :
+                              item.daysUntilAuction <= 60 ? "text-amber-600" :
+                              "text-slate-600"
+                            )}>
+                              {item.daysUntilAuction} days
+                            </span>
+                          ) : (
+                            <span className="text-sm text-slate-400">-</span>
+                          )}
                         </td>
                         <td className="px-4 py-2">
                           <span className={cn(
@@ -875,7 +849,7 @@ export default function OrchestrationPage() {
               </h2>
             </div>
             <div className="divide-y divide-slate-100">
-              {MOCK_ACTIVE_AGENTS.map((agent) => (
+              {activeAgents.map((agent) => (
                 <div
                   key={agent.id}
                   className="px-4 py-3 hover:bg-slate-50 transition-colors"
@@ -897,15 +871,22 @@ export default function OrchestrationPage() {
                           {agent.name}
                         </div>
                         <div className="text-xs text-slate-500">
-                          Last active:{" "}
-                          {new Date(agent.lastActive).toLocaleString()}
+                          {agent.currentTask ? (
+                            <span>Working on: {agent.currentTask}</span>
+                          ) : agent.lastActive ? (
+                            <span>Last active: {new Date(agent.lastActive).toLocaleString()}</span>
+                          ) : (
+                            <span>Ready</span>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-slate-500">
-                        {agent.propertiesProcessed} processed
-                      </div>
+                      {agent.progress > 0 && (
+                        <div className="text-sm text-slate-500">
+                          {agent.progress}% complete
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -928,38 +909,40 @@ export default function OrchestrationPage() {
                 </p>
               </div>
               {/* Session Constraints */}
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-xs text-slate-500">Properties</div>
-                  <div className="text-sm font-medium">
-                    <span className={SESSION_PLAN.constraints.propertiesUsed <= SESSION_PLAN.constraints.maxProperties ? "text-green-600" : "text-red-600"}>
-                      {SESSION_PLAN.constraints.propertiesUsed}
-                    </span>
-                    <span className="text-slate-400">/{SESSION_PLAN.constraints.maxProperties} max</span>
+              {sessionPlan && (
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-xs text-slate-500">Properties</div>
+                    <div className="text-sm font-medium">
+                      <span className={sessionPlan.constraints.propertiesUsed <= sessionPlan.constraints.maxProperties ? "text-green-600" : "text-red-600"}>
+                        {sessionPlan.constraints.propertiesUsed}
+                      </span>
+                      <span className="text-slate-400">/{sessionPlan.constraints.maxProperties} max</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-slate-500">Agents</div>
+                    <div className="text-sm font-medium">
+                      <span className={sessionPlan.constraints.agentsUsed <= sessionPlan.constraints.maxAgents ? "text-green-600" : "text-red-600"}>
+                        {sessionPlan.constraints.agentsUsed}
+                      </span>
+                      <span className="text-slate-400">/{sessionPlan.constraints.maxAgents} max</span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs text-slate-500">Agents</div>
-                  <div className="text-sm font-medium">
-                    <span className={SESSION_PLAN.constraints.agentsUsed <= SESSION_PLAN.constraints.maxAgents ? "text-green-600" : "text-red-600"}>
-                      {SESSION_PLAN.constraints.agentsUsed}
-                    </span>
-                    <span className="text-slate-400">/{SESSION_PLAN.constraints.maxAgents} max</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
           <div className="divide-y divide-slate-100">
-            {SESSION_PLAN.recommendations.map((rec) => (
+            {sessionPlan?.recommendations.map((rec, index) => (
               <div
-                key={rec.id}
+                key={`${rec.agent}-${rec.county}-${index}`}
                 className="px-4 py-3 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center h-8 w-8 rounded-full bg-purple-100 text-purple-700 font-semibold text-sm">
-                      {rec.id}
+                      {index + 1}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -971,46 +954,52 @@ export default function OrchestrationPage() {
                         <span
                           className={cn(
                             "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                            rec.priority === "High"
+                            rec.priority === 1
                               ? "bg-red-100 text-red-700"
-                              : rec.priority === "Medium"
+                              : rec.priority <= 3
                               ? "bg-amber-100 text-amber-700"
                               : "bg-green-100 text-green-700"
                           )}
                         >
-                          {rec.priority}
+                          P{rec.priority}
                         </span>
                       </div>
-                      <div className="text-sm text-slate-500 mt-0.5">
-                        {rec.reason}
-                      </div>
+                      {rec.note && (
+                        <div className="text-sm text-slate-500 mt-0.5">
+                          {rec.note}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-medium text-slate-900">
-                      {rec.items.toLocaleString()} items
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      Est. {rec.estimatedTime}
+                      {rec.itemCount.toLocaleString()} items
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+            {(!sessionPlan || sessionPlan.recommendations.length === 0) && (
+              <div className="px-4 py-8 text-center text-slate-500">
+                <Sparkles className="h-8 w-8 mx-auto mb-2 text-purple-400" />
+                <p className="font-medium text-slate-900">No recommendations available</p>
+                <p className="text-sm">Check the work queue for pending tasks</p>
+              </div>
+            )}
           </div>
           <div className="px-4 py-3 bg-slate-50 border-t border-slate-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-sm text-slate-600">
                 <span>
                   <span className="font-medium text-slate-900">
-                    {SESSION_PLAN.totalItems.toLocaleString()}
+                    {sessionPlan?.totalItems.toLocaleString() || 0}
                   </span>{" "}
                   total items
                 </span>
                 <span className="text-slate-300">|</span>
                 <span>
                   <span className="font-medium text-slate-900">
-                    {SESSION_PLAN.estimatedDuration}
+                    {sessionPlan?.estimatedDuration || "N/A"}
                   </span>{" "}
                   estimated
                 </span>
@@ -1081,12 +1070,7 @@ export default function OrchestrationPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "h-2 w-2 rounded-full",
-                        workflow.status === "success" ? "bg-green-500" : "bg-red-500"
-                      )}
-                    />
+                    <div className="h-2 w-2 rounded-full bg-slate-400" />
                     <div>
                       <div className="font-medium text-slate-900">
                         {workflow.name}
@@ -1095,7 +1079,7 @@ export default function OrchestrationPage() {
                         {workflow.description}
                       </div>
                       <div className="text-xs text-slate-400 mt-0.5">
-                        Last run: {new Date(workflow.lastRun).toLocaleString()}
+                        Webhook: /{workflow.webhookPath}
                       </div>
                     </div>
                   </div>

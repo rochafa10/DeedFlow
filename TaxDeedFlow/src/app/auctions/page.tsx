@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Calendar,
   MapPin,
@@ -19,116 +19,40 @@ import {
   Info,
   Users,
   Timer,
+  Loader2,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
 
-// Mock auction data
-const MOCK_AUCTIONS = [
-  {
-    id: "1",
-    county: "Westmoreland",
-    state: "PA",
-    date: "2026-01-16",
-    type: "Tax Deed",
-    platform: "In-Person",
-    location: "Courthouse",
-    propertyCount: 172,
-    registrationDeadline: "2026-01-10",
-    depositRequired: "$5,000",
-    status: "upcoming",
-  },
-  {
-    id: "2",
-    county: "Blair",
-    state: "PA",
-    date: "2026-03-11",
-    type: "Tax Deed",
-    platform: "Bid4Assets",
-    location: "Online",
-    propertyCount: 252,
-    registrationDeadline: "2026-03-04",
-    depositRequired: "$2,500",
-    status: "upcoming",
-  },
-  {
-    id: "3",
-    county: "Philadelphia",
-    state: "PA",
-    date: "2026-04-15",
-    type: "Tax Lien",
-    platform: "Bid4Assets",
-    location: "Online",
-    propertyCount: 4521,
-    registrationDeadline: "2026-04-08",
-    depositRequired: "$10,000",
-    status: "upcoming",
-  },
-  {
-    id: "4",
-    county: "Cambria",
-    state: "PA",
-    date: "2026-05-20",
-    type: "Tax Deed",
-    platform: "In-Person",
-    location: "Courthouse",
-    propertyCount: 845,
-    registrationDeadline: "2026-05-13",
-    depositRequired: "$3,000",
-    status: "upcoming",
-  },
-  {
-    id: "5",
-    county: "Somerset",
-    state: "PA",
-    date: "2026-09-08",
-    type: "Tax Deed",
-    platform: "GovEase",
-    location: "Online",
-    propertyCount: 2663,
-    registrationDeadline: "2026-09-01",
-    depositRequired: "$5,000",
-    status: "upcoming",
-  },
-]
+// Types
+interface Auction {
+  id: string
+  county: string
+  state: string
+  countyId?: string
+  date: string
+  type: string
+  platform: string
+  location: string
+  propertyCount: number
+  registrationDeadline: string | null
+  registrationDaysUntil: number | null
+  depositRequired: string
+  status: string
+  daysUntil: number
+  notes?: string
+}
 
-// Mock alerts data
-const MOCK_ALERTS = [
-  {
-    id: "1",
-    type: "critical",
-    title: "Westmoreland Registration Deadline",
-    message: "Registration closes in 1 day for Westmoreland County auction",
-    date: "2026-01-09",
-    auctionId: "1",
-  },
-  {
-    id: "2",
-    type: "warning",
-    title: "Westmoreland Auction Imminent",
-    message: "Westmoreland County auction is in 7 days",
-    date: "2026-01-09",
-    auctionId: "1",
-  },
-  {
-    id: "3",
-    type: "info",
-    title: "New Property List Available",
-    message: "Blair County has posted an updated property list with 15 new parcels",
-    date: "2026-01-08",
-    auctionId: "2",
-  },
-  {
-    id: "4",
-    type: "info",
-    title: "Philadelphia Auction Announced",
-    message: "Philadelphia County has announced their spring tax lien auction",
-    date: "2026-01-05",
-    auctionId: "3",
-  },
-]
+interface Alert {
+  id: string
+  type: "critical" | "warning" | "info"
+  title: string
+  message: string
+  date: string
+  auctionId: string | null
+  daysUntilEvent: number | null
+}
 
 type AlertType = "critical" | "warning" | "info"
 
@@ -161,10 +85,20 @@ export default function AuctionsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 0, 1)) // January 2026
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [selectedAuctions, setSelectedAuctions] = useState<typeof MOCK_AUCTIONS>([])
+  const [selectedAuctions, setSelectedAuctions] = useState<Auction[]>([])
   const [showDateDetails, setShowDateDetails] = useState(false)
+
+  // Data fetching state
+  const [auctions, setAuctions] = useState<Auction[]>([])
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [stats, setStats] = useState<{ totalUpcoming: number; thisMonth: number }>({ totalUpcoming: 0, thisMonth: 0 })
+  const [isLoadingAuctions, setIsLoadingAuctions] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -173,10 +107,43 @@ export default function AuctionsPage() {
     }
   }, [isAuthenticated, authLoading, router])
 
+  // Fetch auctions from API
+  useEffect(() => {
+    async function fetchAuctions() {
+      if (!isAuthenticated) return
+
+      setIsLoadingAuctions(true)
+      setLoadError(null)
+
+      try {
+        const response = await fetch("/api/auctions")
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to fetch auctions: ${response.status}`)
+        }
+
+        const result = await response.json()
+        setAuctions(result.data?.auctions || [])
+        setAlerts(result.data?.alerts || [])
+        setStats(result.data?.stats || { totalUpcoming: 0, thisMonth: 0 })
+      } catch (error) {
+        console.error("Failed to fetch auctions:", error)
+        setLoadError(error instanceof Error ? error.message : "Failed to load auctions")
+      } finally {
+        setIsLoadingAuctions(false)
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchAuctions()
+    }
+  }, [isAuthenticated])
+
   // Show loading state while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-slate-500">Loading...</div>
       </div>
     )
@@ -187,8 +154,45 @@ export default function AuctionsPage() {
     return null
   }
 
+  // Show loading state while fetching auctions
+  if (isLoadingAuctions) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-slate-500 dark:text-slate-400">Loading auctions...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if loading failed
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-10 w-10 text-red-500" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Failed to load auctions</h2>
+            <p className="text-slate-500 dark:text-slate-400">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Filter auctions based on search
-  const filteredAuctions = MOCK_AUCTIONS.filter((auction) => {
+  const filteredAuctions = auctions.filter((auction) => {
     const matchesSearch =
       searchQuery === "" ||
       auction.county.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -198,8 +202,8 @@ export default function AuctionsPage() {
 
   // Get auctions for current month view
   const getAuctionDates = () => {
-    const dates: Record<string, typeof MOCK_AUCTIONS> = {}
-    MOCK_AUCTIONS.forEach((auction) => {
+    const dates: Record<string, Auction[]> = {}
+    auctions.forEach((auction) => {
       if (!dates[auction.date]) {
         dates[auction.date] = []
       }
@@ -235,9 +239,9 @@ export default function AuctionsPage() {
     setCurrentMonth(new Date(currentMonth.getFullYear() + 1, currentMonth.getMonth(), 1))
   }
 
-  const handleDateClick = (dateStr: string, auctions: typeof MOCK_AUCTIONS) => {
+  const handleDateClick = (dateStr: string, dateAuctions: Auction[]) => {
     setSelectedDate(dateStr)
-    setSelectedAuctions(auctions)
+    setSelectedAuctions(dateAuctions)
     setShowDateDetails(true)
   }
 
@@ -256,7 +260,9 @@ export default function AuctionsPage() {
       const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
       const dayAuctions = auctionDates[dateStr] || []
       const hasAuctions = dayAuctions.length > 0
-      const isToday = dateStr === "2026-01-09" // Mock today's date
+      const today = new Date()
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+      const isToday = dateStr === todayStr
       const isSelected = dateStr === selectedDate
 
       days.push(
@@ -307,7 +313,8 @@ export default function AuctionsPage() {
 
   // Calculate days until auction
   const getDaysUntil = (dateStr: string) => {
-    const today = new Date("2026-01-09")
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Normalize to start of day
     const auctionDate = new Date(dateStr)
     const diff = Math.ceil((auctionDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     return diff
@@ -415,33 +422,39 @@ export default function AuctionsPage() {
                 </h2>
               </div>
               <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-                {MOCK_ALERTS.map((alert) => {
-                  const config = ALERT_CONFIG[alert.type as AlertType]
-                  return (
-                    <div
-                      key={alert.id}
-                      className={cn(
-                        "px-4 py-3 border-l-4",
-                        config.bgColor
-                      )}
-                    >
-                      <div className="flex items-start gap-2">
-                        {config.icon}
-                        <div className="flex-1 min-w-0">
-                          <div className={cn("font-medium text-sm", config.color)}>
-                            {alert.title}
-                          </div>
-                          <p className="text-sm text-slate-600 mt-0.5">
-                            {alert.message}
-                          </p>
-                          <div className="text-xs text-slate-400 mt-1">
-                            {new Date(alert.date).toLocaleDateString()}
+                {alerts.length > 0 ? (
+                  alerts.map((alert) => {
+                    const config = ALERT_CONFIG[alert.type as AlertType]
+                    return (
+                      <div
+                        key={alert.id}
+                        className={cn(
+                          "px-4 py-3 border-l-4",
+                          config.bgColor
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          {config.icon}
+                          <div className="flex-1 min-w-0">
+                            <div className={cn("font-medium text-sm", config.color)}>
+                              {alert.title}
+                            </div>
+                            <p className="text-sm text-slate-600 mt-0.5">
+                              {alert.message}
+                            </p>
+                            <div className="text-xs text-slate-400 mt-1">
+                              {new Date(alert.date).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })
+                ) : (
+                  <div className="px-4 py-8 text-center text-slate-500">
+                    No active alerts
+                  </div>
+                )}
               </div>
             </div>
 
@@ -449,12 +462,12 @@ export default function AuctionsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-lg border border-slate-200 p-4">
                 <div className="text-2xl font-bold text-slate-900">
-                  {MOCK_AUCTIONS.length}
+                  {stats.totalUpcoming}
                 </div>
                 <div className="text-sm text-slate-500">Upcoming Auctions</div>
               </div>
               <div className="bg-white rounded-lg border border-slate-200 p-4">
-                <div className="text-2xl font-bold text-red-600">1</div>
+                <div className="text-2xl font-bold text-red-600">{stats.thisMonth}</div>
                 <div className="text-sm text-slate-500">This Month</div>
               </div>
             </div>
@@ -470,82 +483,92 @@ export default function AuctionsPage() {
             </h2>
           </div>
           <div className="divide-y divide-slate-100">
-            {MOCK_AUCTIONS.map((auction) => {
-              const daysUntilRegistration = getDaysUntil(auction.registrationDeadline)
-              let status: "CLOSED" | "URGENT" | "SOON" | "OPEN"
-              let statusColor: string
-              let statusBg: string
+            {auctions.length > 0 ? (
+              auctions.filter(a => a.registrationDeadline).map((auction) => {
+                const daysUntilRegistration = auction.registrationDaysUntil ?? getDaysUntil(auction.registrationDeadline!)
+                let status: "CLOSED" | "URGENT" | "SOON" | "OPEN"
+                let statusColor: string
+                let statusBg: string
 
-              if (daysUntilRegistration < 0) {
-                status = "CLOSED"
-                statusColor = "text-slate-500"
-                statusBg = "bg-slate-100"
-              } else if (daysUntilRegistration <= 3) {
-                status = "URGENT"
-                statusColor = "text-red-700"
-                statusBg = "bg-red-100"
-              } else if (daysUntilRegistration <= 14) {
-                status = "SOON"
-                statusColor = "text-amber-700"
-                statusBg = "bg-amber-100"
-              } else {
-                status = "OPEN"
-                statusColor = "text-green-700"
-                statusBg = "bg-green-100"
-              }
+                if (daysUntilRegistration < 0) {
+                  status = "CLOSED"
+                  statusColor = "text-slate-500"
+                  statusBg = "bg-slate-100"
+                } else if (daysUntilRegistration <= 3) {
+                  status = "URGENT"
+                  statusColor = "text-red-700"
+                  statusBg = "bg-red-100"
+                } else if (daysUntilRegistration <= 14) {
+                  status = "SOON"
+                  statusColor = "text-amber-700"
+                  statusBg = "bg-amber-100"
+                } else {
+                  status = "OPEN"
+                  statusColor = "text-green-700"
+                  statusBg = "bg-green-100"
+                }
 
-              return (
-                <div key={auction.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
-                      <Timer className={cn(
-                        "h-5 w-5",
-                        status === "CLOSED" ? "text-slate-400" :
-                        status === "URGENT" ? "text-red-500" :
-                        status === "SOON" ? "text-amber-500" :
-                        "text-green-500"
-                      )} />
-                    </div>
-                    <div>
-                      <div className="font-medium text-slate-900">
-                        {auction.county}, {auction.state}
+                return (
+                  <div key={auction.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <Timer className={cn(
+                          "h-5 w-5",
+                          status === "CLOSED" ? "text-slate-400" :
+                          status === "URGENT" ? "text-red-500" :
+                          status === "SOON" ? "text-amber-500" :
+                          "text-green-500"
+                        )} />
                       </div>
-                      <div className="text-sm text-slate-500">
-                        Deadline: {new Date(auction.registrationDeadline).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {auction.county}, {auction.state}
+                        </div>
+                        <div className="text-sm text-slate-500">
+                          {auction.registrationDeadline ? (
+                            <>Deadline: {new Date(auction.registrationDeadline).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}</>
+                          ) : (
+                            <>No registration deadline</>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className={cn(
-                        "text-sm font-medium",
-                        daysUntilRegistration < 0 ? "text-slate-500" :
-                        daysUntilRegistration <= 3 ? "text-red-600" :
-                        daysUntilRegistration <= 14 ? "text-amber-600" :
-                        "text-slate-700"
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className={cn(
+                          "text-sm font-medium",
+                          daysUntilRegistration < 0 ? "text-slate-500" :
+                          daysUntilRegistration <= 3 ? "text-red-600" :
+                          daysUntilRegistration <= 14 ? "text-amber-600" :
+                          "text-slate-700"
+                        )}>
+                          {daysUntilRegistration < 0
+                            ? "Closed"
+                            : daysUntilRegistration === 0
+                            ? "Today"
+                            : `${daysUntilRegistration} days`}
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "px-2 py-1 text-xs font-semibold rounded",
+                        statusBg,
+                        statusColor
                       )}>
-                        {daysUntilRegistration < 0
-                          ? "Closed"
-                          : daysUntilRegistration === 0
-                          ? "Today"
-                          : `${daysUntilRegistration} days`}
-                      </div>
+                        {status}
+                      </span>
                     </div>
-                    <span className={cn(
-                      "px-2 py-1 text-xs font-semibold rounded",
-                      statusBg,
-                      statusColor
-                    )}>
-                      {status}
-                    </span>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })
+            ) : (
+              <div className="px-4 py-8 text-center text-slate-500">
+                No upcoming registration deadlines
+              </div>
+            )}
           </div>
         </div>
 

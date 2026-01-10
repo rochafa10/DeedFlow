@@ -3,74 +3,32 @@ import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/
 import { validateCsrf, csrfErrorResponse } from "@/lib/auth/csrf"
 import { createServerClient } from "@/lib/supabase/client"
 
-// Mock properties data for development
-const MOCK_PROPERTIES = [
-  {
-    id: "prop-001",
-    parcel_id: "12-34-567-890",
-    address: "123 Main St",
-    city: "Pittsburgh",
-    state: "PA",
-    county: "Allegheny",
-    total_due: 5234.56,
-    status: "pending",
-    created_at: "2025-12-01T10:00:00Z",
-  },
-  {
-    id: "prop-002",
-    parcel_id: "23-45-678-901",
-    address: "456 Oak Ave",
-    city: "Greensburg",
-    state: "PA",
-    county: "Westmoreland",
-    total_due: 8765.43,
-    status: "pending",
-    created_at: "2025-12-15T14:30:00Z",
-  },
-  {
-    id: "prop-003",
-    parcel_id: "34-56-789-012",
-    address: "789 Pine Rd",
-    city: "Johnstown",
-    state: "PA",
-    county: "Cambria",
-    total_due: 3210.99,
-    status: "validated",
-    created_at: "2026-01-05T09:15:00Z",
-  },
-]
-
 /**
  * GET /api/properties
- * Returns a list of properties - requires authentication
+ * Returns a list of properties
  */
-export async function GET(request: NextRequest) {
-  // Validate authentication
-  const authResult = await validateApiAuth(request)
-
-  if (!authResult.authenticated) {
-    return unauthorizedResponse(authResult.error)
-  }
-
+export async function GET() {
   try {
     const supabase = createServerClient()
 
-    // If Supabase is not configured, return mock data
     if (!supabase) {
-      console.log("[API Properties] Supabase not configured, returning mock data")
-      return NextResponse.json({
-        data: MOCK_PROPERTIES,
-        count: MOCK_PROPERTIES.length,
-        source: "mock",
-        user: authResult.user,
-      })
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 500 }
+      )
     }
 
-    // Fetch properties from Supabase
+    // Fetch properties from Supabase with county information
     const { data, error, count } = await supabase
       .from("properties")
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false })
+      .select(`
+        *,
+        counties (
+          county_name,
+          state_code
+        )
+      `, { count: "exact" })
+      .order("updated_at", { ascending: false })
       .limit(100)
 
     if (error) {
@@ -88,7 +46,6 @@ export async function GET(request: NextRequest) {
       data: data ?? [],
       count: count ?? 0,
       source: "database",
-      user: authResult.user,
     })
   } catch (error) {
     console.error("[API Properties] Server error:", error)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   Shield,
@@ -21,109 +21,45 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { authFetch } from "@/lib/api/authFetch"
 
-// Mock data integrity issues
-const MOCK_ISSUES = [
-  {
-    id: "issue-001",
-    severity: "critical",
-    category: "Missing Data",
-    title: "Properties missing Regrid data",
-    description: "7,358 properties have not been enriched with Regrid parcel data",
-    affectedCount: 7358,
-    table: "properties",
-    detectedAt: "2026-01-09T08:00:00Z",
-    status: "open",
-    fixable: false, // Requires batch job to fix
-  },
-  {
-    id: "issue-002",
-    severity: "critical",
-    category: "Missing Data",
-    title: "Properties missing address",
-    description: "6,221 properties do not have a valid street address",
-    affectedCount: 6221,
-    table: "properties",
-    detectedAt: "2026-01-09T08:00:00Z",
-    status: "open",
-    fixable: false, // Requires manual data entry
-  },
-  {
-    id: "issue-003",
-    severity: "warning",
-    category: "Missing Data",
-    title: "Properties missing amount due",
-    description: "3,711 properties do not have total_due amount populated",
-    affectedCount: 3711,
-    table: "properties",
-    detectedAt: "2026-01-09T08:00:00Z",
-    status: "open",
-    fixable: false,
-  },
-  {
-    id: "issue-004",
-    severity: "warning",
-    category: "Validation Required",
-    title: "Regrid data needing validation",
-    description: "17 properties have Regrid data but haven't been visually validated",
-    affectedCount: 17,
-    table: "regrid_data",
-    detectedAt: "2026-01-09T08:00:00Z",
-    status: "open",
-    fixable: false, // Requires manual validation
-  },
-  {
-    id: "issue-005",
-    severity: "info",
-    category: "Data Quality",
-    title: "Duplicate parcel numbers detected",
-    description: "5 properties appear to have duplicate parcel numbers that should be reviewed",
-    affectedCount: 5,
-    table: "properties",
-    detectedAt: "2026-01-08T14:30:00Z",
-    status: "open",
-    fixable: true, // Can auto-dedupe
-    fixAction: "Remove duplicate parcel entries",
-  },
-  {
-    id: "issue-006",
-    severity: "info",
-    category: "Stale Data",
-    title: "Counties not researched recently",
-    description: "2 counties have not been researched in the last 30 days",
-    affectedCount: 2,
-    table: "counties",
-    detectedAt: "2026-01-08T08:00:00Z",
-    status: "acknowledged",
-    fixable: false,
-  },
-  {
-    id: "issue-007",
-    severity: "warning",
-    category: "Orphaned Records",
-    title: "Parsing jobs without documents",
-    description: "3 parsing jobs reference documents that no longer exist",
-    affectedCount: 3,
-    table: "parsing_jobs",
-    detectedAt: "2026-01-07T10:00:00Z",
-    status: "open",
-    fixable: true, // Can delete orphaned records
-    fixAction: "Delete orphaned parsing job records",
-  },
-  {
-    id: "issue-008",
-    severity: "critical",
-    category: "Flag Mismatch",
-    title: "Regrid flag inconsistencies",
-    description: "12 properties have has_regrid=true but no corresponding regrid_data record",
-    affectedCount: 12,
-    table: "properties",
-    detectedAt: "2026-01-06T16:00:00Z",
-    status: "open",
-    fixable: true, // Can fix with fix_regrid_flags()
-    fixAction: "Reset has_regrid flags to false for affected properties",
-  },
-]
+// Types for API response
+interface DataIntegrityIssue {
+  id: string
+  severity: "critical" | "warning" | "info"
+  category: string
+  title: string
+  description: string
+  affectedCount: number
+  table: string
+  field?: string
+  fixable: boolean
+  action?: string
+  agent?: string
+  status?: "open" | "acknowledged" | "resolved"
+  detectedAt?: string
+  fixAction?: string
+}
+
+interface PipelineStats {
+  totalProperties: number
+  withRegrid: number
+  withValidation: number
+  approved: number
+  rejected: number
+  caution: number
+  regridPct: number
+  validationPct: number
+  approvalRate: number
+}
+
+interface DataIntegritySummary {
+  totalIssues: number
+  criticalCount: number
+  warningCount: number
+  infoCount: number
+  lastAuditAt: string
+}
 
 type IssueSeverity = "critical" | "warning" | "info"
 type IssueStatus = "open" | "acknowledged" | "resolved"
@@ -181,14 +117,54 @@ const STATUS_CONFIG: Record<IssueStatus, {
 export default function DataIntegrityPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [issues, setIssues] = useState(MOCK_ISSUES)
+
+  // API data state
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [issues, setIssues] = useState<DataIntegrityIssue[]>([])
+  const [summary, setSummary] = useState<DataIntegritySummary | null>(null)
+  const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null)
+
+  // UI state
   const [searchQuery, setSearchQuery] = useState("")
   const [severityFilter, setSeverityFilter] = useState<FilterSeverity>("all")
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all")
   const [isAuditing, setIsAuditing] = useState(false)
-  const [lastAuditTime, setLastAuditTime] = useState("2026-01-09T08:00:00Z")
-  const [fixModalIssue, setFixModalIssue] = useState<typeof MOCK_ISSUES[0] | null>(null)
+  const [fixModalIssue, setFixModalIssue] = useState<DataIntegrityIssue | null>(null)
   const [isFixing, setIsFixing] = useState(false)
+
+  // Fetch data from API
+  const fetchDataIntegrity = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const response = await authFetch("/api/data-integrity")
+      if (!response.ok) {
+        throw new Error("Failed to fetch data integrity information")
+      }
+
+      const result = await response.json()
+      const data = result.data
+
+      // Map API issues to include status field (defaults to "open")
+      const mappedIssues: DataIntegrityIssue[] = (data.issues || []).map((issue: any) => ({
+        ...issue,
+        status: issue.status || "open",
+        detectedAt: issue.detectedAt || new Date().toISOString(),
+        fixAction: issue.action,
+      }))
+
+      setIssues(mappedIssues)
+      setSummary(data.summary)
+      setPipelineStats(data.pipelineStats)
+    } catch (err) {
+      console.error("Error fetching data integrity:", err)
+      setError(err instanceof Error ? err.message : "Failed to load data")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -196,6 +172,13 @@ export default function DataIntegrityPage() {
       router.push("/login")
     }
   }, [isAuthenticated, authLoading, router])
+
+  // Fetch data on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchDataIntegrity()
+    }
+  }, [isAuthenticated, fetchDataIntegrity])
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -209,6 +192,43 @@ export default function DataIntegrityPage() {
   // Don't render content if not authenticated
   if (!isAuthenticated) {
     return null
+  }
+
+  // Show loading state while fetching data
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+            <span className="ml-3 text-slate-500">Loading data integrity information...</span>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-red-900 mb-2">Error Loading Data</h3>
+            <p className="text-red-700 mb-4">{error}</p>
+            <button
+              onClick={fetchDataIntegrity}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   // Filter issues
@@ -228,20 +248,17 @@ export default function DataIntegrityPage() {
     return matchesSearch && matchesSeverity && matchesStatus
   })
 
-  // Stats
-  const criticalCount = issues.filter((i) => i.severity === "critical" && i.status === "open").length
-  const warningCount = issues.filter((i) => i.severity === "warning" && i.status === "open").length
-  const infoCount = issues.filter((i) => i.severity === "info" && i.status === "open").length
-  const totalOpenCount = issues.filter((i) => i.status === "open").length
+  // Stats - prefer API summary when available
+  const criticalCount = summary?.criticalCount ?? issues.filter((i) => i.severity === "critical" && i.status === "open").length
+  const warningCount = summary?.warningCount ?? issues.filter((i) => i.severity === "warning" && i.status === "open").length
+  const infoCount = summary?.infoCount ?? issues.filter((i) => i.severity === "info" && i.status === "open").length
+  const totalOpenCount = summary?.totalIssues ?? issues.filter((i) => i.status === "open").length
 
-  // Handle run audit
-  const handleRunAudit = () => {
+  // Handle run audit - refetch from API
+  const handleRunAudit = async () => {
     setIsAuditing(true)
-    // Simulate audit running
-    setTimeout(() => {
-      setIsAuditing(false)
-      setLastAuditTime(new Date().toISOString())
-    }, 2000)
+    await fetchDataIntegrity()
+    setIsAuditing(false)
   }
 
   // Handle acknowledge
@@ -254,7 +271,7 @@ export default function DataIntegrityPage() {
   }
 
   // Handle fix - opens confirmation modal
-  const handleOpenFixModal = (issue: typeof MOCK_ISSUES[0]) => {
+  const handleOpenFixModal = (issue: DataIntegrityIssue) => {
     setFixModalIssue(issue)
   }
 
@@ -295,12 +312,14 @@ export default function DataIntegrityPage() {
           <div className="flex items-center gap-3">
             <div className="text-sm text-slate-500">
               Last audit:{" "}
-              {new Date(lastAuditTime).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {summary?.lastAuditAt
+                ? new Date(summary.lastAuditAt).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Never"}
             </div>
             <button
               onClick={handleRunAudit}
@@ -480,10 +499,12 @@ export default function DataIntegrityPage() {
                         </td>
                         <td className="px-4 py-4">
                           <span className="text-sm text-slate-700">
-                            {new Date(issue.detectedAt).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
+                            {issue.detectedAt
+                              ? new Date(issue.detectedAt).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                              : "Today"}
                           </span>
                         </td>
                         <td className="px-4 py-4">
@@ -560,7 +581,7 @@ export default function DataIntegrityPage() {
               <div className="mb-4">
                 <div className="text-sm text-slate-500 mb-1">Fix Action</div>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <div className="font-medium text-green-800">{fixModalIssue.fixAction}</div>
+                  <div className="font-medium text-green-800">{fixModalIssue.fixAction || fixModalIssue.action || "Apply automatic fix"}</div>
                   <div className="text-sm text-green-600 mt-1">
                     This will affect {fixModalIssue.affectedCount.toLocaleString()} {fixModalIssue.table} records
                   </div>

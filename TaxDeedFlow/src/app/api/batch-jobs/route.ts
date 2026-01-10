@@ -3,93 +3,196 @@ import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/
 import { validateCsrf, csrfErrorResponse } from "@/lib/auth/csrf"
 import { createServerClient } from "@/lib/supabase/client"
 
-// Mock batch jobs data for development
-const MOCK_BATCH_JOBS = [
-  {
-    id: "batch-001",
-    job_type: "regrid_scraping",
-    county_id: "county-001",
-    county_name: "Westmoreland",
-    status: "in_progress",
-    total_items: 172,
-    processed_items: 45,
-    started_at: "2026-01-09T10:00:00Z",
-    created_by: "demo@taxdeedflow.com",
-  },
-  {
-    id: "batch-002",
-    job_type: "visual_validation",
-    county_id: "county-002",
-    county_name: "Blair",
-    status: "completed",
-    total_items: 100,
-    processed_items: 100,
-    started_at: "2026-01-08T14:00:00Z",
-    completed_at: "2026-01-08T16:30:00Z",
-    created_by: "analyst@taxdeedflow.com",
-  },
-]
-
 /**
  * GET /api/batch-jobs
- * Returns a list of batch jobs - requires authentication
+ * Returns batch jobs with county info
  */
 export async function GET(request: NextRequest) {
-  // Validate authentication
-  const authResult = await validateApiAuth(request)
-
-  if (!authResult.authenticated) {
-    return unauthorizedResponse(authResult.error)
-  }
-
   try {
     const supabase = createServerClient()
 
-    // If Supabase is not configured, return mock data
     if (!supabase) {
-      console.log("[API Batch Jobs] Supabase not configured, returning mock data")
-      return NextResponse.json({
-        data: MOCK_BATCH_JOBS,
-        count: MOCK_BATCH_JOBS.length,
-        source: "mock",
-        user: authResult.user,
-      })
-    }
-
-    // Fetch batch jobs from Supabase
-    const { data, error, count } = await supabase
-      .from("batch_jobs")
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .limit(50)
-
-    if (error) {
-      console.error("[API Batch Jobs] Database error:", error)
       return NextResponse.json(
-        {
-          error: "Database error",
-          message: error.message,
-        },
+        { error: "Database not configured" },
         { status: 500 }
       )
     }
 
+    // Get query params for filtering
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get("status") // 'active', 'completed', 'failed', or null for all
+    const limit = parseInt(searchParams.get("limit") || "100")
+
+    // Fetch batch jobs with county info
+    let query = supabase
+      .from("batch_jobs")
+      .select(`
+        id,
+        job_type,
+        county_id,
+        status,
+        batch_size,
+        total_items,
+        processed_items,
+        failed_items,
+        current_batch,
+        total_batches,
+        last_error,
+        error_count,
+        started_at,
+        paused_at,
+        completed_at,
+        created_at,
+        counties (
+          id,
+          county_name,
+          state_code
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(limit)
+
+    // Apply status filter
+    if (status === "active") {
+      query = query.in("status", ["pending", "in_progress", "paused"])
+    } else if (status === "completed") {
+      query = query.eq("status", "completed")
+    } else if (status === "failed") {
+      query = query.eq("status", "failed")
+    }
+
+    const { data: jobs, error: jobsError } = await query
+
+    if (jobsError) {
+      console.error("[API Batch Jobs] Database error:", jobsError)
+      return NextResponse.json(
+        { error: "Database error", message: jobsError.message },
+        { status: 500 }
+      )
+    }
+
+    // Transform to frontend format
+    const transformedJobs = (jobs || []).map((job: any) => {
+      const progress = job.total_items > 0
+        ? Math.round((job.processed_items / job.total_items) * 100)
+        : 0
+
+      // Use database values if available, otherwise calculate
+      const totalBatches = job.total_batches || (job.batch_size > 0
+        ? Math.ceil(job.total_items / job.batch_size)
+        : 1)
+
+      const currentBatch = job.current_batch || (job.batch_size > 0
+        ? Math.ceil(job.processed_items / job.batch_size)
+        : 1)
+
+      // Calculate duration
+      let duration = null
+      if (job.started_at) {
+        const startTime = new Date(job.started_at).getTime()
+        const endTime = job.completed_at
+          ? new Date(job.completed_at).getTime()
+          : Date.now()
+        const durationMs = endTime - startTime
+        const hours = Math.floor(durationMs / (1000 * 60 * 60))
+        const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
+        duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+      }
+
+      // Calculate success rate
+      const totalProcessed = job.processed_items + (job.failed_items || 0)
+      const successRate = totalProcessed > 0
+        ? Math.round((job.processed_items / totalProcessed) * 100)
+        : 100
+
+      // Map status
+      let mappedStatus = job.status
+      if (job.status === "in_progress") mappedStatus = "running"
+
+      return {
+        id: job.id,
+        name: `${formatJobType(job.job_type)} - ${job.counties?.county_name || "Unknown"}`,
+        type: job.job_type,
+        county: job.counties?.county_name || "Unknown",
+        countyId: job.county_id,
+        state: job.counties?.state_code || "??",
+        status: mappedStatus,
+        progress,
+        totalItems: job.total_items || 0,
+        processedItems: job.processed_items || 0,
+        failedItems: job.failed_items || 0,
+        startedAt: job.started_at,
+        pausedAt: job.paused_at,
+        completedAt: job.completed_at,
+        createdAt: job.created_at,
+        batchSize: job.batch_size || 50,
+        currentBatch,
+        totalBatches,
+        duration,
+        successRate,
+        errorLog: job.last_error,
+        errorCount: job.error_count || 0,
+        estimatedCompletion: null, // Could calculate based on processing rate
+      }
+    })
+
+    // Split into active and history
+    const activeJobs = transformedJobs.filter(
+      (j: any) => ["running", "paused", "pending", "in_progress"].includes(j.status)
+    )
+    const jobHistory = transformedJobs.filter(
+      (j: any) => ["completed", "failed"].includes(j.status)
+    )
+
+    // Calculate stats
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const completedToday = jobHistory.filter((j: any) => {
+      if (!j.completedAt) return false
+      const completedDate = new Date(j.completedAt)
+      completedDate.setHours(0, 0, 0, 0)
+      return completedDate.getTime() === today.getTime()
+    }).length
+
+    const totalSuccessRate = jobHistory.length > 0
+      ? Math.round(jobHistory.reduce((sum: number, j: any) => sum + j.successRate, 0) / jobHistory.length)
+      : 100
+
     return NextResponse.json({
-      data: data ?? [],
-      count: count ?? 0,
+      data: {
+        activeJobs,
+        jobHistory,
+        stats: {
+          running: activeJobs.filter((j: any) => j.status === "running").length,
+          paused: activeJobs.filter((j: any) => j.status === "paused").length,
+          completedToday,
+          successRate: totalSuccessRate,
+        },
+      },
       source: "database",
-      user: authResult.user,
     })
   } catch (error) {
     console.error("[API Batch Jobs] Server error:", error)
     return NextResponse.json(
-      {
-        error: "Server error",
-        message: "An unexpected error occurred",
-      },
+      { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
     )
   }
+}
+
+// Helper function to format job type
+function formatJobType(type: string): string {
+  const labels: Record<string, string> = {
+    regrid_scraping: "Regrid Scraping",
+    visual_validation: "Visual Validation",
+    pdf_parsing: "PDF Parsing",
+    county_research: "County Research",
+    title_research: "Title Research",
+    property_condition: "Property Condition",
+    environmental_research: "Environmental Research",
+    bid_strategy: "Bid Strategy",
+  }
+  return labels[type] || type
 }
 
 /**

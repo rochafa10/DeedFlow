@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, Suspense, useCallback } from "react"
+import { authFetch, authDelete } from "@/lib/api/authFetch"
 import {
   Search,
   Filter,
@@ -32,257 +33,30 @@ import {
   Square,
   Heart,
   MinusSquare,
+  Loader2,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import { formatDate, DATE_FORMAT_KEY } from "@/lib/utils"
-import { mockDataStore, type MockProperty } from "@/lib/mockDataStore"
 
-// Mock property data for demo
-const MOCK_PROPERTIES = [
-  {
-    id: "0",
-    parcelId: "10-01-001-0000-ABCD-EFGH-IJKL-MNOP",
-    address: "12345 North Extremely Long Street Name Boulevard Apartment Complex Unit Building Section A",
-    city: "Greensburg Township Municipality",
-    county: "Westmoreland",
-    state: "PA",
-    totalDue: 999999.99,
-    status: "validated",
-    propertyType: "Commercial Industrial Mixed-Use Development Property",
-    lotSize: "125.75 acres",
-    saleType: "Tax Deed",
-    validation: "caution",
-    saleDate: "2026-01-16",
-  },
-  {
-    id: "1",
-    parcelId: "10-01-001-0001",
-    address: "123 Main St",
-    city: "Greensburg",
-    county: "Westmoreland",
-    state: "PA",
-    totalDue: 5234.56,
-    status: "parsed",
-    propertyType: "Residential",
-    lotSize: "0.25 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    saleDate: "2026-01-16",
-  },
-  {
-    id: "2",
-    parcelId: "10-01-001-0002",
-    address: "456 Oak Ave",
-    city: "Greensburg",
-    county: "Westmoreland",
-    state: "PA",
-    totalDue: 12450.0,
-    status: "enriched",
-    propertyType: "Commercial",
-    lotSize: "1.5 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    saleDate: "2026-01-16",
-  },
-  {
-    id: "3",
-    parcelId: "10-01-002-0001",
-    address: "789 Pine Rd",
-    city: "Latrobe",
-    county: "Westmoreland",
-    state: "PA",
-    totalDue: 3200.0,
-    status: "validated",
-    propertyType: "Residential",
-    lotSize: "0.5 acres",
-    saleType: "Tax Deed",
-    validation: "approved",
-    saleDate: "2026-01-16",
-  },
-  {
-    id: "4",
-    parcelId: "07-02-001-0015",
-    address: "321 Elm St",
-    city: "Hollidaysburg",
-    county: "Blair",
-    state: "PA",
-    totalDue: 8750.25,
-    status: "approved",
-    propertyType: "Residential",
-    lotSize: "0.33 acres",
-    saleType: "Tax Lien",
-    validation: "approved",
-    saleDate: "2026-03-11",
-  },
-  {
-    id: "5",
-    parcelId: "07-02-002-0008",
-    address: "555 Maple Dr",
-    city: "Altoona",
-    county: "Blair",
-    state: "PA",
-    totalDue: 2100.0,
-    status: "parsed",
-    propertyType: "Vacant Land",
-    lotSize: "2.0 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    saleDate: "2026-03-11",
-  },
-  {
-    id: "6",
-    parcelId: "56-03-001-0022",
-    address: "888 Cedar Ln",
-    city: "Somerset",
-    county: "Somerset",
-    state: "PA",
-    totalDue: 15600.0,
-    status: "enriched",
-    propertyType: "Industrial",
-    lotSize: "5.0 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    saleDate: "2026-09-08",
-  },
-  {
-    id: "7",
-    parcelId: "56-03-002-0011",
-    address: "999 Birch Way",
-    city: "Berlin",
-    county: "Somerset",
-    state: "PA",
-    totalDue: 4500.0,
-    status: "parsed",
-    propertyType: "Residential",
-    lotSize: "0.75 acres",
-    saleType: "Tax Lien",
-    validation: null,
-    saleDate: "2026-09-08",
-  },
-  {
-    id: "8",
-    parcelId: "14-01-003-0005",
-    address: "111 Walnut St",
-    city: "State College",
-    county: "Centre",
-    state: "PA",
-    totalDue: 22000.0,
-    status: "validated",
-    propertyType: "Multi-Family",
-    lotSize: "0.4 acres",
-    saleType: "Tax Deed",
-    validation: "caution",
-    saleDate: "2026-05-20",
-  },
-  {
-    id: "9",
-    parcelId: "10-01-003-0001",
-    address: "200 Cherry St",
-    city: "Greensburg",
-    county: "Westmoreland",
-    state: "PA",
-    totalDue: 7890.00,
-    status: "parsed",
-    propertyType: "Residential",
-    lotSize: "0.3 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    saleDate: "2026-01-16",
-  },
-  {
-    id: "10",
-    parcelId: "07-02-003-0001",
-    address: "450 Spruce Ave",
-    city: "Altoona",
-    county: "Blair",
-    state: "PA",
-    totalDue: 3450.00,
-    status: "enriched",
-    propertyType: "Commercial",
-    lotSize: "0.8 acres",
-    saleType: "Tax Lien",
-    validation: null,
-    saleDate: "2026-03-11",
-  },
-  {
-    id: "11",
-    parcelId: "56-03-003-0001",
-    address: "777 Ash Blvd",
-    city: "Somerset",
-    county: "Somerset",
-    state: "PA",
-    totalDue: 9200.00,
-    status: "validated",
-    propertyType: "Residential",
-    lotSize: "0.45 acres",
-    saleType: "Tax Deed",
-    validation: "approved",
-    saleDate: "2026-09-08",
-  },
-  {
-    id: "12",
-    parcelId: "14-01-004-0001",
-    address: "333 Hickory Ln",
-    city: "Bellefonte",
-    county: "Centre",
-    state: "PA",
-    totalDue: 18500.00,
-    status: "approved",
-    propertyType: "Industrial",
-    lotSize: "3.0 acres",
-    saleType: "Tax Deed",
-    validation: "approved",
-    saleDate: "2026-05-20",
-  },
-  {
-    id: "13",
-    parcelId: "10-01-004-0001",
-    address: "505 Willow Way",
-    city: "Latrobe",
-    county: "Westmoreland",
-    state: "PA",
-    totalDue: 4100.00,
-    status: "parsed",
-    propertyType: "Vacant Land",
-    lotSize: "1.2 acres",
-    saleType: "Tax Lien",
-    validation: null,
-    saleDate: "2026-01-10",  // Saturday this week
-  },
-  {
-    id: "14",
-    parcelId: "07-02-004-0001",
-    address: "620 Poplar Dr",
-    city: "Hollidaysburg",
-    county: "Blair",
-    state: "PA",
-    totalDue: 6780.00,
-    status: "enriched",
-    propertyType: "Residential",
-    lotSize: "0.5 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    saleDate: "2026-01-09",  // Thursday this week (today)
-  },
-  {
-    id: "15",
-    parcelId: "56-03-004-0001",
-    address: "888 Juniper Ct",
-    city: "Berlin",
-    county: "Somerset",
-    state: "PA",
-    totalDue: 2950.00,
-    status: "parsed",
-    propertyType: "Residential",
-    lotSize: "0.35 acres",
-    saleType: "Tax Lien",
-    validation: null,
-    saleDate: "2026-09-08",
-  },
-]
+// Property type for API data
+interface Property {
+  id: string
+  parcelId: string
+  address: string
+  city: string
+  county: string
+  state: string
+  totalDue: number
+  status: string
+  propertyType: string
+  lotSize: string
+  saleType: string
+  validation: string | null
+  saleDate: string
+}
 
 // Date range options for filtering
 const DATE_RANGES = [
@@ -294,31 +68,41 @@ const DATE_RANGES = [
   { value: "6months", label: "Next 6 Months" },
 ]
 
-type PropertyStatus = "parsed" | "enriched" | "validated" | "approved"
+type PropertyStatus = "active" | "pending" | "expired" | "sold" | "withdrawn" | "unknown"
 
 const STATUS_CONFIG: Record<
   PropertyStatus,
   { label: string; color: string; icon: React.ReactNode }
 > = {
-  parsed: {
-    label: "Parsed",
+  active: {
+    label: "Active",
+    color: "bg-green-100 text-green-700",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+  },
+  pending: {
+    label: "Pending",
+    color: "bg-amber-100 text-amber-700",
+    icon: <Clock className="h-3 w-3" />,
+  },
+  expired: {
+    label: "Expired",
     color: "bg-slate-100 text-slate-700",
     icon: <Clock className="h-3 w-3" />,
   },
-  enriched: {
-    label: "Enriched",
+  sold: {
+    label: "Sold",
     color: "bg-blue-100 text-blue-700",
-    icon: <Building2 className="h-3 w-3" />,
+    icon: <CheckCircle2 className="h-3 w-3" />,
   },
-  validated: {
-    label: "Validated",
-    color: "bg-amber-100 text-amber-700",
+  withdrawn: {
+    label: "Withdrawn",
+    color: "bg-red-100 text-red-700",
     icon: <AlertTriangle className="h-3 w-3" />,
   },
-  approved: {
-    label: "Approved",
-    color: "bg-green-100 text-green-700",
-    icon: <CheckCircle2 className="h-3 w-3" />,
+  unknown: {
+    label: "Unknown",
+    color: "bg-slate-100 text-slate-500",
+    icon: <Clock className="h-3 w-3" />,
   },
 }
 
@@ -390,40 +174,107 @@ function PropertiesContent() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [dateFormatPreference, setDateFormatPreference] = useState("MMM DD, YYYY")
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set())
-  const [properties, setProperties] = useState<MockProperty[]>(() => mockDataStore.getProperties())
+  const [properties, setProperties] = useState<Property[]>([])
+  const [isLoadingProperties, setIsLoadingProperties] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Subscribe to mock data store changes
+  // Fetch properties from API
   useEffect(() => {
-    const unsubscribe = mockDataStore.subscribe(() => {
-      setProperties(mockDataStore.getProperties())
-    })
-    return unsubscribe
+    const fetchProperties = async () => {
+      try {
+        setIsLoadingProperties(true)
+        setLoadError(null)
+        const response = await authFetch("/api/properties")
+        if (!response.ok) {
+          throw new Error("Failed to fetch properties")
+        }
+        const result = await response.json()
+        // Transform API data to match component's expected format
+        const transformedProperties: Property[] = (result.data || []).map((p: {
+          id: string
+          parcel_id?: string
+          parcelId?: string
+          property_address?: string
+          address?: string
+          city?: string
+          county?: string
+          counties?: { county_name?: string; state_code?: string }
+          state?: string
+          total_due?: number
+          totalDue?: number
+          auction_status?: string
+          status?: string
+          property_type?: string
+          propertyType?: string
+          lot_size?: string
+          lotSize?: string
+          sale_type?: string
+          saleType?: string
+          visual_validation_status?: string
+          validation?: string | null
+          sale_date?: string
+          saleDate?: string
+        }) => ({
+          id: p.id,
+          parcelId: p.parcel_id || p.parcelId || "",
+          address: p.property_address || p.address || "Address not available",
+          city: p.city || "",
+          county: p.counties?.county_name || p.county || "Unknown",
+          state: p.counties?.state_code || p.state || "PA",
+          totalDue: p.total_due || p.totalDue || 0,
+          status: p.auction_status || p.status || "parsed",
+          propertyType: p.property_type || p.propertyType || "Unknown",
+          lotSize: p.lot_size || p.lotSize || "Unknown",
+          saleType: p.sale_type || p.saleType || "Tax Deed",
+          validation: p.visual_validation_status?.toLowerCase() || p.validation || null,
+          saleDate: p.sale_date || p.saleDate || "",
+        }))
+        setProperties(transformedProperties)
+      } catch (error) {
+        console.error("Error fetching properties:", error)
+        setLoadError(error instanceof Error ? error.message : "Failed to load properties")
+      } finally {
+        setIsLoadingProperties(false)
+      }
+    }
+    fetchProperties()
   }, [])
 
   // Handle delete property
-  const handleDeleteProperty = (propertyId: string) => {
+  const handleDeleteProperty = async (propertyId: string) => {
     setIsDeleting(true)
-    // Simulate async operation
-    setTimeout(() => {
-      mockDataStore.deleteProperty(propertyId)
-      setDeleteConfirmId(null)
+    try {
+      const response = await authDelete(`/api/properties/${propertyId}`)
+      if (response.ok) {
+        // Remove from local state
+        setProperties(prev => prev.filter(p => p.id !== propertyId))
+        setDeleteConfirmId(null)
+        // Remove from selected properties if it was selected
+        setSelectedProperties(prev => {
+          const next = new Set(prev)
+          next.delete(propertyId)
+          return next
+        })
+      } else {
+        const error = await response.json()
+        console.error("Delete failed:", error)
+        alert(error.error || "Failed to delete property")
+      }
+    } catch (error) {
+      console.error("Error deleting property:", error)
+      alert("Failed to delete property. Please try again.")
+    } finally {
       setIsDeleting(false)
-      // Remove from selected properties if it was selected
-      setSelectedProperties(prev => {
-        const next = new Set(prev)
-        next.delete(propertyId)
-        return next
-      })
-    }, 300)
+    }
   }
 
   // Get unique counties for filter dropdown
   const uniqueCounties = Array.from(new Set(properties.map(p => p.county))).sort()
 
   // Valid status values for URL param validation
-  const validStatuses: PropertyStatus[] = ["parsed", "enriched", "validated", "approved"]
+  const validStatuses: PropertyStatus[] = ["active", "pending", "expired", "sold", "withdrawn", "unknown"]
 
   // Function to update URL parameters
   const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; dateRange?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null; pageSize?: number | null }) => {
@@ -746,6 +597,43 @@ function PropertiesContent() {
   // Don't render content if not authenticated
   if (!isAuthenticated) {
     return null
+  }
+
+  // Show loading state while fetching properties
+  if (isLoadingProperties) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-slate-500 dark:text-slate-400">Loading properties...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if loading failed
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-10 w-10 text-red-500" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Failed to load properties</h2>
+            <p className="text-slate-500 dark:text-slate-400">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Helper function to check if sale date is within range
@@ -1195,10 +1083,12 @@ function PropertiesContent() {
                     className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="all">All Statuses</option>
-                    <option value="parsed">Parsed</option>
-                    <option value="enriched">Enriched</option>
-                    <option value="validated">Validated</option>
-                    <option value="approved">Approved</option>
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="expired">Expired</option>
+                    <option value="sold">Sold</option>
+                    <option value="withdrawn">Withdrawn</option>
+                    <option value="unknown">Unknown</option>
                   </select>
                 </div>
                 <div>
@@ -1326,7 +1216,7 @@ function PropertiesContent() {
 
           {/* Status Pills */}
           <div className="hidden sm:flex items-center gap-2">
-            {(["parsed", "enriched", "validated", "approved"] as const).map(
+            {(["active", "pending", "expired", "sold", "withdrawn", "unknown"] as const).map(
               (status) => {
                 const count = properties.filter(
                   (p) => p.status === status

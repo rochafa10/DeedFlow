@@ -19,128 +19,49 @@ import {
   TrendingUp,
   Calendar,
   ArrowRight,
+  Loader2,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { DateInput } from "@/components/ui/DateInput"
+import { authFetch, authPost, authPatch } from "@/lib/api/authFetch"
 
-// Mock batch job data
-const MOCK_ACTIVE_JOBS = [
-  {
-    id: "job-001",
-    name: "Regrid Scraping - Westmoreland",
-    type: "regrid_scraping",
-    county: "Westmoreland",
-    state: "PA",
-    status: "running",
-    progress: 67,
-    totalItems: 172,
-    processedItems: 115,
-    startedAt: "2026-01-09T10:30:00Z",
-    estimatedCompletion: "2026-01-09T11:45:00Z",
-    batchSize: 50,
-    currentBatch: 3,
-    totalBatches: 4,
-  },
-  {
-    id: "job-002",
-    name: "Visual Validation - Blair",
-    type: "visual_validation",
-    county: "Blair",
-    state: "PA",
-    status: "paused",
-    progress: 45,
-    totalItems: 252,
-    processedItems: 113,
-    startedAt: "2026-01-09T09:00:00Z",
-    estimatedCompletion: null,
-    batchSize: 100,
-    currentBatch: 2,
-    totalBatches: 3,
-  },
-]
+// Types from API
+interface BatchJob {
+  id: string
+  name: string
+  type: string
+  county: string
+  countyId: string | null
+  state: string
+  status: "running" | "paused" | "pending" | "completed" | "failed"
+  progress: number
+  totalItems: number
+  processedItems: number
+  failedItems: number
+  startedAt: string | null
+  pausedAt: string | null
+  completedAt: string | null
+  createdAt: string
+  batchSize: number
+  currentBatch: number
+  totalBatches: number
+  duration: string | null
+  successRate: number
+  errorLog: any[] | null
+  estimatedCompletion: string | null
+}
 
-const MOCK_JOB_HISTORY = [
-  {
-    id: "job-h001",
-    name: "PDF Parsing - Somerset",
-    type: "pdf_parsing",
-    county: "Somerset",
-    state: "PA",
-    status: "completed",
-    totalItems: 15,
-    processedItems: 15,
-    startedAt: "2026-01-08T14:00:00Z",
-    completedAt: "2026-01-08T15:30:00Z",
-    duration: "1h 30m",
-    successRate: 100,
-  },
-  {
-    id: "job-h002",
-    name: "Regrid Scraping - Philadelphia",
-    type: "regrid_scraping",
-    county: "Philadelphia",
-    state: "PA",
-    status: "completed",
-    totalItems: 500,
-    processedItems: 500,
-    startedAt: "2026-01-07T08:00:00Z",
-    completedAt: "2026-01-07T12:45:00Z",
-    duration: "4h 45m",
-    successRate: 98,
-  },
-  {
-    id: "job-h003",
-    name: "Visual Validation - Cambria",
-    type: "visual_validation",
-    county: "Cambria",
-    state: "PA",
-    status: "failed",
-    totalItems: 845,
-    processedItems: 234,
-    failedItems: 611,
-    startedAt: "2026-01-06T10:00:00Z",
-    completedAt: "2026-01-06T11:15:00Z",
-    duration: "1h 15m",
-    successRate: 28,
-    errorMessage: "Rate limit exceeded - API quota reached",
-    errorLog: [
-      { timestamp: "2026-01-06T10:45:12Z", property: "23-04-001-0015", error: "API rate limit exceeded", details: "Google Street View API returned 429 Too Many Requests" },
-      { timestamp: "2026-01-06T10:45:13Z", property: "23-04-001-0016", error: "API rate limit exceeded", details: "Google Street View API returned 429 Too Many Requests" },
-      { timestamp: "2026-01-06T10:48:22Z", property: "23-04-002-0031", error: "Image not found", details: "No Street View available for this location" },
-      { timestamp: "2026-01-06T10:52:45Z", property: "23-04-003-0089", error: "Connection timeout", details: "Request timed out after 30 seconds" },
-      { timestamp: "2026-01-06T11:01:33Z", property: "23-04-005-0102", error: "API rate limit exceeded", details: "Google Street View API returned 429 Too Many Requests" },
-    ],
-  },
-  {
-    id: "job-h004",
-    name: "County Research - Centre",
-    type: "county_research",
-    county: "Centre",
-    state: "PA",
-    status: "completed",
-    totalItems: 1,
-    processedItems: 1,
-    startedAt: "2026-01-05T16:00:00Z",
-    completedAt: "2026-01-05T16:45:00Z",
-    duration: "45m",
-    successRate: 100,
-  },
-  {
-    id: "job-h005",
-    name: "Title Research - Westmoreland",
-    type: "title_research",
-    county: "Westmoreland",
-    state: "PA",
-    status: "completed",
-    totalItems: 60,
-    processedItems: 58,
-    startedAt: "2026-01-04T09:00:00Z",
-    completedAt: "2026-01-04T14:30:00Z",
-    duration: "5h 30m",
-    successRate: 97,
-  },
-]
+interface BatchJobsData {
+  activeJobs: BatchJob[]
+  jobHistory: BatchJob[]
+  stats: {
+    running: number
+    paused: number
+    completedToday: number
+    successRate: number
+  }
+}
 
 type JobStatus = "running" | "paused" | "completed" | "failed" | "pending"
 type FilterStatus = "all" | "active" | "completed" | "failed"
@@ -200,7 +121,12 @@ export default function BatchJobsPage() {
 
   // Check if user can create batch jobs (admin and analyst can, viewer cannot)
   const canCreateJobs = user?.role === 'admin' || user?.role === 'analyst'
-  const [activeJobs, setActiveJobs] = useState(MOCK_ACTIVE_JOBS)
+
+  // Data fetching state
+  const [batchJobsData, setBatchJobsData] = useState<BatchJobsData | null>(null)
+  const [isLoadingJobs, setIsLoadingJobs] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all")
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -213,7 +139,10 @@ export default function BatchJobsPage() {
   const [scheduleDateValid, setScheduleDateValid] = useState(false)
 
   // Job detail modal state
-  const [selectedJob, setSelectedJob] = useState<typeof MOCK_JOB_HISTORY[0] | null>(null)
+  const [selectedJob, setSelectedJob] = useState<BatchJob | null>(null)
+
+  // Counties for dropdown
+  const [counties, setCounties] = useState<Array<{ id: string; name: string; state: string }>>([])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -222,48 +151,88 @@ export default function BatchJobsPage() {
     }
   }, [isAuthenticated, authLoading, router])
 
-  // Real-time progress simulation for running jobs
+  // Fetch batch jobs from API
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveJobs((prev) =>
-        prev.map((job) => {
-          if (job.status !== "running") return job
+    async function fetchBatchJobs() {
+      if (!isAuthenticated) return
 
-          // Simulate progress - add 1-3 items per tick
-          const increment = Math.floor(Math.random() * 3) + 1
-          const newProcessed = Math.min(job.processedItems + increment, job.totalItems)
-          const newProgress = Math.round((newProcessed / job.totalItems) * 100)
-          const newBatch = Math.ceil(newProcessed / job.batchSize)
+      setIsLoadingJobs(true)
+      setLoadError(null)
 
-          // Check if job is complete
-          if (newProcessed >= job.totalItems) {
-            return {
-              ...job,
-              processedItems: job.totalItems,
-              progress: 100,
-              status: "completed" as const,
-              currentBatch: job.totalBatches,
-            }
-          }
+      try {
+        const response = await authFetch("/api/batch-jobs")
 
-          return {
-            ...job,
-            processedItems: newProcessed,
-            progress: newProgress,
-            currentBatch: Math.min(newBatch, job.totalBatches),
-          }
-        })
-      )
-    }, 1000) // Update every second
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to fetch batch jobs: ${response.status}`)
+        }
+
+        const result = await response.json()
+        setBatchJobsData(result.data)
+      } catch (error) {
+        console.error("Failed to fetch batch jobs:", error)
+        setLoadError(error instanceof Error ? error.message : "Failed to load batch jobs")
+      } finally {
+        setIsLoadingJobs(false)
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchBatchJobs()
+    }
+  }, [isAuthenticated])
+
+  // Fetch counties for dropdown
+  useEffect(() => {
+    async function fetchCounties() {
+      if (!isAuthenticated) return
+
+      try {
+        const response = await authFetch("/api/counties")
+        if (response.ok) {
+          const result = await response.json()
+          setCounties(
+            (result.data || []).map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              state: c.state,
+            }))
+          )
+        }
+      } catch (error) {
+        console.error("Failed to fetch counties:", error)
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchCounties()
+    }
+  }, [isAuthenticated])
+
+  // Real-time progress polling for running jobs
+  useEffect(() => {
+    if (!batchJobsData?.activeJobs.some((j) => j.status === "running")) return
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await authFetch("/api/batch-jobs")
+        if (response.ok) {
+          const result = await response.json()
+          setBatchJobsData(result.data)
+        }
+      } catch (error) {
+        console.error("Failed to refresh batch jobs:", error)
+      }
+    }, 5000) // Poll every 5 seconds for running jobs
 
     return () => clearInterval(interval)
-  }, [])
+  }, [batchJobsData?.activeJobs])
 
   // Show loading state while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-500 dark:text-slate-400">Loading...</div>
       </div>
     )
   }
@@ -273,8 +242,49 @@ export default function BatchJobsPage() {
     return null
   }
 
+  // Show loading state while fetching batch jobs
+  if (isLoadingJobs) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-slate-500 dark:text-slate-400">Loading batch jobs...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if loading failed
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-10 w-10 text-red-500" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Failed to load batch jobs</h2>
+            <p className="text-slate-500 dark:text-slate-400">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Get active jobs and history from API data
+  const activeJobs = batchJobsData?.activeJobs || []
+  const jobHistory = batchJobsData?.jobHistory || []
+
   // Filter job history
-  const filteredHistory = MOCK_JOB_HISTORY.filter((job) => {
+  const filteredHistory = jobHistory.filter((job) => {
     const matchesSearch =
       searchQuery === "" ||
       job.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -293,50 +303,59 @@ export default function BatchJobsPage() {
     return matchesSearch && matchesStatus
   })
 
-  // Handle pause/resume
-  const handleToggleJob = (jobId: string) => {
-    setActiveJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId
-          ? { ...job, status: job.status === "running" ? "paused" : "running" }
-          : job
-      )
-    )
+  // Handle pause/resume via API
+  const handleToggleJob = async (jobId: string) => {
+    const job = activeJobs.find((j) => j.id === jobId)
+    if (!job) return
+
+    const newStatus = job.status === "running" ? "paused" : "in_progress"
+
+    try {
+      const response = await authPatch(`/api/batch-jobs/${jobId}`, { status: newStatus })
+
+      if (response.ok) {
+        // Refresh the data
+        const refreshResponse = await authFetch("/api/batch-jobs")
+        if (refreshResponse.ok) {
+          const result = await refreshResponse.json()
+          setBatchJobsData(result.data)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to toggle job status:", error)
+    }
   }
 
-  // Handle create new job
-  const handleCreateJob = () => {
+  // Handle create new job via API
+  const handleCreateJob = async () => {
     if (!newJobType || !newJobCounty) return
 
-    const countyMap: Record<string, { name: string; state: string; properties: number }> = {
-      westmoreland: { name: "Westmoreland", state: "PA", properties: 172 },
-      blair: { name: "Blair", state: "PA", properties: 252 },
-      philadelphia: { name: "Philadelphia", state: "PA", properties: 4521 },
-      cambria: { name: "Cambria", state: "PA", properties: 845 },
-      somerset: { name: "Somerset", state: "PA", properties: 2663 },
+    const selectedCounty = counties.find((c) => c.id === newJobCounty)
+    if (!selectedCounty) return
+
+    try {
+      const response = await authPost("/api/batch-jobs", {
+        job_type: newJobType,
+        county_id: newJobCounty,
+        batch_size: newJobBatchSize,
+      })
+
+      if (response.ok) {
+        // Refresh the data
+        const refreshResponse = await authFetch("/api/batch-jobs")
+        if (refreshResponse.ok) {
+          const result = await refreshResponse.json()
+          setBatchJobsData(result.data)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("Failed to create job:", errorData.error || errorData.message)
+        alert(errorData.error || errorData.message || "Failed to create job")
+      }
+    } catch (error) {
+      console.error("Failed to create job:", error)
     }
 
-    const county = countyMap[newJobCounty]
-    if (!county) return
-
-    const newJob = {
-      id: `job-${Date.now()}`,
-      name: `${JOB_TYPE_LABELS[newJobType]} - ${county.name}`,
-      type: newJobType,
-      county: county.name,
-      state: county.state,
-      status: "running" as const,
-      progress: 0,
-      totalItems: county.properties,
-      processedItems: 0,
-      startedAt: new Date().toISOString(),
-      estimatedCompletion: null,
-      batchSize: newJobBatchSize,
-      currentBatch: 1,
-      totalBatches: Math.ceil(county.properties / newJobBatchSize),
-    }
-
-    setActiveJobs((prev) => [newJob, ...prev])
     setShowCreateModal(false)
     setNewJobType("")
     setNewJobCounty("")
@@ -345,12 +364,11 @@ export default function BatchJobsPage() {
     setScheduleDateValid(false)
   }
 
-  // Stats
-  const runningCount = activeJobs.filter((j) => j.status === "running").length
-  const pausedCount = activeJobs.filter((j) => j.status === "paused").length
-  const completedToday = MOCK_JOB_HISTORY.filter(
-    (j) => j.status === "completed" && j.completedAt?.startsWith("2026-01-09")
-  ).length
+  // Stats from API
+  const runningCount = batchJobsData?.stats?.running || 0
+  const pausedCount = batchJobsData?.stats?.paused || 0
+  const completedToday = batchJobsData?.stats?.completedToday || 0
+  const successRate = batchJobsData?.stats?.successRate || 100
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -407,7 +425,7 @@ export default function BatchJobsPage() {
               <TrendingUp className="h-4 w-4" />
               Success Rate
             </div>
-            <div className="text-2xl font-bold text-slate-900">94%</div>
+            <div className="text-2xl font-bold text-slate-900">{successRate}%</div>
           </div>
         </div>
 
@@ -742,11 +760,11 @@ export default function BatchJobsPage() {
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select county...</option>
-                    <option value="westmoreland">Westmoreland, PA</option>
-                    <option value="blair">Blair, PA</option>
-                    <option value="philadelphia">Philadelphia, PA</option>
-                    <option value="cambria">Cambria, PA</option>
-                    <option value="somerset">Somerset, PA</option>
+                    {counties.map((county) => (
+                      <option key={county.id} value={county.id}>
+                        {county.name}, {county.state}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -869,48 +887,47 @@ export default function BatchJobsPage() {
               </div>
 
               {/* Error Summary (if failed) */}
-              {selectedJob.status === "failed" && selectedJob.errorMessage && (
+              {selectedJob.status === "failed" && selectedJob.failedItems > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <h3 className="font-medium text-red-800">Job Failed</h3>
-                      <p className="text-sm text-red-700 mt-1">{selectedJob.errorMessage}</p>
-                      {(selectedJob as any).failedItems && (
-                        <p className="text-sm text-red-600 mt-2">
-                          {(selectedJob as any).failedItems} items failed to process
-                        </p>
-                      )}
+                      <p className="text-sm text-red-700 mt-1">
+                        {selectedJob.failedItems} items failed to process
+                      </p>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Error Log (if available) */}
-              {(selectedJob as any).errorLog && (selectedJob as any).errorLog.length > 0 && (
+              {selectedJob.errorLog && Array.isArray(selectedJob.errorLog) && selectedJob.errorLog.length > 0 && (
                 <div>
                   <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
                     <XCircle className="h-4 w-4 text-red-500" />
                     Error Log
                     <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">
-                      {(selectedJob as any).errorLog.length} errors
+                      {selectedJob.errorLog.length} errors
                     </span>
                   </h3>
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <div className="bg-slate-800 text-slate-200 text-xs p-3 font-mono max-h-64 overflow-y-auto">
-                      {(selectedJob as any).errorLog.map((err: any, index: number) => (
+                      {selectedJob.errorLog.map((err: any, index: number) => (
                         <div key={index} className="mb-3 last:mb-0">
-                          <div className="text-slate-400">
-                            [{new Date(err.timestamp).toLocaleTimeString()}] Property: {err.property}
-                          </div>
-                          <div className="text-red-400 font-semibold">{err.error}</div>
-                          <div className="text-slate-300 text-xs">{err.details}</div>
+                          {err.timestamp && (
+                            <div className="text-slate-400">
+                              [{new Date(err.timestamp).toLocaleTimeString()}] {err.property && `Property: ${err.property}`}
+                            </div>
+                          )}
+                          <div className="text-red-400 font-semibold">{err.error || err.message || JSON.stringify(err)}</div>
+                          {err.details && <div className="text-slate-300 text-xs">{err.details}</div>}
                         </div>
                       ))}
                     </div>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
-                    Showing first {(selectedJob as any).errorLog.length} errors. Full log available in system logs.
+                    Showing first {selectedJob.errorLog.length} errors. Full log available in system logs.
                   </p>
                 </div>
               )}
@@ -921,7 +938,9 @@ export default function BatchJobsPage() {
                   <div>
                     <span className="text-slate-500">Started:</span>{" "}
                     <span className="text-slate-900">
-                      {new Date(selectedJob.startedAt).toLocaleString()}
+                      {selectedJob.startedAt
+                        ? new Date(selectedJob.startedAt).toLocaleString()
+                        : "-"}
                     </span>
                   </div>
                   {selectedJob.completedAt && (

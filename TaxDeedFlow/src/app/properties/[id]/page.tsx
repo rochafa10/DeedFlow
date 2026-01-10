@@ -38,296 +38,6 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 import { PropertyMap } from "@/components/map/PropertyMap"
-import { mockDataStore } from "@/lib/mockDataStore"
-
-// Simulated "other user's" property IDs for testing access control
-// In production, this would be determined by the API based on user ownership/permissions
-const RESTRICTED_PROPERTY_IDS = new Set(["100", "101", "102", "999", "private-1", "other-user-prop"])
-
-// Mock property data - in production this would come from API
-// Properties 1-4 belong to the current user, 5+ are "other users' properties" for testing access control
-// Simulated server-side data store (shared across "users" for demo)
-let mockPropertyStore: Record<string, PropertyDetail> = {
-  "1": {
-    id: "1",
-    parcelId: "10-01-001-0001",
-    address: "123 Main St",
-    city: "Greensburg",
-    county: "Westmoreland",
-    state: "PA",
-    zipCode: "15601",
-    totalDue: 5234.56,
-    status: "parsed",
-    propertyType: "Residential",
-    lotSize: "0.25 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    yearBuilt: 1985,
-    bedrooms: 3,
-    bathrooms: 2,
-    squareFeet: 1800,
-    assessedValue: 125000,
-    taxYear: 2024,
-    saleDate: "Jan 16, 2026",
-    minimumBid: 5234.56,
-    latitude: 40.3015,
-    longitude: -79.5389,
-    notes: "Good starter property. Check with county about any outstanding liens before bidding. Neighbor mentioned roof was replaced in 2020.",
-    version: 1,
-    lastModifiedAt: "2026-01-08T10:30:00Z",
-    lastModifiedBy: "Demo User",
-  },
-  "2": {
-    id: "2",
-    parcelId: "10-01-001-0002",
-    address: "456 Oak Ave",
-    city: "Greensburg",
-    county: "Westmoreland",
-    state: "PA",
-    zipCode: "15601",
-    totalDue: 12450.0,
-    status: "enriched",
-    propertyType: "Commercial",
-    lotSize: "1.5 acres",
-    saleType: "Tax Deed",
-    validation: null,
-    yearBuilt: 1970,
-    bedrooms: null,
-    bathrooms: null,
-    squareFeet: 5000,
-    assessedValue: 350000,
-    taxYear: 2024,
-    saleDate: "Jan 16, 2026",
-    minimumBid: 12450.0,
-    latitude: 40.3045,
-    longitude: -79.5412,
-    images: [
-      {
-        url: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop",
-        caption: "Front view of commercial building",
-        source: "Regrid Aerial",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop",
-        caption: "Building entrance and parking lot",
-        source: "Google Street View",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&h=600&fit=crop",
-        caption: "Aerial view showing lot boundaries",
-        source: "Regrid Aerial",
-      },
-    ],
-    version: 1,
-    lastModifiedAt: "2026-01-07T15:45:00Z",
-    lastModifiedBy: "Demo User",
-    regridData: {
-      lotSizeAcres: 1.5,
-      lotSizeSqFt: 65340,
-      propertyClass: "Commercial",
-      zoning: "C-2 Commercial",
-      assessedLandValue: 150000,
-      assessedImprovementValue: 200000,
-      marketValue: 425000,
-      lastSaleDate: "2015-06-15",
-      lastSalePrice: 380000,
-      ownerName: "ABC Holdings LLC",
-      ownerAddress: "123 Business Park Dr, Pittsburgh, PA 15222",
-    },
-  },
-  "3": {
-    id: "3",
-    parcelId: "10-01-002-0001",
-    address: "789 Pine Rd",
-    city: "Latrobe",
-    county: "Westmoreland",
-    state: "PA",
-    zipCode: "15650",
-    totalDue: 3200.0,
-    status: "validated",
-    propertyType: "Residential",
-    lotSize: "0.5 acres",
-    saleType: "Tax Deed",
-    validation: "approved",
-    yearBuilt: 1995,
-    bedrooms: 4,
-    bathrooms: 2.5,
-    squareFeet: 2400,
-    assessedValue: 185000,
-    taxYear: 2024,
-    saleDate: "Jan 16, 2026",
-    minimumBid: 3200.0,
-    latitude: 40.3121,
-    longitude: -79.3796,
-    version: 2,
-    lastModifiedAt: "2026-01-08T14:30:00Z",
-    lastModifiedBy: "Visual Validator Agent",
-    validationData: {
-      status: "approved",
-      confidenceScore: 92,
-      validatedAt: "2026-01-08T14:30:00Z",
-      validatedBy: "Visual Validator Agent",
-      findings: [
-        { type: "positive", message: "Property appears to be a well-maintained single-family home" },
-        { type: "positive", message: "Lot size is consistent with county records" },
-        { type: "positive", message: "No visible structural damage detected" },
-        { type: "info", message: "Aerial imagery shows recent landscaping updates" },
-      ],
-      imagesAnalyzed: 4,
-      recommendation: "Property is suitable for investment consideration",
-    },
-    propertyNotes: [
-      {
-        id: "note-1",
-        type: "opportunity",
-        text: "Great location near schools and shopping. Could be a good rental property.",
-        createdAt: "2026-01-05T10:00:00Z",
-        createdBy: "Demo User",
-      },
-      {
-        id: "note-2",
-        type: "concern",
-        text: "Neighbors mentioned occasional flooding in the backyard during heavy rain.",
-        createdAt: "2026-01-06T14:30:00Z",
-        createdBy: "Demo User",
-      },
-      {
-        id: "note-3",
-        type: "action",
-        text: "Need to verify property survey before bidding. Contact county assessor.",
-        createdAt: "2026-01-07T09:15:00Z",
-        createdBy: "Demo User",
-      },
-      {
-        id: "note-4",
-        type: "general",
-        text: "Drove by property on 1/8 - looks well maintained with recent landscaping updates.",
-        createdAt: "2026-01-08T16:00:00Z",
-        createdBy: "Demo User",
-      },
-    ],
-    activityLog: [
-      {
-        id: "activity-1",
-        action: "Property Created",
-        details: "Property parsed from Blair County tax sale list PDF",
-        timestamp: "2026-01-02T08:30:00Z",
-        user: "Parser Agent",
-      },
-      {
-        id: "activity-2",
-        action: "Regrid Data Added",
-        details: "Property enriched with Regrid parcel data and aerial imagery",
-        timestamp: "2026-01-03T10:15:00Z",
-        user: "Regrid Scraper Agent",
-      },
-      {
-        id: "activity-3",
-        action: "Note Added",
-        details: "Added opportunity note about rental potential",
-        timestamp: "2026-01-05T10:00:00Z",
-        user: "Demo User",
-      },
-      {
-        id: "activity-4",
-        action: "Note Added",
-        details: "Added concern note about flooding",
-        timestamp: "2026-01-06T14:30:00Z",
-        user: "Demo User",
-      },
-      {
-        id: "activity-5",
-        action: "Validation Completed",
-        details: "Visual validation passed with 92% confidence score",
-        timestamp: "2026-01-08T14:30:00Z",
-        user: "Visual Validator Agent",
-      },
-      {
-        id: "activity-6",
-        action: "Added to Watchlist",
-        details: "Property added to watchlist for upcoming auction",
-        timestamp: "2026-01-08T15:45:00Z",
-        user: "Demo User",
-      },
-    ],
-  },
-  "4": {
-    id: "4",
-    parcelId: "07-02-001-0015",
-    address: "321 Elm St",
-    city: "Hollidaysburg",
-    county: "Blair",
-    state: "PA",
-    zipCode: "16648",
-    totalDue: 8750.25,
-    status: "approved",
-    propertyType: "Residential",
-    lotSize: "0.33 acres",
-    saleType: "Tax Lien",
-    validation: "approved",
-    yearBuilt: 2000,
-    bedrooms: 3,
-    bathrooms: 2,
-    squareFeet: 2100,
-    assessedValue: 210000,
-    taxYear: 2024,
-    saleDate: "Mar 11, 2026",
-    minimumBid: 8750.25,
-    latitude: 40.4273,
-    longitude: -78.3897,
-    version: 1,
-    lastModifiedAt: "2026-01-06T09:15:00Z",
-    lastModifiedBy: "Demo User",
-  },
-  "5": {
-    id: "5",
-    parcelId: "07-02-003-0022",
-    address: "555 Industrial Blvd",
-    city: "Altoona",
-    county: "Blair",
-    state: "PA",
-    zipCode: "16601",
-    totalDue: 15890.75,
-    status: "validated",
-    propertyType: "Industrial",
-    lotSize: "2.1 acres",
-    saleType: "Tax Deed",
-    validation: "caution",
-    yearBuilt: 1955,
-    bedrooms: null,
-    bathrooms: null,
-    squareFeet: 12000,
-    assessedValue: 275000,
-    taxYear: 2024,
-    saleDate: "Mar 11, 2026",
-    minimumBid: 15890.75,
-    latitude: 40.5187,
-    longitude: -78.3947,
-    version: 1,
-    lastModifiedAt: "2026-01-09T11:00:00Z",
-    lastModifiedBy: "Visual Validator Agent",
-    validationData: {
-      status: "caution",
-      confidenceScore: 58,
-      validatedAt: "2026-01-09T11:00:00Z",
-      validatedBy: "Visual Validator Agent",
-      findings: [
-        { type: "warning", message: "Former industrial site - potential environmental contamination concerns" },
-        { type: "negative", message: "Visible roof damage detected in aerial imagery" },
-        { type: "warning", message: "Adjacent to active railroad - noise and access concerns" },
-        { type: "negative", message: "Building appears vacant for extended period - possible vandalism or deterioration" },
-        { type: "info", message: "Zoning allows for commercial redevelopment" },
-        { type: "positive", message: "Large lot size provides flexibility for future use" },
-      ],
-      imagesAnalyzed: 6,
-      recommendation: "Proceed with caution. Environmental assessment and structural inspection strongly recommended before bidding.",
-    },
-  },
-}
-
-// Alias for backward compatibility (read-only access)
-const MOCK_PROPERTIES = mockPropertyStore
-
 interface RegridData {
   lotSizeAcres: number
   lotSizeSqFt: number
@@ -527,19 +237,29 @@ export default function PropertyDetailPage() {
   const propertyId = params.id as string
 
   // Handle property deletion
-  const handleDeleteProperty = () => {
+  const handleDeleteProperty = async () => {
     setIsDeleting(true)
-    // Delete from mock data store
-    const success = mockDataStore.deleteProperty(propertyId)
-    if (success) {
-      toast.success("Property deleted", {
-        description: "The property has been removed from the database.",
+    try {
+      const response = await fetch(`/api/properties/${propertyId}`, {
+        method: "DELETE",
       })
-      // Navigate back to properties list
-      router.push("/properties")
-    } else {
+      if (response.ok) {
+        toast.success("Property deleted", {
+          description: "The property has been removed from the database.",
+        })
+        // Navigate back to properties list
+        router.push("/properties")
+      } else {
+        toast.error("Delete failed", {
+          description: "Could not delete the property. Please try again.",
+        })
+        setIsDeleting(false)
+        setShowPropertyDeleteConfirm(false)
+      }
+    } catch (error) {
+      console.error("Error deleting property:", error)
       toast.error("Delete failed", {
-        description: "Could not delete the property. Please try again.",
+        description: "An error occurred while deleting the property.",
       })
       setIsDeleting(false)
       setShowPropertyDeleteConfirm(false)
@@ -608,32 +328,55 @@ export default function PropertyDetailPage() {
     }
   }, [isAuthenticated, authLoading, router, pathname])
 
-  // Load property data with access control
+  // Load property data from API
   useEffect(() => {
-    // Simulate API call with access control
-    const loadProperty = () => {
+    const loadProperty = async () => {
       setLoading(true)
       setAccessDenied(false)
 
-      // Check if this property ID is restricted (belongs to another user)
-      // In production, this check would happen server-side via API
-      if (RESTRICTED_PROPERTY_IDS.has(propertyId)) {
-        setAccessDenied(true)
+      try {
+        const response = await fetch(`/api/properties/${propertyId}`)
+
+        if (response.status === 401) {
+          // Unauthorized - redirect to login
+          router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+          return
+        }
+
+        if (response.status === 403) {
+          setAccessDenied(true)
+          setProperty(null)
+          setLoading(false)
+          return
+        }
+
+        if (response.status === 404) {
+          setProperty(null)
+          setLoading(false)
+          return
+        }
+
+        if (!response.ok) {
+          console.error("Failed to load property:", response.statusText)
+          setProperty(null)
+          setLoading(false)
+          return
+        }
+
+        const result = await response.json()
+        setProperty(result.data || null)
+        setLoading(false)
+      } catch (error) {
+        console.error("Error loading property:", error)
         setProperty(null)
         setLoading(false)
-        return
       }
-
-      // In production, fetch from API which would also verify ownership
-      const found = MOCK_PROPERTIES[propertyId]
-      setProperty(found || null)
-      setLoading(false)
     }
 
-    if (propertyId) {
+    if (propertyId && isAuthenticated) {
       loadProperty()
     }
-  }, [propertyId])
+  }, [propertyId, isAuthenticated, router, pathname])
 
   // Start editing - capture the current version
   const startEditing = useCallback(() => {
@@ -658,76 +401,45 @@ export default function PropertyDetailPage() {
     setOriginalVersion(0)
   }, [])
 
-  // Simulate another user editing the same record
+  // Simulate another user editing the same record (demo only - no-op when connected to real backend)
   const simulateOtherUserEdit = useCallback(() => {
-    if (property) {
-      // Simulate "User B" making changes in the background
-      mockPropertyStore[property.id] = {
-        ...mockPropertyStore[property.id],
-        version: mockPropertyStore[property.id].version + 1,
-        lastModifiedAt: new Date().toISOString(),
-        lastModifiedBy: "Other User (User B)",
-        address: mockPropertyStore[property.id].address + " (edited by User B)",
-      }
-    }
-  }, [property])
+    toast.info("Conflict simulation not available with live data")
+  }, [])
 
-  // Simulate another user deleting the record
+  // Simulate another user deleting the record (demo only - no-op when connected to real backend)
   const simulateOtherUserDelete = useCallback(() => {
-    if (property) {
-      // Simulate "User B" deleting the record from the server
-      delete mockPropertyStore[property.id]
-    }
-  }, [property])
+    toast.info("Delete simulation not available with live data")
+  }, [])
 
-  // Save changes with optimistic concurrency check
+  // Save changes - TODO: implement API call
   const saveChanges = useCallback(async () => {
     if (!property) return
 
     setSaving(true)
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    try {
+      // TODO: Implement API call to save property changes
+      // For now, just update local state and show toast
+      const updatedProperty: PropertyDetail = {
+        ...property,
+        ...editFormData,
+        version: property.version + 1,
+        lastModifiedAt: new Date().toISOString(),
+        lastModifiedBy: user?.name || "User",
+      }
 
-    // Check if record still exists (was deleted by another user)
-    const currentServerProperty = mockPropertyStore[property.id]
-
-    if (!currentServerProperty) {
-      // Record was deleted by another user!
-      setRecordDeleted(true)
+      // Update local state
+      setProperty(updatedProperty)
+      setIsEditing(false)
+      setEditFormData({})
+      toast.success("Changes saved (local only - backend save not yet implemented)")
+    } catch (error) {
+      console.error("Error saving changes:", error)
+      toast.error("Failed to save changes")
+    } finally {
       setSaving(false)
-      return
     }
-
-    if (currentServerProperty.version !== originalVersion) {
-      // Version conflict detected!
-      setConflict({
-        show: true,
-        serverVersion: { ...currentServerProperty },
-        localChanges: { ...editFormData },
-      })
-      setSaving(false)
-      return
-    }
-
-    // No conflict - save changes
-    const updatedProperty: PropertyDetail = {
-      ...currentServerProperty,
-      ...editFormData,
-      version: currentServerProperty.version + 1,
-      lastModifiedAt: new Date().toISOString(),
-      lastModifiedBy: "Demo User (You)",
-    }
-
-    // Update the mock store
-    mockPropertyStore[property.id] = updatedProperty
-
-    // Update local state
-    setProperty(updatedProperty)
-    setIsEditing(false)
-    setEditFormData({})
-    setSaving(false)
-  }, [property, originalVersion, editFormData])
+  }, [property, editFormData, user])
 
   // Force save (overwrite server changes)
   const forceSave = useCallback(async () => {
@@ -738,15 +450,15 @@ export default function PropertyDetailPage() {
       ...conflict.localChanges,
       version: conflict.serverVersion.version + 1,
       lastModifiedAt: new Date().toISOString(),
-      lastModifiedBy: "Demo User (You - force saved)",
+      lastModifiedBy: user?.name || "User",
     }
 
-    mockPropertyStore[property.id] = updatedProperty
     setProperty(updatedProperty)
     setIsEditing(false)
     setEditFormData({})
     setConflict({ show: false, serverVersion: null, localChanges: {} })
-  }, [property, conflict])
+    toast.success("Force saved (local only)")
+  }, [property, conflict, user])
 
   // Discard local changes and use server version
   const useServerVersion = useCallback(() => {
@@ -1711,26 +1423,26 @@ export default function PropertyDetailPage() {
                             toast.error("Note cannot be empty")
                             return
                           }
-                          // Add new note to property
+                          // Add new note to property (local only - TODO: implement API call)
                           const newNote = {
                             id: `note-${Date.now()}`,
                             type: newNoteType,
                             text: notesValue.trim(),
                             createdAt: new Date().toISOString(),
-                            createdBy: "Demo User",
+                            createdBy: user?.name || "User",
                           }
-                          const existingNotes = mockPropertyStore[property.id].propertyNotes || []
-                          mockPropertyStore[property.id] = {
-                            ...mockPropertyStore[property.id],
+                          const existingNotes = property.propertyNotes || []
+                          const updatedProperty = {
+                            ...property,
                             propertyNotes: [...existingNotes, newNote],
-                            version: mockPropertyStore[property.id].version + 1,
+                            version: property.version + 1,
                             lastModifiedAt: new Date().toISOString(),
-                            lastModifiedBy: "Demo User",
+                            lastModifiedBy: user?.name || "User",
                           }
-                          setProperty({ ...mockPropertyStore[property.id] })
+                          setProperty(updatedProperty)
                           setIsEditingNotes(false)
                           setNotesValue("")
-                          toast.success("Note added", {
+                          toast.success("Note added (local only)", {
                             description: `${NOTE_TYPE_CONFIG[newNoteType].label} note has been added.`,
                           })
                         }}
@@ -2098,30 +1810,32 @@ export default function PropertyDetailPage() {
               </button>
               <button
                 onClick={() => {
+                  // Delete note (local only - TODO: implement API call)
+                  let updatedProperty: PropertyDetail
                   if (noteToDelete) {
                     // Delete specific note from propertyNotes array
-                    const existingNotes = mockPropertyStore[property.id].propertyNotes || []
-                    mockPropertyStore[property.id] = {
-                      ...mockPropertyStore[property.id],
+                    const existingNotes = property.propertyNotes || []
+                    updatedProperty = {
+                      ...property,
                       propertyNotes: existingNotes.filter((n) => n.id !== noteToDelete),
-                      version: mockPropertyStore[property.id].version + 1,
+                      version: property.version + 1,
                       lastModifiedAt: new Date().toISOString(),
-                      lastModifiedBy: "Demo User",
+                      lastModifiedBy: user?.name || "User",
                     }
                   } else {
                     // Delete legacy single note
-                    mockPropertyStore[property.id] = {
-                      ...mockPropertyStore[property.id],
+                    updatedProperty = {
+                      ...property,
                       notes: undefined,
-                      version: mockPropertyStore[property.id].version + 1,
+                      version: property.version + 1,
                       lastModifiedAt: new Date().toISOString(),
-                      lastModifiedBy: "Demo User",
+                      lastModifiedBy: user?.name || "User",
                     }
                   }
-                  setProperty({ ...mockPropertyStore[property.id] })
+                  setProperty(updatedProperty)
                   setShowDeleteConfirm(false)
                   setNoteToDelete(null)
-                  toast.success("Note deleted", {
+                  toast.success("Note deleted (local only)", {
                     description: "The note has been removed from this property.",
                   })
                 }}

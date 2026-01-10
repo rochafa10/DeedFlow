@@ -25,308 +25,94 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
 
-// Mock auction data - should match the data in auctions/page.tsx
-const MOCK_AUCTIONS = [
-  {
-    id: "1",
-    county: "Westmoreland",
-    state: "PA",
-    date: "2026-01-16",
-    type: "Tax Deed",
-    platform: "In-Person",
-    location: "Courthouse",
-    propertyCount: 172,
-    registrationDeadline: "2026-01-10",
-    depositRequired: "$5,000",
-    status: "upcoming",
-  },
-  {
-    id: "2",
-    county: "Blair",
-    state: "PA",
-    date: "2026-03-11",
-    type: "Tax Deed",
-    platform: "Bid4Assets",
-    location: "Online",
-    propertyCount: 252,
-    registrationDeadline: "2026-03-04",
-    depositRequired: "$2,500",
-    status: "upcoming",
-  },
-  {
-    id: "3",
-    county: "Philadelphia",
-    state: "PA",
-    date: "2026-04-15",
-    type: "Tax Lien",
-    platform: "Bid4Assets",
-    location: "Online",
-    propertyCount: 4521,
-    registrationDeadline: "2026-04-08",
-    depositRequired: "$10,000",
-    status: "upcoming",
-  },
-  {
-    id: "4",
-    county: "Cambria",
-    state: "PA",
-    date: "2026-05-20",
-    type: "Tax Deed",
-    platform: "In-Person",
-    location: "Courthouse",
-    propertyCount: 845,
-    registrationDeadline: "2026-05-13",
-    depositRequired: "$3,000",
-    status: "upcoming",
-  },
-  {
-    id: "5",
-    county: "Somerset",
-    state: "PA",
-    date: "2026-09-08",
-    type: "Tax Deed",
-    platform: "GovEase",
-    location: "Online",
-    propertyCount: 2663,
-    registrationDeadline: "2026-09-01",
-    depositRequired: "$5,000",
-    status: "upcoming",
-  },
-]
-
-// Extended auction details for detail page
-const AUCTION_DETAILS: Record<string, {
-  auctionTime: string;
-  auctionAddress: string;
-  contactPhone: string;
-  contactEmail: string;
-  websiteUrl: string;
-  bidderRequirements: string[];
-  paymentMethods: string[];
-  paymentDeadline: string;
-  biddingProcess: string[];
-  redemptionPeriod: string;
-  investorBriefing: {
-    overview: string;
-    opportunities: string[];
-    risks: string[];
-    recommendation: string;
-  };
-  documents: { name: string; type: string; date: string }[];
-}> = {
-  "1": {
-    auctionTime: "10:00 AM EST",
-    auctionAddress: "Westmoreland County Courthouse, 2 N Main St, Greensburg, PA 15601",
-    contactPhone: "(724) 830-3150",
-    contactEmail: "taxclaim@co.westmoreland.pa.us",
-    websiteUrl: "https://www.co.westmoreland.pa.us",
-    bidderRequirements: [
-      "Valid government-issued photo ID",
-      "Pre-registration required by deadline",
-      "Refundable deposit of $5,000",
-      "Must be 18 years or older",
-      "No outstanding taxes owed to county",
-    ],
-    paymentMethods: ["Certified Check", "Money Order", "Cash (up to $10,000)"],
-    paymentDeadline: "Within 30 days of sale",
-    biddingProcess: [
-      "Properties auctioned in order listed",
-      "Opening bid is total amount due",
-      "Bidding in $100 increments",
-      "Highest bidder wins property",
-      "Immediate deposit required upon winning",
-    ],
-    redemptionPeriod: "None - Tax Deed sale",
-    investorBriefing: {
-      overview: "Westmoreland County offers a strong tax deed sale with 172 properties across diverse property types. The county has a history of clear title transfers and efficient closing processes.",
-      opportunities: [
-        "Strong residential market in suburban areas",
-        "Several commercial properties available",
-        "Average acquisition cost 40-60% below market value",
-        "Growing population in the region",
-      ],
-      risks: [
-        "Some properties may have environmental concerns",
-        "Rural properties may have limited access",
-        "Competition from experienced investors expected",
-        "Title insurance may be required for resale",
-      ],
-      recommendation: "Recommended for intermediate to advanced investors. Focus on residential properties in developed areas for best ROI potential.",
-    },
-    documents: [
-      { name: "Property List 2026", type: "PDF", date: "2026-01-02" },
-      { name: "Bidder Registration Form", type: "PDF", date: "2025-12-15" },
-      { name: "Sale Terms & Conditions", type: "PDF", date: "2025-12-15" },
-      { name: "Payment Instructions", type: "PDF", date: "2025-12-15" },
-    ],
-  },
-  "2": {
-    auctionTime: "9:00 AM EST",
-    auctionAddress: "Online via Bid4Assets",
-    contactPhone: "(814) 693-3085",
-    contactEmail: "taxsale@blairco.org",
-    websiteUrl: "https://www.blairco.org",
-    bidderRequirements: [
-      "Bid4Assets account required",
-      "Pre-registration on platform",
-      "Refundable deposit of $2,500",
-      "Valid credit card on file",
-    ],
-    paymentMethods: ["ACH Transfer", "Wire Transfer", "Credit Card (3% fee)"],
-    paymentDeadline: "Within 10 business days",
-    biddingProcess: [
-      "Online auction over 3 days",
-      "Extended bidding if bid in last 5 minutes",
-      "Proxy bidding available",
-      "Winner notified by email",
-    ],
-    redemptionPeriod: "None - Tax Deed sale",
-    investorBriefing: {
-      overview: "Blair County's Bid4Assets auction provides convenient online access to 252 properties. The online format allows for careful due diligence before bidding.",
-      opportunities: [
-        "Online format allows remote participation",
-        "Proxy bidding enables strategic purchasing",
-        "Mix of urban and rural properties",
-        "Lower deposit requirement than in-person sales",
-      ],
-      risks: [
-        "Online competition can drive up prices",
-        "Cannot inspect properties in real-time",
-        "Payment deadline is strict",
-      ],
-      recommendation: "Good opportunity for both new and experienced investors. Online format is user-friendly.",
-    },
-    documents: [
-      { name: "Property List 2026", type: "PDF", date: "2026-01-05" },
-      { name: "Bid4Assets Guide", type: "PDF", date: "2025-11-01" },
-    ],
-  },
-  "3": {
-    auctionTime: "10:00 AM EST",
-    auctionAddress: "Online via Bid4Assets",
-    contactPhone: "(215) 686-6442",
-    contactEmail: "revenue@phila.gov",
-    websiteUrl: "https://www.phila.gov/revenue",
-    bidderRequirements: [
-      "Bid4Assets account required",
-      "Philadelphia business license (if applicable)",
-      "Deposit of $10,000",
-      "Background check clearance",
-    ],
-    paymentMethods: ["ACH Transfer", "Wire Transfer"],
-    paymentDeadline: "Within 10 business days",
-    biddingProcess: [
-      "Tax Lien certificate sale",
-      "Bidding on interest rate (starts at 18%)",
-      "Lowest interest rate wins",
-      "Lien holder has foreclosure rights",
-    ],
-    redemptionPeriod: "1 year from lien sale date",
-    investorBriefing: {
-      overview: "Philadelphia's tax lien sale is the largest in Pennsylvania with 4,521 properties. This is a TAX LIEN sale, not a tax deed sale - investors purchase the lien, not the property directly.",
-      opportunities: [
-        "High volume of liens available",
-        "Guaranteed interest return if redeemed",
-        "Potential to acquire property through foreclosure",
-        "Urban properties with development potential",
-      ],
-      risks: [
-        "Not immediate property ownership",
-        "Property may be redeemed",
-        "Foreclosure process required for title",
-        "Higher deposit requirement",
-        "Complex urban property issues",
-      ],
-      recommendation: "Advanced investors only. Requires understanding of tax lien vs tax deed differences. Significant capital required.",
-    },
-    documents: [
-      { name: "Tax Lien Sale Notice", type: "PDF", date: "2026-02-01" },
-      { name: "Property List 2026", type: "PDF", date: "2026-03-01" },
-    ],
-  },
-  "4": {
-    auctionTime: "10:00 AM EST",
-    auctionAddress: "Cambria County Courthouse, 200 S Center St, Ebensburg, PA 15931",
-    contactPhone: "(814) 472-1490",
-    contactEmail: "taxclaim@co.cambria.pa.us",
-    websiteUrl: "https://www.cambriaco.com",
-    bidderRequirements: [
-      "Valid government-issued photo ID",
-      "Pre-registration required",
-      "Refundable deposit of $3,000",
-      "Must attend in person or send authorized representative",
-    ],
-    paymentMethods: ["Certified Check", "Money Order", "Cash"],
-    paymentDeadline: "Within 30 days of sale",
-    biddingProcess: [
-      "Traditional courthouse auction",
-      "Properties sold as-is",
-      "Starting bid is total taxes due",
-      "Cash or certified funds for deposit",
-    ],
-    redemptionPeriod: "None - Tax Deed sale",
-    investorBriefing: {
-      overview: "Cambria County offers 845 properties in a traditional courthouse setting. The county is known for affordable properties with good investment potential.",
-      opportunities: [
-        "Lower property values mean lower entry costs",
-        "Less competition than urban areas",
-        "Recreational and hunting land available",
-        "Growing tourism industry in area",
-      ],
-      risks: [
-        "Economic challenges in some areas",
-        "Some properties in declining neighborhoods",
-        "Distance from major metro areas",
-      ],
-      recommendation: "Good for investors seeking affordable entry points. Best suited for buy-and-hold or rental strategies.",
-    },
-    documents: [
-      { name: "Property List 2026", type: "PDF", date: "2026-04-01" },
-      { name: "Bidder Registration", type: "PDF", date: "2026-03-15" },
-    ],
-  },
-  "5": {
-    auctionTime: "9:00 AM EST",
-    auctionAddress: "Online via GovEase",
-    contactPhone: "(814) 445-1473",
-    contactEmail: "taxsale@co.somerset.pa.us",
-    websiteUrl: "https://www.co.somerset.pa.us",
-    bidderRequirements: [
-      "GovEase account required",
-      "Valid ID uploaded to platform",
-      "Deposit of $5,000",
-      "Agree to terms and conditions",
-    ],
-    paymentMethods: ["ACH Transfer", "Wire Transfer", "Credit Card (2.5% fee)"],
-    paymentDeadline: "Within 14 days",
-    biddingProcess: [
-      "Online auction platform",
-      "Bid extensions in final minutes",
-      "Real-time bidding updates",
-      "Automatic bid notifications",
-    ],
-    redemptionPeriod: "None - Tax Deed sale",
-    investorBriefing: {
-      overview: "Somerset County's large sale of 2,663 properties offers significant opportunities. The GovEase platform is user-friendly and the county provides excellent support.",
-      opportunities: [
-        "Largest selection of properties",
-        "Mix of residential, commercial, and land",
-        "Seven Springs resort area properties",
-        "Affordable rural acreage",
-      ],
-      risks: [
-        "Volume can make due diligence challenging",
-        "Remote properties may have access issues",
-        "Some properties landlocked",
-      ],
-      recommendation: "Excellent opportunity for investors willing to do thorough research. Volume allows for selective purchasing.",
-    },
-    documents: [
-      { name: "Property List 2026", type: "PDF", date: "2026-07-15" },
-      { name: "GovEase Registration Guide", type: "PDF", date: "2026-06-01" },
-      { name: "Sale Terms", type: "PDF", date: "2026-06-01" },
-    ],
-  },
+// Type definitions for API response
+interface AuctionData {
+  id: string
+  county: string
+  countyId: string
+  state: string
+  stateName: string
+  date: string
+  type: string
+  platform: string
+  location: string
+  propertyCount: number
+  registrationDeadline: string | null
+  registrationDaysUntil: number | null
+  registrationStatus: string
+  depositRequired: string | null
+  depositAmount: number | null
+  status: string
+  daysUntil: number
+  urgency: string
+  notes: string | null
+  rules: {
+    registrationRequired: boolean
+    registrationDeadlineDays: number | null
+    registrationFormUrl: string | null
+    depositRefundable: boolean
+    depositPaymentMethods: string[]
+    minimumBidRule: string
+    minimumBidAmount: number | null
+    bidIncrement: number | null
+    buyersPremiumPct: number | null
+    paymentDeadlineHours: number
+    paymentMethods: string[]
+    financingAllowed: boolean
+    deedRecordingTimeline: string | null
+    redemptionPeriodDays: number | null
+    possessionTimeline: string | null
+    asIsSale: boolean
+    liensSurvive: string[]
+    titleInsuranceAvailable: boolean
+    rulesSourceUrl: string | null
+    lastVerifiedAt: string | null
+    rawRulesText: string | null
+  } | null
+  propertyStats: {
+    total: number
+    approved: number
+    caution: number
+    rejected: number
+    totalTaxDue: number
+    avgTaxDue: number
+  }
+  properties: {
+    id: string
+    parcelId: string
+    address: string
+    owner: string
+    totalDue: number
+    hasRegridData: boolean
+    validationStatus: string | null
+  }[]
+  alerts: {
+    id: string
+    type: string
+    severity: string
+    title: string
+    message: string
+    daysUntilEvent: number
+    acknowledged: boolean
+    createdAt: string
+  }[]
+  documents: {
+    id: string
+    type: string
+    title: string
+    url: string
+    format: string
+    propertyCount: number
+    publicationDate: string
+  }[]
+  contacts: {
+    id: string
+    type: string
+    title: string
+    phone: string | null
+    email: string | null
+    url: string
+  }[]
 }
 
 export default function AuctionDetailPage() {
@@ -335,10 +121,44 @@ export default function AuctionDetailPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<"briefing" | "rules" | "documents">("briefing")
   const [checkedRequirements, setCheckedRequirements] = useState<Set<number>>(new Set())
+  const [auction, setAuction] = useState<AuctionData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const saleId = params.saleId as string
-  const auction = MOCK_AUCTIONS.find((a) => a.id === saleId)
-  const details = AUCTION_DETAILS[saleId]
+
+  // Fetch auction data from API
+  useEffect(() => {
+    const fetchAuction = async () => {
+      if (!saleId || !isAuthenticated) return
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch(`/api/auctions/${saleId}`)
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError("Auction not found")
+          } else {
+            throw new Error("Failed to fetch auction data")
+          }
+          return
+        }
+
+        const result = await response.json()
+        setAuction(result.data)
+      } catch (err) {
+        console.error("Error fetching auction:", err)
+        setError("Failed to load auction data")
+        toast.error("Failed to load auction data")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAuction()
+  }, [saleId, isAuthenticated])
 
   // Load checked requirements from localStorage
   useEffect(() => {
@@ -382,10 +202,10 @@ export default function AuctionDetailPage() {
   }, [isAuthenticated, authLoading, router])
 
   // Show loading state while checking auth
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-500 dark:text-slate-400">Loading...</div>
       </div>
     )
   }
@@ -395,26 +215,26 @@ export default function AuctionDetailPage() {
     return null
   }
 
-  // Handle auction not found
-  if (!auction || !details) {
+  // Handle auction not found or error
+  if (error || !auction) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <button
             onClick={() => router.push("/auctions")}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
+            className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Auctions
           </button>
-          <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
             <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-            <h1 className="text-xl font-semibold text-slate-900 mb-2">
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
               Auction Not Found
             </h1>
-            <p className="text-slate-600">
-              The auction you're looking for doesn't exist or has been removed.
+            <p className="text-slate-600 dark:text-slate-400">
+              {error || "The auction you're looking for doesn't exist or has been removed."}
             </p>
           </div>
         </main>
@@ -422,49 +242,100 @@ export default function AuctionDetailPage() {
     )
   }
 
-  // Calculate days until auction
-  const getDaysUntil = (dateStr: string) => {
-    const today = new Date("2026-01-09")
-    const auctionDate = new Date(dateStr)
-    const diff = Math.ceil((auctionDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
+  // Build bidder requirements list from rules
+  const bidderRequirements: string[] = []
+  if (auction.rules) {
+    if (auction.rules.registrationRequired) {
+      bidderRequirements.push("Pre-registration required by deadline")
+    }
+    if (auction.depositAmount) {
+      bidderRequirements.push(`Refundable deposit of ${auction.depositRequired}`)
+    }
+    if (auction.rules.depositPaymentMethods?.length > 0) {
+      bidderRequirements.push(`Deposit methods: ${auction.rules.depositPaymentMethods.join(", ")}`)
+    }
+    bidderRequirements.push("Valid government-issued photo ID")
+    bidderRequirements.push("Must be 18 years or older")
+  } else {
+    // Default requirements when rules not available
+    bidderRequirements.push("Pre-registration may be required")
+    if (auction.depositRequired) {
+      bidderRequirements.push(`Deposit: ${auction.depositRequired}`)
+    }
+    bidderRequirements.push("Valid government-issued photo ID")
   }
 
-  const daysUntilAuction = getDaysUntil(auction.date)
-  const daysUntilRegistration = getDaysUntil(auction.registrationDeadline)
+  // Build bidding process steps from rules
+  const biddingProcess: string[] = []
+  if (auction.rules) {
+    biddingProcess.push("Properties auctioned in order listed")
+    if (auction.rules.minimumBidRule) {
+      biddingProcess.push(`Opening bid: ${auction.rules.minimumBidRule === "taxes_owed" ? "Total amount due" : auction.rules.minimumBidRule}`)
+    }
+    if (auction.rules.bidIncrement) {
+      biddingProcess.push(`Bidding in $${auction.rules.bidIncrement} increments`)
+    }
+    biddingProcess.push("Highest bidder wins property")
+    if (auction.rules.buyersPremiumPct) {
+      biddingProcess.push(`Buyer's premium: ${auction.rules.buyersPremiumPct}%`)
+    }
+  } else {
+    biddingProcess.push("Properties auctioned in order listed")
+    biddingProcess.push("Opening bid is total amount due")
+    biddingProcess.push("Highest bidder wins property")
+  }
+
+  // Get primary contact
+  const primaryContact = auction.contacts[0]
+
+  // Build payment methods list
+  const paymentMethods = auction.rules?.paymentMethods || ["Certified Check", "Money Order", "Cash"]
+
+  // Build payment deadline string
+  const paymentDeadline = auction.rules?.paymentDeadlineHours
+    ? `Within ${auction.rules.paymentDeadlineHours} hours after sale`
+    : "Within 30 days of sale"
+
+  // Build redemption period string
+  const redemptionPeriod = auction.rules?.redemptionPeriodDays
+    ? `${auction.rules.redemptionPeriodDays} days`
+    : "None - Tax Deed sale"
+
+  // Calculate days until registration
+  const daysUntilRegistration = auction.registrationDaysUntil ?? 0
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button
           onClick={() => router.push("/auctions")}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
+          className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Auctions
         </button>
 
         {/* Header Section */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {auction.county} County, {auction.state}
                 </h1>
                 <span className={cn(
                   "px-3 py-1 rounded-full text-sm font-medium",
-                  auction.type === "Tax Deed"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-purple-100 text-purple-700"
+                  auction.type === "Tax Deed" || auction.type === "repository" || auction.type === "judicial" || auction.type === "upset"
+                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                    : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
                 )}>
                   {auction.type}
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-slate-600">
+              <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
                   <span>
@@ -476,151 +347,156 @@ export default function AuctionDetailPage() {
                     })}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4" />
-                  <span>{details.auctionTime}</span>
-                </div>
               </div>
-              <div className="flex items-center gap-1.5 mt-2 text-slate-600">
+              <div className="flex items-center gap-1.5 mt-2 text-slate-600 dark:text-slate-400">
                 <MapPin className="h-4 w-4" />
-                <span>{details.auctionAddress}</span>
+                <span>{auction.location || auction.platform}</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
-              <a
-                href={details.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Official Website
-              </a>
-              <button
-                onClick={() => router.push(`/counties/${auction.id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
-              >
-                <Building2 className="h-4 w-4" />
-                View County
-              </button>
+              {primaryContact?.url && (
+                <a
+                  href={primaryContact.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Official Website
+                </a>
+              )}
+              {auction.countyId && (
+                <button
+                  onClick={() => router.push(`/counties/${auction.countyId}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  <Building2 className="h-4 w-4" />
+                  View County
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-600 text-sm mb-1">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm mb-1">
               <Timer className="h-4 w-4" />
               Days Until Auction
             </div>
             <div className={cn(
               "text-2xl font-bold",
-              daysUntilAuction <= 7
-                ? "text-red-600"
-                : daysUntilAuction <= 30
-                ? "text-amber-600"
-                : "text-slate-900"
+              auction.daysUntil <= 7
+                ? "text-red-600 dark:text-red-400"
+                : auction.daysUntil <= 30
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-slate-900 dark:text-slate-100"
             )}>
-              {daysUntilAuction}
+              {auction.daysUntil}
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-600 text-sm mb-1">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm mb-1">
               <Building2 className="h-4 w-4" />
               Properties
             </div>
-            <div className="text-2xl font-bold text-slate-900">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {auction.propertyCount.toLocaleString()}
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-600 text-sm mb-1">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm mb-1">
               <DollarSign className="h-4 w-4" />
               Deposit Required
             </div>
-            <div className="text-2xl font-bold text-slate-900">
-              {auction.depositRequired}
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {auction.depositRequired || "N/A"}
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-600 text-sm mb-1">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm mb-1">
               <Gavel className="h-4 w-4" />
               Platform
             </div>
-            <div className="text-2xl font-bold text-slate-900">
-              {auction.platform}
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {auction.platform || "TBD"}
             </div>
           </div>
         </div>
 
         {/* Key Dates Section */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-600" />
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Key Dates
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-start gap-3">
               <div className={cn(
                 "p-2 rounded-lg",
-                daysUntilRegistration <= 3 ? "bg-red-100" : "bg-amber-100"
+                daysUntilRegistration <= 3 ? "bg-red-100 dark:bg-red-900/30" : "bg-amber-100 dark:bg-amber-900/30"
               )}>
                 <Users className={cn(
                   "h-5 w-5",
-                  daysUntilRegistration <= 3 ? "text-red-600" : "text-amber-600"
+                  daysUntilRegistration <= 3 ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
                 )} />
               </div>
               <div>
-                <div className="font-medium text-slate-900">Registration Deadline</div>
-                <div className="text-slate-600">
-                  {new Date(auction.registrationDeadline).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                <div className="font-medium text-slate-900 dark:text-slate-100">Registration Deadline</div>
+                <div className="text-slate-600 dark:text-slate-400">
+                  {auction.registrationDeadline
+                    ? new Date(auction.registrationDeadline).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Contact county for details"}
                 </div>
-                <div className={cn(
-                  "text-sm font-medium",
-                  daysUntilRegistration <= 3 ? "text-red-600" : "text-amber-600"
-                )}>
-                  {daysUntilRegistration} days remaining
-                </div>
+                {auction.registrationDaysUntil !== null && (
+                  <div className={cn(
+                    "text-sm font-medium",
+                    daysUntilRegistration <= 3 ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                  )}>
+                    {daysUntilRegistration} days remaining
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <Gavel className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <Gavel className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <div className="font-medium text-slate-900">Auction Date</div>
-                <div className="text-slate-600">
+                <div className="font-medium text-slate-900 dark:text-slate-100">Auction Date</div>
+                <div className="text-slate-600 dark:text-slate-400">
                   {new Date(auction.date).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
                     year: "numeric",
                   })}
                 </div>
-                <div className="text-sm text-slate-500">
-                  {details.auctionTime}
+                <div className="text-sm text-slate-500 dark:text-slate-500">
+                  {auction.daysUntil} days away
                 </div>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-green-100">
-                <CreditCard className="h-5 w-5 text-green-600" />
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                <CreditCard className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <div className="font-medium text-slate-900">Payment Deadline</div>
-                <div className="text-slate-600">{details.paymentDeadline}</div>
-                <div className="text-sm text-slate-500">
-                  Methods: {details.paymentMethods.join(", ")}
+                <div className="font-medium text-slate-900 dark:text-slate-100">Payment Deadline</div>
+                <div className="text-slate-600 dark:text-slate-400">{paymentDeadline}</div>
+                <div className="text-sm text-slate-500 dark:text-slate-500">
+                  Methods: {paymentMethods.slice(0, 2).join(", ")}
+                  {paymentMethods.length > 2 && ` +${paymentMethods.length - 2} more`}
                 </div>
               </div>
             </div>
@@ -628,29 +504,29 @@ export default function AuctionDetailPage() {
         </div>
 
         {/* Tabbed Content */}
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
           {/* Tabs */}
-          <div className="border-b border-slate-200 bg-slate-50">
+          <div className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <div className="flex">
               <button
                 onClick={() => setActiveTab("briefing")}
                 className={cn(
                   "px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2",
                   activeTab === "briefing"
-                    ? "text-primary border-b-2 border-primary bg-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "text-primary border-b-2 border-primary bg-white dark:bg-slate-800"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                 )}
               >
                 <Info className="h-4 w-4" />
-                Investor Briefing
+                Property Stats
               </button>
               <button
                 onClick={() => setActiveTab("rules")}
                 className={cn(
                   "px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2",
                   activeTab === "rules"
-                    ? "text-primary border-b-2 border-primary bg-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "text-primary border-b-2 border-primary bg-white dark:bg-slate-800"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                 )}
               >
                 <ClipboardList className="h-4 w-4" />
@@ -661,8 +537,8 @@ export default function AuctionDetailPage() {
                 className={cn(
                   "px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2",
                   activeTab === "documents"
-                    ? "text-primary border-b-2 border-primary bg-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "text-primary border-b-2 border-primary bg-white dark:bg-slate-800"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                 )}
               >
                 <FileText className="h-4 w-4" />
@@ -673,53 +549,124 @@ export default function AuctionDetailPage() {
 
           {/* Tab Content */}
           <div className="p-6">
-            {/* Investor Briefing Tab */}
+            {/* Property Stats Tab */}
             {activeTab === "briefing" && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-2">Overview</h3>
-                  <p className="text-slate-600">{details.investorBriefing.overview}</p>
+                  <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Property Overview</h3>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    This {auction.type} sale includes {auction.propertyCount.toLocaleString()} properties in {auction.county} County, {auction.stateName || auction.state}.
+                    {auction.propertyStats.totalTaxDue > 0 && (
+                      <> Total tax due is ${auction.propertyStats.totalTaxDue.toLocaleString()}, averaging ${auction.propertyStats.avgTaxDue.toLocaleString()} per property.</>
+                    )}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                    <h3 className="font-semibold text-green-800 dark:text-green-300 mb-3 flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5" />
-                      Opportunities
+                      Approved Properties
                     </h3>
-                    <ul className="space-y-2">
-                      {details.investorBriefing.opportunities.map((item, index) => (
-                        <li key={index} className="flex items-start gap-2 text-green-700">
-                          <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="text-3xl font-bold text-green-700 dark:text-green-400 mb-2">
+                      {auction.propertyStats.approved}
+                    </div>
+                    <p className="text-green-600 dark:text-green-500 text-sm">
+                      Properties that passed visual validation and are ready for analysis
+                    </p>
                   </div>
 
-                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                    <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                    <h3 className="font-semibold text-amber-800 dark:text-amber-300 mb-3 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
-                      Risks
+                      Needs Review
+                    </h3>
+                    <div className="text-3xl font-bold text-amber-700 dark:text-amber-400 mb-2">
+                      {auction.propertyStats.caution}
+                    </div>
+                    <p className="text-amber-600 dark:text-amber-500 text-sm">
+                      Properties flagged for manual review before proceeding
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sample Properties */}
+                {auction.properties.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">Sample Properties</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-700">
+                            <th className="text-left py-2 px-3 font-medium text-slate-600 dark:text-slate-400">Parcel ID</th>
+                            <th className="text-left py-2 px-3 font-medium text-slate-600 dark:text-slate-400">Address</th>
+                            <th className="text-right py-2 px-3 font-medium text-slate-600 dark:text-slate-400">Tax Due</th>
+                            <th className="text-center py-2 px-3 font-medium text-slate-600 dark:text-slate-400">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {auction.properties.slice(0, 10).map((property) => (
+                            <tr key={property.id} className="border-b border-slate-100 dark:border-slate-800">
+                              <td className="py-2 px-3 font-mono text-xs text-slate-700 dark:text-slate-300">{property.parcelId}</td>
+                              <td className="py-2 px-3 text-slate-600 dark:text-slate-400">{property.address}</td>
+                              <td className="py-2 px-3 text-right text-slate-700 dark:text-slate-300">
+                                {property.totalDue ? `$${Number(property.totalDue).toLocaleString()}` : "N/A"}
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                {property.validationStatus ? (
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded text-xs font-medium",
+                                    property.validationStatus === "APPROVED"
+                                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                      : property.validationStatus === "CAUTION"
+                                      ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                                      : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                                  )}>
+                                    {property.validationStatus}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 dark:text-slate-500 text-xs">Pending</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {auction.properties.length > 10 && (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                        Showing 10 of {auction.properties.length} properties
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Alerts */}
+                {auction.alerts.length > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+                      <Info className="h-5 w-5" />
+                      Active Alerts
                     </h3>
                     <ul className="space-y-2">
-                      {details.investorBriefing.risks.map((item, index) => (
-                        <li key={index} className="flex items-start gap-2 text-amber-700">
-                          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <span>{item}</span>
+                      {auction.alerts.map((alert) => (
+                        <li key={alert.id} className="flex items-start gap-2 text-blue-700 dark:text-blue-400">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-xs font-medium",
+                            alert.severity === "critical"
+                              ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                              : alert.severity === "warning"
+                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                              : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                          )}>
+                            {alert.severity}
+                          </span>
+                          <span>{alert.title}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                </div>
-
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h3 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                    <Info className="h-5 w-5" />
-                    Recommendation
-                  </h3>
-                  <p className="text-blue-700">{details.investorBriefing.recommendation}</p>
-                </div>
+                )}
               </div>
             )}
 
@@ -728,12 +675,12 @@ export default function AuctionDetailPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                      <Users className="h-5 w-5 text-slate-600" />
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                      <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                       Bidder Requirements
                     </h3>
                     <ul className="space-y-2">
-                      {details.bidderRequirements.map((req, index) => (
+                      {bidderRequirements.map((req, index) => (
                         <li key={index} className="flex items-start gap-2">
                           <button
                             onClick={() => toggleRequirement(index)}
@@ -741,7 +688,7 @@ export default function AuctionDetailPage() {
                               "flex items-center justify-center h-5 w-5 rounded border-2 flex-shrink-0 mt-0.5 transition-colors",
                               checkedRequirements.has(index)
                                 ? "bg-green-500 border-green-500 text-white"
-                                : "border-slate-300 hover:border-green-400"
+                                : "border-slate-300 dark:border-slate-600 hover:border-green-400"
                             )}
                             aria-label={checkedRequirements.has(index) ? "Uncheck requirement" : "Check requirement"}
                           >
@@ -752,30 +699,30 @@ export default function AuctionDetailPage() {
                           <span className={cn(
                             "transition-colors",
                             checkedRequirements.has(index)
-                              ? "text-slate-400 line-through"
-                              : "text-slate-600"
+                              ? "text-slate-400 dark:text-slate-500 line-through"
+                              : "text-slate-600 dark:text-slate-400"
                           )}>
                             {req}
                           </span>
                         </li>
                       ))}
                     </ul>
-                    {details.bidderRequirements.length > 0 && (
-                      <div className="mt-3 text-sm text-slate-500">
-                        {checkedRequirements.size} of {details.bidderRequirements.length} completed
+                    {bidderRequirements.length > 0 && (
+                      <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                        {checkedRequirements.size} of {bidderRequirements.length} completed
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                      <Gavel className="h-5 w-5 text-slate-600" />
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                      <Gavel className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                       Bidding Process
                     </h3>
                     <ol className="space-y-2">
-                      {details.biddingProcess.map((step, index) => (
-                        <li key={index} className="flex items-start gap-2 text-slate-600">
-                          <span className="bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5 rounded flex-shrink-0">
+                      {biddingProcess.map((step, index) => (
+                        <li key={index} className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
+                          <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium px-2 py-0.5 rounded flex-shrink-0">
                             {index + 1}
                           </span>
                           <span>{step}</span>
@@ -785,84 +732,102 @@ export default function AuctionDetailPage() {
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 pt-6">
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                      <h4 className="font-medium text-slate-900 mb-2">Payment Methods</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Payment Methods</h4>
                       <ul className="space-y-1">
-                        {details.paymentMethods.map((method, index) => (
-                          <li key={index} className="text-slate-600 text-sm">
+                        {paymentMethods.map((method, index) => (
+                          <li key={index} className="text-slate-600 dark:text-slate-400 text-sm">
                             {method}
                           </li>
                         ))}
                       </ul>
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 mb-2">Payment Deadline</h4>
-                      <p className="text-slate-600 text-sm">{details.paymentDeadline}</p>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Payment Deadline</h4>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">{paymentDeadline}</p>
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 mb-2">Redemption Period</h4>
-                      <p className="text-slate-600 text-sm">{details.redemptionPeriod}</p>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Redemption Period</h4>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">{redemptionPeriod}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <h3 className="font-semibold text-slate-900 mb-2">Contact Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <div className="text-slate-500">Phone</div>
-                      <div className="font-medium text-slate-900">{details.contactPhone}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-500">Email</div>
-                      <a href={`mailto:${details.contactEmail}`} className="font-medium text-primary hover:underline">
-                        {details.contactEmail}
-                      </a>
-                    </div>
-                    <div>
-                      <div className="text-slate-500">Website</div>
-                      <a href={details.websiteUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline flex items-center gap-1">
-                        Visit Website
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                {/* Contact Information */}
+                {auction.contacts.length > 0 && (
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      {primaryContact?.phone && (
+                        <div>
+                          <div className="text-slate-500 dark:text-slate-400">Phone</div>
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{primaryContact.phone}</div>
+                        </div>
+                      )}
+                      {primaryContact?.email && (
+                        <div>
+                          <div className="text-slate-500 dark:text-slate-400">Email</div>
+                          <a href={`mailto:${primaryContact.email}`} className="font-medium text-primary hover:underline">
+                            {primaryContact.email}
+                          </a>
+                        </div>
+                      )}
+                      {primaryContact?.url && (
+                        <div>
+                          <div className="text-slate-500 dark:text-slate-400">Website</div>
+                          <a href={primaryContact.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline flex items-center gap-1">
+                            Visit Website
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
             {/* Documents Tab */}
             {activeTab === "documents" && (
               <div>
-                <div className="space-y-3">
-                  {details.documents.map((doc, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded">
-                          <FileText className="h-5 w-5 text-red-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-slate-900">{doc.name}</div>
-                          <div className="text-sm text-slate-500">
-                            {doc.type} • Added {new Date(doc.date).toLocaleDateString()}
+                {auction.documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {auction.documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded">
+                            <FileText className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{doc.title}</div>
+                            <div className="text-sm text-slate-500 dark:text-slate-400">
+                              {doc.format?.toUpperCase() || "Document"}
+                              {doc.publicationDate && ` • Added ${new Date(doc.publicationDate).toLocaleDateString()}`}
+                              {doc.propertyCount && ` • ${doc.propertyCount} properties`}
+                            </div>
                           </div>
                         </div>
+                        {doc.url && (
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download
+                          </a>
+                        )}
                       </div>
-                      <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-primary hover:bg-blue-50 rounded-lg transition-colors">
-                        <Download className="h-4 w-4" />
-                        Download
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {details.documents.length === 0 && (
-                  <div className="text-center py-8 text-slate-500">
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                     No documents available for this auction yet.
                   </div>
                 )}

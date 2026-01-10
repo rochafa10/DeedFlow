@@ -89,12 +89,12 @@ class SpecChatSession:
 
         Yields message chunks as they stream in.
 
-        NOTE: We use a minimal system prompt and invoke the /create-spec slash command
-        instead of passing the entire skill file as the system prompt. This avoids
-        Windows command line length limits (~8191 chars) which would cause
-        "Command failed with exit code 1" errors when the skill file is too large.
+        NOTE: We load the skill content and pass it in the first user message instead of
+        as the system prompt. This avoids Windows command line length limits (~8191 chars)
+        which would cause "Command failed with exit code 1" errors. The cwd is set to
+        the project directory so that file writes work correctly.
         """
-        # Verify the create-spec skill exists (Claude will load it via slash command)
+        # Load the create-spec skill content
         skill_path = ROOT_DIR / ".claude" / "commands" / "create-spec.md"
 
         if not skill_path.exists():
@@ -104,13 +104,21 @@ class SpecChatSession:
             }
             return
 
+        # Read skill content and replace $ARGUMENTS with project path
+        skill_content = skill_path.read_text(encoding="utf-8")
+        project_path = str(self.project_dir.resolve())
+        skill_content = skill_content.replace("$ARGUMENTS", project_path)
+
         # Ensure project directory exists (like CLI does in start.py)
         self.project_dir.mkdir(parents=True, exist_ok=True)
+
+        # Ensure prompts directory exists
+        prompts_dir = self.project_dir / "prompts"
+        prompts_dir.mkdir(parents=True, exist_ok=True)
 
         # Delete app_spec.txt so Claude can create it fresh
         # The SDK requires reading existing files before writing, but app_spec.txt is created new
         # Note: We keep initializer_prompt.md so Claude can read and update the template
-        prompts_dir = self.project_dir / "prompts"
         app_spec_path = prompts_dir / "app_spec.txt"
         if app_spec_path.exists():
             app_spec_path.unlink()
@@ -135,18 +143,17 @@ class SpecChatSession:
             json.dump(security_settings, f, indent=2)
 
         # Use a minimal system prompt to avoid Windows command line length limits
-        # The full skill content will be loaded via the /create-spec slash command
-        project_path = str(self.project_dir.resolve())
+        # The full skill content will be passed in the first user message
         minimal_system_prompt = (
             "You are the Spec Creation Assistant for autocoder. "
             "Help users create comprehensive project specifications. "
-            "Use the /create-spec command to guide the process."
+            "Follow the instructions provided in the user's first message."
         )
 
         # Create Claude SDK client with limited tools for spec creation
         # Use Opus for best quality spec generation
         # Use system CLI to avoid bundled Bun runtime crash (exit code 3) on Windows
-        # Enable project setting sources so Claude can access .claude/commands/
+        # cwd is set to project directory so file writes work correctly
         system_cli = shutil.which("claude")
         try:
             self.client = ClaudeSDKClient(
@@ -154,7 +161,6 @@ class SpecChatSession:
                     model="claude-opus-4-5-20251101",
                     cli_path=system_cli,
                     system_prompt=minimal_system_prompt,
-                    setting_sources=["project"],  # Enable .claude/commands/ for slash commands
                     allowed_tools=[
                         "Read",
                         "Write",
@@ -163,7 +169,7 @@ class SpecChatSession:
                     ],
                     permission_mode="acceptEdits",  # Auto-approve file writes for spec creation
                     max_turns=100,
-                    cwd=str(ROOT_DIR.resolve()),  # Use autocoder root so it can find .claude/commands/
+                    cwd=str(self.project_dir.resolve()),  # Use project dir so file writes work
                     settings=str(settings_file.resolve()),
                 )
             )
@@ -178,10 +184,16 @@ class SpecChatSession:
             }
             return
 
-        # Start the conversation using the /create-spec slash command with the project path
-        # This invokes the full skill from .claude/commands/create-spec.md
+        # Start the conversation by sending the skill content as the first message
+        # This gives Claude all the instructions for creating the spec
+        initial_prompt = (
+            "Please follow these instructions to help me create a project specification:\n\n"
+            f"{skill_content}\n\n"
+            "Begin now by greeting me and asking the Phase 1 questions."
+        )
+
         try:
-            async for chunk in self._query_claude(f"/create-spec {project_path}"):
+            async for chunk in self._query_claude(initial_prompt):
                 yield chunk
             # Signal that the response is complete (for UI to hide loading indicator)
             yield {"type": "response_done"}
