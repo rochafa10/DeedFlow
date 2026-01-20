@@ -57,9 +57,9 @@ export async function GET(
       )
     }
 
-    // Fetch regrid data if available
+    // Fetch regrid data if available (check both has_regrid_data and has_screenshot flags)
     let regridData = null
-    if (property.has_regrid_data) {
+    if (property.has_regrid_data || property.has_screenshot) {
       const { data: regrid } = await supabase
         .from("regrid_data")
         .select("*")
@@ -79,19 +79,9 @@ export async function GET(
       validationData = validation
     }
 
-    // Fetch property notes
-    const { data: propertyNotes } = await supabase
-      .from("property_notes")
-      .select("*")
-      .eq("property_id", propertyId)
-      .order("created_at", { ascending: false })
-
-    // Fetch watchlist entry if exists
-    const { data: watchlistEntry } = await supabase
-      .from("watchlist")
-      .select("*")
-      .eq("property_id", propertyId)
-      .maybeSingle()
+    // Note: property_notes and watchlist tables don't exist yet
+    // TODO: Create these tables if user notes feature is needed
+    const propertyNotes: Array<{ id: string; note_type: string; note: string; created_at: string; user_id: string }> = []
 
     // Transform to frontend-friendly format
     const transformedProperty = {
@@ -174,13 +164,9 @@ export async function GET(
         createdBy: note.user_id,
       })),
 
-      // Watchlist
-      isInWatchlist: !!watchlistEntry,
-      watchlistData: watchlistEntry ? {
-        maxBid: watchlistEntry.max_bid,
-        notes: watchlistEntry.notes,
-        alertEnabled: watchlistEntry.alert_enabled,
-      } : null,
+      // Watchlist (TODO: implement when watchlist tables exist)
+      isInWatchlist: false,
+      watchlistData: null,
 
       // Versioning for optimistic concurrency
       version: 1,

@@ -1,0 +1,506 @@
+{
+  "name": "TDF - Batch County Research Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "manual-trigger",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "path": "county-research",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        540
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "county-research-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_counties_needing_research",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"p_limit\": 10 }",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        440
+      ],
+      "id": "get-counties",
+      "name": "Get Counties Needing Research",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        300,
+        440
+      ],
+      "id": "loop-counties",
+      "name": "Loop Over Counties"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preview county being researched\nconst county = $input.first().json;\n\nconsole.log(`\\n========================================`);\nconsole.log(`RESEARCHING: ${county.county_name}, ${county.state_code}`);\nconsole.log(`County ID: ${county.id}`);\nconsole.log(`========================================\\n`);\n\nreturn [{\n  json: {\n    county_id: county.id,\n    county_name: county.county_name,\n    state_code: county.state_code,\n    state_name: county.state_name || county.state_code\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        440
+      ],
+      "id": "preview-county",
+      "name": "Preview County"
+    },
+    {
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "define",
+        "text": "=Research tax auction information for {{ $json.county_name }} County, {{ $json.state_code }}.\n\nCounty ID for database storage: {{ $json.county_id }}\n\nYour task:\n1. Find the official tax claim bureau website and contact information\n2. Find ALL upcoming tax sales (upset, judicial, repository) with dates\n3. Find property list PDFs with direct download URLs\n4. Find vendor portal URLs (Bid4Assets, RealAuction, etc.)\n5. Find GIS and assessment office links\n6. Note any important deadlines, deposit requirements, or restrictions\n\nUse the UPSERT tools to store each piece of information you find.\nAfter completing research, create a research log entry with your sources and quality assessment.",
+        "options": {
+          "systemMessage": "=You are an expert Tax Auction Research Agent. Your mission is to find comprehensive tax sale information for the specified county.\n\nIMPORTANT: The current year is 2026. When searching, always look for 2026 tax sales and current information.\n\nDUAL-TOOL STRATEGY:\n1. Use Perplexity for: Overview, context, current dates, verification\n2. Use Google Custom Search for: Specific PDFs, exact URLs, documents\n\nRESEARCH PHASES:\nPhase 1 - Discovery: Get county overview, identify key resources\nPhase 2 - Document Collection: Find all PDFs (property lists, forms, notices)\nPhase 3 - Verification: Cross-check dates and deadlines\nPhase 4 - Storage: Use UPSERT tools to store everything found\n\nQUALITY SCORING:\n10/10 = All documents found, dates verified, complete data\n7-9/10 = Most data found, some gaps\n<7/10 = Significant missing data\n\nAfter completing research, ALWAYS call CreateResearchLog with:\n- sources_checked: Array of all sources used\n- data_quality_score: Your assessment (1-10)\n- notes: Summary of what was found\n\nSTATE-SPECIFIC KNOWLEDGE (Pennsylvania):\n- System: Three-tier (Upset -> Judicial -> Repository)\n- Authority: County Tax Claim Bureau\n- Common Vendor: Bid4Assets\n- Key Terms: \"upset sale\", \"judicial sale\", \"repository sale\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        740,
+        440
+      ],
+      "id": "research-agent",
+      "name": "Research Agent"
+    },
+    {
+      "parameters": {
+        "model": "sonar-pro",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatPerplexity",
+      "typeVersion": 1,
+      "position": [
+        600,
+        660
+      ],
+      "id": "perplexity-model",
+      "name": "Perplexity Model",
+      "credentials": {
+        "perplexityApi": {
+          "id": "perplexity-api",
+          "name": "Perplexity API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "PerplexityResearch",
+        "description": "Use for comprehensive research with citations. Best for: county overviews, current auction dates, official contact information, understanding auction systems, verifying information across sources.",
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"sonar-pro\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a tax auction research assistant. Provide detailed, accurate information with citations. The current year is 2026.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{query}\"\n    }\n  ]\n}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "query",
+              "description": "The research query to send to Perplexity"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        820,
+        660
+      ],
+      "id": "perplexity-tool",
+      "name": "Perplexity Research",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "perplexity-header-auth",
+          "name": "Perplexity Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_official_link",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_link_type\": \"{link_type}\",\n  \"p_url\": \"{url}\",\n  \"p_title\": \"{title}\",\n  \"p_phone\": \"{phone}\",\n  \"p_email\": \"{email}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "name": "UpsertOfficialLink",
+        "description": "Store official county links (tax claim bureau website, contact info). Required: county_id, link_type, url. Optional: title, phone, email.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID of the county"
+            },
+            {
+              "name": "link_type",
+              "description": "Type: tax_claim_bureau, treasurer, assessor, gis, court"
+            },
+            {
+              "name": "url",
+              "description": "The URL of the official link"
+            },
+            {
+              "name": "title",
+              "description": "Title or name of the office"
+            },
+            {
+              "name": "phone",
+              "description": "Phone number"
+            },
+            {
+              "name": "email",
+              "description": "Email address"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        660
+      ],
+      "id": "upsert-official-link",
+      "name": "UpsertOfficialLink",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_upcoming_sale",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_sale_type\": \"{sale_type}\",\n  \"p_sale_date\": \"{sale_date}\",\n  \"p_registration_deadline\": \"{registration_deadline}\",\n  \"p_platform\": \"{platform}\",\n  \"p_deposit_required\": {deposit_required},\n  \"p_property_count\": {property_count},\n  \"p_location\": \"{location}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "name": "UpsertUpcomingSale",
+        "description": "Store upcoming tax sale dates. Required: county_id, sale_type, sale_date. Optional: registration_deadline, platform, deposit_required, property_count, location.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID of the county"
+            },
+            {
+              "name": "sale_type",
+              "description": "Type: upset, judicial, repository, tax_deed, tax_certificate"
+            },
+            {
+              "name": "sale_date",
+              "description": "Date of sale in ISO format (YYYY-MM-DD)"
+            },
+            {
+              "name": "registration_deadline",
+              "description": "Registration deadline in ISO format"
+            },
+            {
+              "name": "platform",
+              "description": "Platform name: Bid4Assets, RealAuction, In-Person, etc."
+            },
+            {
+              "name": "deposit_required",
+              "description": "Deposit amount as number (no quotes)"
+            },
+            {
+              "name": "property_count",
+              "description": "Number of properties as integer (no quotes)"
+            },
+            {
+              "name": "location",
+              "description": "Location description"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1220,
+        660
+      ],
+      "id": "upsert-upcoming-sale",
+      "name": "UpsertUpcomingSale",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_document",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_document_type\": \"{document_type}\",\n  \"p_title\": \"{title}\",\n  \"p_url\": \"{url}\",\n  \"p_file_format\": \"{file_format}\",\n  \"p_publication_date\": \"{publication_date}\",\n  \"p_year\": {year},\n  \"p_property_count\": {property_count}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "name": "UpsertDocument",
+        "description": "Store document links (property lists, legal notices, forms). Required: county_id, document_type, title, url. Optional: file_format, publication_date, year, property_count.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID of the county"
+            },
+            {
+              "name": "document_type",
+              "description": "Type: property_list, legal_notice, registration_form, terms_conditions"
+            },
+            {
+              "name": "title",
+              "description": "Document title"
+            },
+            {
+              "name": "url",
+              "description": "Direct URL to document"
+            },
+            {
+              "name": "file_format",
+              "description": "Format: pdf, xlsx, html"
+            },
+            {
+              "name": "publication_date",
+              "description": "Publication date in ISO format"
+            },
+            {
+              "name": "year",
+              "description": "Year as integer (no quotes)"
+            },
+            {
+              "name": "property_count",
+              "description": "Number of properties as integer (no quotes)"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1420,
+        660
+      ],
+      "id": "upsert-document",
+      "name": "UpsertDocument",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Counties Needing Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Counties Needing Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Counties Needing Research": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Counties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Counties": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Preview County",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preview County": {
+      "main": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Research": {
+      "ai_tool": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertOfficialLink": {
+      "ai_tool": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertUpcomingSale": {
+      "ai_tool": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertDocument": {
+      "ai_tool": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Counties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "4L0GulXueUIHWsM3",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-research",
+      "name": "TDF-Research"
+    }
+  ],
+  "active": true,
+  "backupDate": "2026-01-11"
+}

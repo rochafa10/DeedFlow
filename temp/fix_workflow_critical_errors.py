@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+"""
+Fix critical errors in n8n workflow DGXfvxQpgn25n3OO
+"""
+import json
+import os
+import sys
+
+# Fixes needed:
+# 1. "Get Properties to Scrape" - Missing URL
+# 2. "Convert Screenshot to Binary" - Missing binaryPropertyName
+# 3. "Run Playwright Screenshot" - Wrong node reference ("Build Regrid Data" -> "Prepare Regrid URL")
+# 4. "Update Job Progress" - Missing method, body, parameters
+
+workflow_data = {
+    "id": "DGXfvxQpgn25n3OO",
+    "name": "TDF - Regrid Scraper",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Check for Jobs",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [112, 400]
+        },
+        {
+            "parameters": {
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/batch_jobs",
+                "sendQuery": True,
+                "queryParameters": {
+                    "parameters": [
+                        {"name": "status", "value": "in.(pending,in_progress)"},
+                        {"name": "job_type", "value": "eq.regrid_scraping"},
+                        {"name": "select", "value": "id,county_id,batch_size,processed_items,total_items,current_batch"},
+                        {"name": "order", "value": "created_at.asc"},
+                        {"name": "limit", "value": "1"}
+                    ]
+                },
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"}
+                    ]
+                },
+                "options": {}
+            },
+            "id": "get-pending-jobs",
+            "name": "Get Pending Jobs",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [304, 400]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": True,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 1
+                    },
+                    "conditions": [
+                        {
+                            "id": "check-job-exists",
+                            "leftValue": "={{ Object.keys($json).length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "check-jobs",
+            "name": "Has Jobs?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [512, 400]
+        },
+        {
+            "parameters": {
+                "jsCode": "const jobs = $input.all();\nconsole.log('Input jobs:', JSON.stringify(jobs, null, 2));\nif (jobs.length > 0 && jobs[0].json) {\n  const job = jobs[0].json;\n  if (job.id) {\n    console.log('Found job:', job.id);\n    return [{ json: { job_id: job.id, county_id: job.county_id, batch_size: job.batch_size || 50, total_items: job.total_items || 0, processed_items: job.processed_items || 0 } }];\n  }\n  if (Array.isArray(job) && job.length > 0) {\n    const firstJob = job[0];\n    console.log('Found job (array):', firstJob.id);\n    return [{ json: { job_id: firstJob.id, county_id: firstJob.county_id, batch_size: firstJob.batch_size || 50, total_items: firstJob.total_items || 0, processed_items: firstJob.processed_items || 0 } }];\n  }\n}\nconsole.log('No valid job found');\nreturn [{ json: { job_id: null } }];"
+            },
+            "id": "extract-job",
+            "name": "Extract Job Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [720, 384]
+        },
+        {
+            # FIX 1: Add URL and method
+            "parameters": {
+                "method": "POST",
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_next_batch",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "application/json"}
+                    ]
+                },
+                "sendBody": True,
+                "contentType": "json",
+                "specifyBody": "json",
+                "jsonBody": "={\"p_job_id\": \"{{ $json.job_id }}\"}",
+                "options": {}
+            },
+            "id": "get-properties",
+            "name": "Get Properties to Scrape",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [960, 384]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/regrid_data?on_conflict=property_id",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "application/json"},
+                        {"name": "Prefer", "value": "resolution=merge-duplicates,return=minimal"}
+                    ]
+                },
+                "sendBody": True,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json) }}",
+                "options": {}
+            },
+            "id": "update-database",
+            "name": "Update Database",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [1664, 384]
+        },
+        {
+            # FIX 4: Add method, body, and parameters
+            "parameters": {
+                "method": "POST",
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/update_batch_progress",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "application/json"}
+                    ]
+                },
+                "sendBody": True,
+                "contentType": "json",
+                "specifyBody": "json",
+                "jsonBody": "={\"p_job_id\": \"{{ $('Extract Job Data').first().json.job_id }}\", \"p_last_item_id\": \"{{ $('Parse Playwright Response').first().json.property_id }}\", \"p_items_processed\": 1, \"p_items_failed\": 0, \"p_error_message\": null}",
+                "options": {}
+            },
+            "id": "update-progress",
+            "name": "Update Job Progress",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [352, 1120]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Get property from loop\nconst property = $input.first().json;\n\nconst propertyId = property.item_id;\n\nif (!propertyId) {\n  console.error('ERROR: No item_id found! Available fields:', Object.keys(property));\n  throw new Error('Property ID (item_id) not found in input');\n}\n\nconsole.log('Processing property:', propertyId, property.parcel_id);\n\n// Build Regrid URL - Playwright will scrape REAL data from this URL\nconst county = property.county_name?.toLowerCase().replace(/\\s+/g, '-') || 'unknown';\nconst state = property.state_code?.toLowerCase() || 'pa';\nconst parcelClean = (property.parcel_id || '').replace(/[^a-zA-Z0-9]/g, '');\nconst regridUrl = `https://app.regrid.com/us/${state}/${county}/parcel/${parcelClean}`;\n\n// Pass to Playwright - NO FAKE DATA GENERATION!\nreturn [{\n  json: {\n    property_id: propertyId,\n    parcel_id: property.parcel_id,\n    county_name: property.county_name,\n    state_code: property.state_code,\n    property_address: property.property_address,\n    regrid_url: regridUrl\n  }\n}];"
+            },
+            "id": "scrape-regrid-api",
+            "name": "Prepare Regrid URL",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1200, 384]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "regrid-scraper",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Manual Trigger (Webhook)",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [112, 208],
+            "webhookId": "2327e93e-2835-4da1-8e14-1f240810aead"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Use REAL Regrid data from Playwright scraping\nconst input = $input.first().json;\nconst regridData = input.regrid_data || {};\n\n// Store REAL scraped data to database\nreturn {\n  json: {\n    property_id: input.property_id,\n    regrid_id: regridData.regrid_id || null,\n    ll_uuid: regridData.ll_uuid || null,\n    property_type: regridData.property_type || null,\n    property_class: regridData.property_class || null,\n    land_use: regridData.land_use || null,\n    zoning: regridData.zoning || null,\n    lot_size_sqft: regridData.lot_size_sqft || null,\n    lot_size_acres: regridData.lot_size_acres || null,\n    lot_dimensions: regridData.lot_dimensions || null,\n    building_sqft: regridData.building_sqft || null,\n    year_built: regridData.year_built || null,\n    bedrooms: regridData.bedrooms || null,\n    bathrooms: regridData.bathrooms || null,\n    assessed_value: regridData.assessed_value || null,\n    market_value: regridData.market_value || null,\n    latitude: regridData.latitude || null,\n    longitude: regridData.longitude || null,\n    water_service: regridData.water_service || null,\n    sewer_service: regridData.sewer_service || null,\n    raw_data: regridData,\n    screenshot_url: null,\n    data_quality_score: regridData.data_quality_score || 0.0,\n    scraped_at: new Date().toISOString()\n  }\n};"
+            },
+            "id": "prepare-db-data",
+            "name": "Prepare DB Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1424, 384]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://oiiwlzobizftprqspbzt.supabase.co/storage/v1/object/screenshots/{{ $('Parse Playwright Response').first().json.parcel_id.replace(/[^a-zA-Z0-9]/g, '_') }}.png"
+            },
+            "id": "upload-screenshot",
+            "name": "Upload Screenshot to Supabase",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [560, 672]
+        },
+        {
+            "parameters": {
+                "url": "=https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/regrid_data?property_id=eq.{{ $('Parse Playwright Response').first().json.property_id }}"
+            },
+            "id": "update-screenshot-url",
+            "name": "Update Screenshot URL",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [176, 656]
+        },
+        {
+            # FIX 3: Change reference from "Build Regrid Data" to "Prepare Regrid URL"
+            "parameters": {
+                "url": "http://n8n-production-pwrunner-1:3001/run-regrid",
+                "sendQuery": True,
+                "queryParameters": {
+                    "parameters": [
+                        {"name": "parcel", "value": "={{ $('Prepare Regrid URL').first().json.parcel_id }}"},
+                        {"name": "county", "value": "={{ $('Prepare Regrid URL').first().json.county_name }}"},
+                        {"name": "state", "value": "={{ $('Prepare Regrid URL').first().json.state_code }}"},
+                        {"name": "property_id", "value": "={{ $('Prepare Regrid URL').first().json.property_id }}"}
+                    ]
+                },
+                "options": {
+                    "timeout": 120000
+                }
+            },
+            "id": "run-playwright-screenshot",
+            "name": "Run Playwright Screenshot",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [2064, 384]
+        },
+        {
+            # FIX 2: Add binaryPropertyName
+            "parameters": {
+                "operation": "toBinary",
+                "sourceProperty": "screenshot",
+                "binaryPropertyName": "data",
+                "options": {
+                    "fileName": "={{ $('Parse Playwright Response').first().json.parcel_id.replace(/[^a-zA-Z0-9]/g, '_') }}.png",
+                    "mimeType": "image/png"
+                }
+            },
+            "id": "convert-screenshot",
+            "name": "Convert Screenshot to Binary",
+            "type": "n8n-nodes-base.convertToFile",
+            "typeVersion": 1.1,
+            "position": [912, 704]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Parse REAL data from Playwright scraping\nconst input = $input.first().json;\n\nlet response;\nif (typeof input.data === 'string') {\n  try {\n    response = JSON.parse(input.data);\n  } catch (e) {\n    throw new Error('Failed to parse Playwright response: ' + e.message);\n  }\n} else if (input.success !== undefined) {\n  response = input;\n} else if (typeof input === 'string') {\n  response = JSON.parse(input);\n} else {\n  response = input;\n}\n\nif (!response.success) {\n  throw new Error('Playwright screenshot failed: ' + (response.error || 'Unknown error'));\n}\n\nif (!response.screenshot) {\n  throw new Error('No screenshot in Playwright response');\n}\n\n// Return REAL scraped data from Regrid\nreturn {\n  json: {\n    property_id: response.property_id,\n    parcel_id: response.parcel_id,\n    screenshot: response.screenshot,\n    // This contains REAL data scraped by Playwright from Regrid\n    regrid_data: response.regrid_data || {},\n    success: response.success\n  }\n};"
+            },
+            "id": "parse-playwright-response",
+            "name": "Parse Playwright Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1552, 1040]
+        }
+    ],
+    "connections": {
+        "Check for Jobs": {
+            "main": [[{"node": "Get Pending Jobs", "type": "main", "index": 0}]]
+        },
+        "Get Pending Jobs": {
+            "main": [[{"node": "Has Jobs?", "type": "main", "index": 0}]]
+        },
+        "Has Jobs?": {
+            "main": [[{"node": "Extract Job Data", "type": "main", "index": 0}], []]
+        },
+        "Extract Job Data": {
+            "main": [[{"node": "Get Properties to Scrape", "type": "main", "index": 0}]]
+        },
+        "Get Properties to Scrape": {
+            "main": [[{"node": "Prepare Regrid URL", "type": "main", "index": 0}]]
+        },
+        "Update Job Progress": {
+            "main": [[]]
+        },
+        "Manual Trigger (Webhook)": {
+            "main": [[{"node": "Get Pending Jobs", "type": "main", "index": 0}]]
+        },
+        "Upload Screenshot to Supabase": {
+            "main": [[{"node": "Update Screenshot URL", "type": "main", "index": 0}]]
+        },
+        "Update Screenshot URL": {
+            "main": [[{"node": "Update Job Progress", "type": "main", "index": 0}]]
+        },
+        "Convert Screenshot to Binary": {
+            "main": [[{"node": "Upload Screenshot to Supabase", "type": "main", "index": 0}]]
+        },
+        "Run Playwright Screenshot": {
+            "main": [[{"node": "Parse Playwright Response", "type": "main", "index": 0}]]
+        },
+        "Parse Playwright Response": {
+            "main": [[{"node": "Prepare DB Data", "type": "main", "index": 0}]]
+        },
+        "Prepare Regrid URL": {
+            "main": [[{"node": "Run Playwright Screenshot", "type": "main", "index": 0}]]
+        },
+        "Prepare DB Data": {
+            "main": [[{"node": "Update Database", "type": "main", "index": 0}]]
+        },
+        "Update Database": {
+            "main": [[{"node": "Convert Screenshot to Binary", "type": "main", "index": 0}]]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "callerPolicy": "workflowsFromSameOwner",
+        "availableInMCP": False
+    }
+}
+
+# Save fixed workflow
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+output_file = os.path.join(script_dir, "fixed_workflow.json")
+with open(output_file, 'w') as f:
+    json.dump(workflow_data, f, indent=2)
+
+print(f"Fixed workflow saved to {output_file}")
+print("\nFixes applied:")
+print("1. ✅ 'Get Properties to Scrape' - Added URL and POST method")
+print("2. ✅ 'Convert Screenshot to Binary' - Added binaryPropertyName: 'data'")
+print("3. ✅ 'Run Playwright Screenshot' - Fixed node reference to 'Prepare Regrid URL'")
+print("4. ✅ 'Update Job Progress' - Added POST method, body, and parameters")

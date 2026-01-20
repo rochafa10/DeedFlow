@@ -1,0 +1,232 @@
+{
+  "project": "Property Analysis Report System",
+  "created": "2025-01-15",
+  "waves": {
+    "wave1": {
+      "name": "Foundation",
+      "status": "pending",
+      "phases": {
+        "phase1": {
+          "name": "Database Schema",
+          "status": "pending",
+          "files": [
+            { "path": "supabase/migrations/20250115_property_reports.sql", "status": "pending" },
+            { "path": "supabase/migrations/20250115_comparable_sales.sql", "status": "pending" },
+            { "path": "supabase/migrations/20250115_risk_assessments.sql", "status": "pending" },
+            { "path": "supabase/migrations/20250115_indexes_views.sql", "status": "pending" }
+          ]
+        },
+        "phase2": {
+          "name": "API Integration",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/api/fema.ts", "status": "pending" },
+            { "path": "src/lib/api/usgs.ts", "status": "pending" },
+            { "path": "src/lib/api/nasaFirms.ts", "status": "pending" },
+            { "path": "src/lib/api/epa.ts", "status": "pending" },
+            { "path": "src/lib/api/noaa.ts", "status": "pending" },
+            { "path": "src/lib/api/realtor.ts", "status": "pending" }
+          ]
+        }
+      }
+    },
+    "wave2": {
+      "name": "Core Logic",
+      "status": "pending",
+      "phases": {
+        "phase6a": {
+          "name": "Core Types & Methodology",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/scoring/types.ts", "status": "pending" },
+            { "path": "src/lib/scoring/constants.ts", "status": "pending" },
+            { "path": "src/lib/scoring/utils.ts", "status": "pending" }
+          ]
+        },
+        "phase6b": {
+          "name": "Missing Data & Confidence",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/scoring/missingData.ts", "status": "pending" },
+            { "path": "src/lib/scoring/confidence.ts", "status": "pending" }
+          ]
+        },
+        "phase6c": {
+          "name": "Regional & Property Type",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/scoring/regional.ts", "status": "pending" },
+            { "path": "src/lib/scoring/propertyType.ts", "status": "pending" }
+          ]
+        },
+        "phase6d": {
+          "name": "Edge Cases & Calibration",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/scoring/edgeCases.ts", "status": "pending" },
+            { "path": "src/lib/scoring/calibration.ts", "status": "pending" }
+          ]
+        },
+        "phase6e": {
+          "name": "Main Calculator",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/scoring/calculator.ts", "status": "pending" },
+            { "path": "src/lib/scoring/categories/locationScore.ts", "status": "pending" },
+            { "path": "src/lib/scoring/categories/marketScore.ts", "status": "pending" },
+            { "path": "src/lib/scoring/categories/profitScore.ts", "status": "pending" }
+          ]
+        },
+        "phase6f": {
+          "name": "Tests & Verification",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/scoring/__tests__/calculator.test.ts", "status": "pending" },
+            { "path": "src/lib/scoring/__tests__/integration.test.ts", "status": "pending" }
+          ]
+        },
+        "phase7a": {
+          "name": "Water Risks",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/risk/floodRisk.ts", "status": "pending" },
+            { "path": "src/lib/analysis/risk/hurricaneRisk.ts", "status": "pending" },
+            { "path": "src/lib/analysis/risk/waterRisk.ts", "status": "pending" }
+          ]
+        },
+        "phase7b": {
+          "name": "Geological Risks",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/risk/earthquakeRisk.ts", "status": "pending" },
+            { "path": "src/lib/analysis/risk/sinkholeRisk.ts", "status": "pending" },
+            { "path": "src/lib/analysis/risk/slopeRisk.ts", "status": "pending" }
+          ]
+        },
+        "phase7c": {
+          "name": "Fire & Environmental",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/risk/wildfireRisk.ts", "status": "pending" },
+            { "path": "src/lib/analysis/risk/environmentalRisk.ts", "status": "pending" },
+            { "path": "src/lib/analysis/risk/radonRisk.ts", "status": "pending" }
+          ]
+        },
+        "phase7d": {
+          "name": "Risk Integration",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/risk/riskAnalyzer.ts", "status": "pending" },
+            { "path": "src/lib/analysis/risk/riskWeights.ts", "status": "pending" }
+          ]
+        }
+      }
+    },
+    "wave3": {
+      "name": "Financial Analysis",
+      "status": "pending",
+      "phases": {
+        "phase8a": {
+          "name": "Cost Estimation",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/financial/costTypes.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/regionalMultipliers.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/acquisitionCosts.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/rehabCosts.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/holdingCosts.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/sellingCosts.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/totalInvestment.ts", "status": "pending" }
+          ]
+        },
+        "phase8b": {
+          "name": "ROI Calculator",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/financial/roiCalculator.ts", "status": "pending" }
+          ]
+        },
+        "phase8c": {
+          "name": "Comparables",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/financial/types/comparables.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/config/adjustmentValues.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/comparablesSelection.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/similarityScore.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/priceAdjustments.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/arvCalculator.ts", "status": "pending" },
+            { "path": "src/lib/analysis/financial/comparablesAnalyzer.ts", "status": "pending" }
+          ]
+        },
+        "phase8d": {
+          "name": "Recommendations",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/analysis/recommendations/types.ts", "status": "pending" },
+            { "path": "src/lib/analysis/recommendations/recommendationEngine.ts", "status": "pending" },
+            { "path": "src/lib/analysis/recommendations/dealQuality.ts", "status": "pending" },
+            { "path": "src/lib/analysis/recommendations/actionItems.ts", "status": "pending" }
+          ]
+        },
+        "phase8e": {
+          "name": "Financial UI",
+          "status": "pending",
+          "files": [
+            { "path": "src/components/reports/financial/CostBreakdownCard.tsx", "status": "pending" },
+            { "path": "src/components/reports/financial/ROIMetricsCard.tsx", "status": "pending" },
+            { "path": "src/components/reports/financial/ComparablesGrid.tsx", "status": "pending" },
+            { "path": "src/components/reports/financial/RecommendationPanel.tsx", "status": "pending" },
+            { "path": "src/components/reports/financial/InvestmentScenarioToggle.tsx", "status": "pending" },
+            { "path": "src/app/properties/[id]/financials/page.tsx", "status": "pending" }
+          ]
+        }
+      }
+    },
+    "wave4": {
+      "name": "UI & Integration",
+      "status": "pending",
+      "phases": {
+        "phase3": {
+          "name": "UI Components",
+          "status": "pending",
+          "files": [
+            { "path": "src/components/reports/PropertyScoreCard.tsx", "status": "pending" },
+            { "path": "src/components/reports/ScoreBreakdownChart.tsx", "status": "pending" },
+            { "path": "src/components/reports/RiskOverviewCard.tsx", "status": "pending" },
+            { "path": "src/components/reports/FinancialSummaryCard.tsx", "status": "pending" },
+            { "path": "src/components/reports/ComparablesTable.tsx", "status": "pending" },
+            { "path": "src/components/reports/RecommendationBadge.tsx", "status": "pending" },
+            { "path": "src/app/properties/[id]/report/page.tsx", "status": "pending" }
+          ]
+        },
+        "phase4": {
+          "name": "Report Generation",
+          "status": "pending",
+          "files": [
+            { "path": "src/app/api/reports/generate/route.ts", "status": "pending" },
+            { "path": "src/lib/reports/reportOrchestrator.ts", "status": "pending" },
+            { "path": "src/app/api/reports/generate-batch/route.ts", "status": "pending" }
+          ]
+        },
+        "phase5": {
+          "name": "Sharing & Export",
+          "status": "pending",
+          "files": [
+            { "path": "src/lib/export/pdfExport.ts", "status": "pending" },
+            { "path": "src/lib/export/excelExport.ts", "status": "pending" },
+            { "path": "supabase/migrations/20250115_share_tokens.sql", "status": "pending" },
+            { "path": "src/app/share/[token]/page.tsx", "status": "pending" }
+          ]
+        }
+      }
+    }
+  },
+  "summary": {
+    "totalFiles": 75,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 75
+  },
+  "lastUpdated": "2025-01-15T20:00:00Z"
+}

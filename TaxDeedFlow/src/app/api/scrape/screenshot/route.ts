@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
     console.log(`  - County: ${county}, State: ${state}`)
     console.log(`  - Coordinates: ${latitude}, ${longitude}`)
 
-    // Capture screenshot using Playwright with parcel-based navigation
-    const screenshotBuffer = await captureScreenshot(regrid_url, {
+    // Capture screenshot AND extract data using Playwright
+    const result = await captureScreenshot(regrid_url, {
       parcelId: parcelIdForSearch,
       address: propertyAddress,
       county,
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       longitude,
     })
 
-    if (!screenshotBuffer) {
+    if (!result) {
       console.error(`[Screenshot API] Failed to capture screenshot for ${property_id}`)
       return NextResponse.json({
         success: false,
@@ -126,6 +126,8 @@ export async function POST(request: NextRequest) {
         property_id,
       }, { status: 422 })
     }
+
+    const { screenshot: screenshotBuffer, extractedData } = result
 
     // Upload to Supabase Storage
     if (!supabase) {
@@ -135,14 +137,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const fileName = `${property_id}.png`
-    const filePath = `regrid/${fileName}`
+    // Use same filename format as n8n workflow: parcel_id with . and - replaced by _
+    const fileName = parcelIdForSearch
+      ? parcelIdForSearch.replace(/\./g, "_").replace(/-/g, "_") + ".jpg"
+      : `${property_id}.jpg`
 
-    // Upload screenshot to storage
+    // Upload screenshot to storage (same bucket as n8n workflow)
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("property-screenshots")
-      .upload(filePath, screenshotBuffer, {
-        contentType: "image/png",
+      .from("screenshots")
+      .upload(fileName, screenshotBuffer, {
+        contentType: "image/jpeg",
         upsert: true, // Overwrite if exists
       })
 
@@ -155,28 +159,71 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Get public URL
+    // Get public URL (same format as n8n workflow)
     const { data: urlData } = supabase.storage
-      .from("property-screenshots")
-      .getPublicUrl(filePath)
+      .from("screenshots")
+      .getPublicUrl(fileName)
 
     const screenshot_url = urlData.publicUrl
 
-    // Update regrid_data with screenshot_url
-    const { error: updateError } = await supabase
-      .from("regrid_data")
-      .update({ screenshot_url })
-      .eq("property_id", property_id)
-
-    if (updateError) {
-      console.warn("[Screenshot API] Failed to update regrid_data:", updateError)
-      // Don't fail the request, screenshot was still captured
+    // Upsert regrid_data with screenshot_url AND extracted property data
+    // Only include columns that exist in the regrid_data table schema
+    const regridDataToUpsert: Record<string, any> = {
+      property_id,
+      screenshot_url,
+      scraped_at: new Date().toISOString(),
     }
 
-    // Update property has_screenshot flag
+    // Add extracted data if available (only valid columns from regrid_data table)
+    if (extractedData) {
+      // Property details
+      if (extractedData.property_type) regridDataToUpsert.property_type = extractedData.property_type
+      if (extractedData.property_class) regridDataToUpsert.property_class = extractedData.property_class
+      if (extractedData.land_use) regridDataToUpsert.land_use = extractedData.land_use
+      if (extractedData.zoning) regridDataToUpsert.zoning = extractedData.zoning
+      // Lot information
+      if (extractedData.lot_size_sqft) regridDataToUpsert.lot_size_sqft = extractedData.lot_size_sqft
+      if (extractedData.lot_size_acres) regridDataToUpsert.lot_size_acres = extractedData.lot_size_acres
+      // Building information
+      if (extractedData.building_sqft) regridDataToUpsert.building_sqft = extractedData.building_sqft
+      if (extractedData.year_built) regridDataToUpsert.year_built = extractedData.year_built
+      if (extractedData.bedrooms) regridDataToUpsert.bedrooms = extractedData.bedrooms
+      if (extractedData.bathrooms) regridDataToUpsert.bathrooms = extractedData.bathrooms
+      // Valuation
+      if (extractedData.assessed_value) regridDataToUpsert.assessed_value = extractedData.assessed_value
+      if (extractedData.assessed_land_value) regridDataToUpsert.assessed_land_value = extractedData.assessed_land_value
+      if (extractedData.assessed_improvement_value) regridDataToUpsert.assessed_improvement_value = extractedData.assessed_improvement_value
+      if (extractedData.market_value) regridDataToUpsert.market_value = extractedData.market_value
+      // Geographic
+      if (extractedData.latitude) regridDataToUpsert.latitude = extractedData.latitude
+      if (extractedData.longitude) regridDataToUpsert.longitude = extractedData.longitude
+    }
+
+    const { error: upsertError } = await supabase
+      .from("regrid_data")
+      .upsert(regridDataToUpsert, {
+        onConflict: "property_id",
+      })
+
+    if (upsertError) {
+      console.warn("[Screenshot API] Failed to upsert regrid_data:", upsertError)
+      // Don't fail the request, screenshot was still captured
+    } else {
+      console.log("[Screenshot API] regrid_data upserted successfully with extracted data")
+    }
+
+    // Update property with address if extracted and not already set
+    const propertyUpdates: Record<string, any> = { 
+      has_screenshot: true,
+      has_regrid_data: true
+    }
+    if (extractedData?.property_address) {
+      propertyUpdates.property_address = extractedData.property_address
+    }
+
     await supabase
       .from("properties")
-      .update({ has_screenshot: true })
+      .update(propertyUpdates)
       .eq("id", property_id)
 
     console.log(`[Screenshot API] Successfully captured screenshot for ${property_id}`)
@@ -187,6 +234,7 @@ export async function POST(request: NextRequest) {
       property_id,
       screenshot_url,
       parcel_id,
+      extracted_data: extractedData,
     })
 
   } catch (error) {
@@ -461,6 +509,11 @@ async function loginToRegrid(page: any): Promise<boolean> {
   }
 }
 
+interface ScreenshotResult {
+  screenshot: Buffer;
+  extractedData: Record<string, unknown>;
+}
+
 interface SearchParams {
   parcelId?: string
   address?: string
@@ -476,7 +529,7 @@ interface SearchParams {
  * Logs into Regrid first to avoid free tier limitations
  * Returns the screenshot as a Buffer
  */
-async function captureScreenshot(url: string, params: SearchParams): Promise<Buffer | null> {
+async function captureScreenshot(url: string, params: SearchParams): Promise<ScreenshotResult | null> {
   // Dynamic import of Playwright to avoid issues in serverless
   try {
     const { chromium } = await import("playwright")
@@ -660,6 +713,85 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Buf
       // Wait a moment for property details panel to settle
       await page.waitForTimeout(1500)
 
+      // EXTRACT PROPERTY DATA from the panel BEFORE closing it
+      console.log("[Screenshot API] Extracting property data from panel...")
+      const extractedData = await page.evaluate(() => {
+        const result: Record<string, any> = {
+          property_address: null,
+          owner_name: null,
+          property_type: null,
+          property_class: null,
+          land_use: null,
+          zoning: null,
+          lot_size_sqft: null,
+          lot_size_acres: null,
+          building_sqft: null,
+          year_built: null,
+          bedrooms: null,
+          bathrooms: null,
+          assessed_value: null,
+          assessed_land_value: null,
+          assessed_improvement_value: null,
+          market_value: null,
+          latitude: null,
+          longitude: null,
+        }
+
+        const bodyText = document.body.innerText
+
+        // Extract address from panel header
+        const addressMatch = bodyText.match(/Property Details\s*\n([^\n]+(?:Ave|St|Rd|Dr|Ln|Ct|Blvd|Way|Pl|Cir|Ter)[^\n]*)/i)
+        if (addressMatch) result.property_address = addressMatch[1].trim()
+
+        // Extract owner name
+        const ownerMatch = bodyText.match(/Owner\s+Name[:\s]+([^\n]+)/i)
+        if (ownerMatch) result.owner_name = ownerMatch[1].trim()
+
+        // Extract property data using regex patterns
+        const patterns: Record<string, RegExp> = {
+          property_type: /Property\s+Type[:\s]+([^\n]+)/i,
+          property_class: /Zoning\s+Type[:\s]+([^\n]+)/i,
+          land_use: /Parcel\s+Use\s+Code[:\s]+"?([^"\n]+)"?/i,
+          zoning: /Zoning\s+Subtype[:\s]+([^\n]+)/i,
+          lot_size_acres: /(?:Deed\s+Acres|Calculated\s+Parcel\s+Area)[:\s]+"?([\d.]+)"?/i,
+          lot_size_sqft: /Lot\s+Size[:\s]+([\d,]+)\s*(?:sq\s*ft|SF)/i,
+          building_sqft: /Building\s+Area[:\s]+([\d,]+)\s*(?:sq\s*ft|SF)/i,
+          year_built: /Year\s+Built[:\s]+(\d{4})/i,
+          bedrooms: /Bedrooms?[:\s]+(\d+)/i,
+          bathrooms: /Bathrooms?[:\s]+([\d.]+)/i,
+          assessed_value: /Total\s+Parcel\s+Value[:\s]+\$?([\d,]+\.?\d*)/i,
+          assessed_land_value: /Land\s+Value[:\s]+\$?([\d,]+\.?\d*)/i,
+          assessed_improvement_value: /Improvement\s+Value[:\s]+\$?([\d,]+\.?\d*)/i,
+          market_value: /Market\s+Value[:\s]+\$?([\d,]+)/i,
+        }
+
+        for (const [key, pattern] of Object.entries(patterns)) {
+          const match = bodyText.match(pattern)
+          if (match && match[1]) {
+            let value = match[1].trim().replace(/"/g, '')
+            if (['lot_size_sqft', 'lot_size_acres', 'building_sqft', 'assessed_value', 'assessed_land_value', 'assessed_improvement_value', 'market_value'].includes(key)) {
+              result[key] = parseFloat(value.replace(/,/g, '')) || null
+            } else if (['year_built', 'bedrooms'].includes(key)) {
+              result[key] = parseInt(value) || null
+            } else if (key === 'bathrooms') {
+              result[key] = parseFloat(value) || null
+            } else {
+              result[key] = value
+            }
+          }
+        }
+
+        // Extract coordinates
+        const latMatch = bodyText.match(/Latitude[:\s]+"?([-\d.]+)"?/i)
+        const lonMatch = bodyText.match(/Longitude[:\s]+"?([-\d.]+)"?/i)
+        if (latMatch) result.latitude = parseFloat(latMatch[1]) || null
+        if (lonMatch) result.longitude = parseFloat(lonMatch[1]) || null
+
+        return result
+      })
+
+      console.log("[Screenshot API] Extracted data:", JSON.stringify(extractedData, null, 2))
+
       // Close the Property Details panel to show just the map with highlighted parcel
       try {
         const propertyPanelClose = page.locator('#property > .close')
@@ -684,7 +816,7 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Buf
       })
 
       await context.close()
-      return Buffer.from(screenshot)
+      return { screenshot: Buffer.from(screenshot), extractedData }
 
     } finally {
       await browser.close()

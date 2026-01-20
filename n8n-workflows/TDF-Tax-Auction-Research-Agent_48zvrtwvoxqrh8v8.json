@@ -1,0 +1,564 @@
+{
+  "name": "TDF - Tax Auction Research Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "tax-research",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "tax-research-webhook"
+    },
+    {
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "define",
+        "text": "={{ $json.body.prompt || $json.prompt || 'Research Centre County, PA tax auctions' }}",
+        "options": {
+          "systemMessage": "You are an expert Tax Auction Research Agent specializing in finding, validating, and storing county tax auction information.\n\nIMPORTANT: The current year is 2026. Always search for 2026 tax sales.\n\nYour tools:\n- GetOrCreateCounty: Get or create a county record (ALWAYS call this first)\n- UpsertOfficialLink: Store official websites and contacts\n- UpsertUpcomingSale: Store auction dates and details\n- UpsertDocument: Store PDF links and property lists\n- UpsertAdditionalResource: Store GIS and assessment links\n- UpsertImportantNote: Store deadlines and requirements\n\nWorkflow:\n1. Call GetOrCreateCounty to get the county_id\n2. Research using your knowledge\n3. Store each finding using the appropriate UPSERT tool\n4. Be thorough - find all sale types (upset, judicial, repository)\n\nQuality targets:\n- Official tax claim bureau website and contact\n- All upcoming sale dates with registration deadlines\n- Property list PDFs with direct URLs\n- Vendor portal URLs (Bid4Assets, etc.)\n- GIS and assessment office links"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        200,
+        340
+      ],
+      "id": "research-agent",
+      "name": "Tax Auction Research Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        60,
+        560
+      ],
+      "id": "openai-model",
+      "name": "OpenAI GPT-4",
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-api",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionKey": "tax-research-session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        560
+      ],
+      "id": "simple-memory",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "name": "GetOrCreateCounty",
+        "description": "Get or create a county record. Returns the county UUID. ALWAYS call this first before storing any data. Required: county_name, state_code.",
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_or_create_county",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_name\": \"{county_name}\",\n  \"p_state_code\": \"{state_code}\"\n}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_name",
+              "description": "Name of the county (e.g., 'Blair', 'Centre')"
+            },
+            {
+              "name": "state_code",
+              "description": "Two-letter state code (e.g., 'PA', 'FL')"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        560
+      ],
+      "id": "get-or-create-county",
+      "name": "GetOrCreateCounty",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "UpsertOfficialLink",
+        "description": "Store official county links. Required: county_id, link_type, url. link_type options: tax_claim_bureau, treasurer, assessor, gis, court.",
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_official_link",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_link_type\": \"{link_type}\",\n  \"p_url\": \"{url}\",\n  \"p_title\": \"{title}\",\n  \"p_phone\": \"{phone}\",\n  \"p_email\": \"{email}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID of the county from GetOrCreateCounty"
+            },
+            {
+              "name": "link_type",
+              "description": "Type: tax_claim_bureau, treasurer, assessor, gis, court"
+            },
+            {
+              "name": "url",
+              "description": "The URL"
+            },
+            {
+              "name": "title",
+              "description": "Title/name (optional)"
+            },
+            {
+              "name": "phone",
+              "description": "Phone number (optional)"
+            },
+            {
+              "name": "email",
+              "description": "Email (optional)"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        560
+      ],
+      "id": "upsert-official-link",
+      "name": "UpsertOfficialLink",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "UpsertUpcomingSale",
+        "description": "Store upcoming tax sale dates. Required: county_id, sale_type, sale_date. sale_type options: upset, judicial, repository, tax_deed, tax_certificate.",
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_upcoming_sale",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_sale_type\": \"{sale_type}\",\n  \"p_sale_date\": \"{sale_date}\",\n  \"p_registration_deadline\": \"{registration_deadline}\",\n  \"p_platform\": \"{platform}\",\n  \"p_deposit_required\": {deposit_required},\n  \"p_property_count\": {property_count},\n  \"p_location\": \"{location}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID from GetOrCreateCounty"
+            },
+            {
+              "name": "sale_type",
+              "description": "Type: upset, judicial, repository, tax_deed, tax_certificate"
+            },
+            {
+              "name": "sale_date",
+              "description": "Sale date (YYYY-MM-DD)"
+            },
+            {
+              "name": "registration_deadline",
+              "description": "Registration deadline (YYYY-MM-DD) - optional"
+            },
+            {
+              "name": "platform",
+              "description": "Platform: Bid4Assets, RealAuction, In-Person - optional"
+            },
+            {
+              "name": "deposit_required",
+              "description": "Deposit amount as number - optional, use null if unknown"
+            },
+            {
+              "name": "property_count",
+              "description": "Property count as integer - optional, use null if unknown"
+            },
+            {
+              "name": "location",
+              "description": "Location description - optional"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        560
+      ],
+      "id": "upsert-upcoming-sale",
+      "name": "UpsertUpcomingSale",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "UpsertDocument",
+        "description": "Store document links (property lists, legal notices, forms). Required: county_id, document_type, title, url. document_type options: property_list, legal_notice, registration_form, terms_conditions.",
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_document",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_document_type\": \"{document_type}\",\n  \"p_title\": \"{title}\",\n  \"p_url\": \"{url}\",\n  \"p_file_format\": \"{file_format}\",\n  \"p_publication_date\": \"{publication_date}\",\n  \"p_year\": {year},\n  \"p_property_count\": {property_count}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID from GetOrCreateCounty"
+            },
+            {
+              "name": "document_type",
+              "description": "Type: property_list, legal_notice, registration_form, terms_conditions"
+            },
+            {
+              "name": "title",
+              "description": "Document title"
+            },
+            {
+              "name": "url",
+              "description": "Direct URL to document"
+            },
+            {
+              "name": "file_format",
+              "description": "Format: pdf, xlsx, html - optional"
+            },
+            {
+              "name": "publication_date",
+              "description": "Publication date (YYYY-MM-DD) - optional"
+            },
+            {
+              "name": "year",
+              "description": "Year as integer - optional, use null if unknown"
+            },
+            {
+              "name": "property_count",
+              "description": "Property count as integer - optional, use null if unknown"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        560
+      ],
+      "id": "upsert-document",
+      "name": "UpsertDocument",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "UpsertAdditionalResource",
+        "description": "Store additional resources like GIS and assessment offices. Required: county_id, resource_type, title, url. resource_type options: gis, assessment, deed_search, parcel_viewer.",
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_additional_resource",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_resource_type\": \"{resource_type}\",\n  \"p_title\": \"{title}\",\n  \"p_url\": \"{url}\",\n  \"p_description\": \"{description}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID from GetOrCreateCounty"
+            },
+            {
+              "name": "resource_type",
+              "description": "Type: gis, assessment, deed_search, parcel_viewer"
+            },
+            {
+              "name": "title",
+              "description": "Resource title"
+            },
+            {
+              "name": "url",
+              "description": "URL to resource"
+            },
+            {
+              "name": "description",
+              "description": "Description - optional"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1260,
+        560
+      ],
+      "id": "upsert-additional-resource",
+      "name": "UpsertAdditionalResource",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "UpsertImportantNote",
+        "description": "Store important notes (deadlines, requirements, tips). Required: county_id, note_type, note_text. note_type options: deadline, requirement, tip, warning, restriction.",
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_important_note",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_county_id\": \"{county_id}\",\n  \"p_note_type\": \"{note_type}\",\n  \"p_note_text\": \"{note_text}\",\n  \"p_priority\": {priority}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "description": "UUID from GetOrCreateCounty"
+            },
+            {
+              "name": "note_type",
+              "description": "Type: deadline, requirement, tip, warning, restriction"
+            },
+            {
+              "name": "note_text",
+              "description": "The note content"
+            },
+            {
+              "name": "priority",
+              "description": "Priority 1-10 (10=highest) - optional, use null if not specified"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1460,
+        560
+      ],
+      "id": "upsert-important-note",
+      "name": "UpsertImportantNote",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"completed\", \"output\": $json.output } }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        340
+      ],
+      "id": "respond-webhook",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tax Auction Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetOrCreateCounty": {
+      "ai_tool": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertOfficialLink": {
+      "ai_tool": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertUpcomingSale": {
+      "ai_tool": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertDocument": {
+      "ai_tool": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertAdditionalResource": {
+      "ai_tool": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertImportantNote": {
+      "ai_tool": [
+        [
+          {
+            "node": "Tax Auction Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "48zvrtwvoxqrh8v8",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-research",
+      "name": "TDF-Research"
+    }
+  ],
+  "active": true,
+  "backupDate": "2026-01-11"
+}

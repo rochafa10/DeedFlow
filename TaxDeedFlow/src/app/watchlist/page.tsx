@@ -134,7 +134,7 @@ export default function WatchlistPage() {
               Access Denied
             </h2>
             <p className="text-slate-600 mb-4">
-              You don't have permission to access this watchlist item. You can only view items in your own watchlist.
+              You don&apos;t have permission to access this watchlist item. You can only view items in your own watchlist.
             </p>
             <button
               onClick={() => {
@@ -214,7 +214,7 @@ export default function WatchlistPage() {
             Watchlist
           </h1>
           <p className="text-slate-600 mt-1">
-            Properties you're tracking for upcoming auctions
+            Properties you&apos;re tracking for upcoming auctions
           </p>
         </div>
 

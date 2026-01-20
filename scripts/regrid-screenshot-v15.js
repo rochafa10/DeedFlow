@@ -191,6 +191,7 @@ async function extractPropertyData(page) {
 }
 
 (async () => {
+  let hadError = false;
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -198,7 +199,7 @@ async function extractPropertyData(page) {
 
   try {
     const context = await browser.newContext({
-      viewport: { width: 1920, height: 1080 },
+      viewport: { width: 1280, height: 720 },  // Reduced from 1920x1080 for smaller file size
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
     const page = await context.newPage();
@@ -369,12 +370,55 @@ async function extractPropertyData(page) {
       }
     }
 
+    // Method 4: Remove panel from DOM (most reliable - removes panel completely)
+    if (!panelClosed) {
+      console.error('[Scraper] Method 4: Removing panel from DOM...');
+      try {
+        panelClosed = await page.evaluate(() => {
+          // Find and completely remove the property panel from the DOM
+          const allDivs = document.querySelectorAll('div');
+          for (const div of allDivs) {
+            const text = div.innerText || '';
+            const rect = div.getBoundingClientRect();
+            // Panel is on the left side, between 200-600 pixels wide, and contains "Property Details"
+            // Check for "Property Details" heading and typical panel content (address, measurements, etc.)
+            if (text.includes('Property Details') && 
+                (text.includes('Ave') || text.includes('St') || text.includes('Rd') || text.includes('Acres') || text.includes('Owner')) &&
+                rect.width > 200 && rect.width < 600 && rect.left < 300) {
+              // Find the closest container that includes the whole panel
+              let container = div;
+              while (container && container.parentElement) {
+                const r = container.getBoundingClientRect();
+                // The panel container should be roughly full height
+                if (r.height > 500 && r.width > 200 && r.width < 600 && r.left < 200) {
+                  container.parentElement.removeChild(container);
+                  return true;
+                }
+                container = container.parentElement;
+              }
+            }
+          }
+          return false;
+        });
+        if (panelClosed) {
+          console.error('[Scraper] Method 4: Panel removed from DOM successfully');
+          await page.waitForTimeout(500); // Brief wait for DOM update
+        }
+      } catch (e) {
+        console.error('[Scraper] Method 4 failed:', e.message);
+      }
+    }
+
     // Final wait
     await page.waitForTimeout(1000);
 
-    // Step 9: Take screenshot
+    // Step 9: Take screenshot (optimized for smaller file size)
     console.error('[Scraper] Capturing screenshot...');
-    const screenshot = await page.screenshot({ type: 'png', fullPage: false });
+    const screenshot = await page.screenshot({ 
+      type: 'jpeg',           // JPEG is much smaller than PNG
+      quality: 75,             // Quality 75 = good balance (0-100, lower = smaller)
+      fullPage: false          // Only capture viewport, not full page
+    });
 
     // Step 10: Return both screenshot and scraped data
     const result = {
@@ -390,15 +434,35 @@ async function extractPropertyData(page) {
     console.log(JSON.stringify(result));
 
   } catch (error) {
+    hadError = true;
     console.error('[Scraper] Error:', error.message);
-    console.log(JSON.stringify({ 
+    const errorResult = JSON.stringify({ 
       success: false, 
       error: error.message,
       property_id: propertyId || '',
       parcel_id: parcel
-    }));
-    process.exit(1);
+    });
+    console.log(errorResult);
   } finally {
-    await browser.close();
+    // Cleanup browser before exiting
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('[Scraper] Error closing browser:', closeError.message);
+      }
+    }
+    // Exit after cleanup completes with appropriate code
+    process.exit(hadError ? 1 : 0);
   }
-})();
+})().catch((error) => {
+  // Catch any unhandled promise rejections
+  console.error('[Scraper] Unhandled error:', error.message);
+  console.log(JSON.stringify({ 
+    success: false, 
+    error: error.message || 'Unknown error',
+    property_id: propertyId || '',
+    parcel_id: parcel || 'unknown'
+  }));
+  process.exit(1);
+});

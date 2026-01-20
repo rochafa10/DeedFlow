@@ -251,7 +251,7 @@ export default function SettingsUsersPage() {
               Access Denied
             </h2>
             <p className="text-slate-600 mb-4">
-              You don't have permission to access this page. Only administrators can manage users.
+              You don&apos;t have permission to access this page. Only administrators can manage users.
             </p>
             <p className="text-sm text-slate-500">
               Contact your administrator if you need access to this feature.

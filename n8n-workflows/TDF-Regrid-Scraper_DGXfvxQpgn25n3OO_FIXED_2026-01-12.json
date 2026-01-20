@@ -1,0 +1,262 @@
+{
+  "name": "TDF - Regrid Scraper",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e2606b26-24a4-4df7-b56c-f71965e84bf1",
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_next_batch",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_job_id\": \"{{ $json.job_id }}\"\n}",
+        "options": {}
+      },
+      "id": "aa88e0de-5fb8-4cda-aee6-17d9e0ff4e08",
+      "name": "Get Properties to Scrape",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "VawZXqGCW65f83oC",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "db5b6b60-8dfd-4bb4-bf00-0b8a9b14c55f",
+      "name": "Loop Over Properties",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get property from loop\nconst property = $input.first().json;\n\nconst propertyId = property.item_id;\n\nif (!propertyId) {\n  console.error('ERROR: No item_id found! Available fields:', Object.keys(property));\n  throw new Error('Property ID (item_id) not found in input');\n}\n\nconsole.log('Processing property:', propertyId, property.parcel_id);\n\n// Build Regrid URL - Playwright will scrape REAL data from this URL\nconst county = property.county_name?.toLowerCase().replace(/\\s+/g, '-') || 'unknown';\nconst state = property.state_code?.toLowerCase() || 'pa';\nconst parcelClean = (property.parcel_id || '').replace(/[^a-zA-Z0-9]/g, '');\nconst regridUrl = `https://app.regrid.com/us/${state}/${county}/parcel/${parcelClean}`;\n\n// Pass to Playwright - NO FAKE DATA GENERATION!\nreturn [{\n  json: {\n    property_id: propertyId,\n    parcel_id: property.parcel_id,\n    county_name: property.county_name,\n    state_code: property.state_code,\n    property_address: property.property_address,\n    regrid_url: regridUrl\n  }\n}];"
+      },
+      "id": "83c6ab67-92a0-4d84-be9a-84b72a0a1959",
+      "name": "Prepare Regrid URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://n8n-production-pwrunner-1:3001/run-regrid",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "d41f5e85-0c24-40d5-a0bb-31b2efb89f0c",
+      "name": "Run Playwright Screenshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse REAL data from Playwright scraping\nconst input = $input.first().json;\n\nlet response;\nif (typeof input.data === 'string') {\n  try {\n    response = JSON.parse(input.data);\n  } catch (e) {\n    throw new Error('Failed to parse Playwright response: ' + e.message);\n  }\n} else if (input.success !== undefined) {\n  response = input;\n} else if (typeof input === 'string') {\n  response = JSON.parse(input);\n} else {\n  response = input;\n}\n\nif (!response.success) {\n  throw new Error('Playwright screenshot failed: ' + (response.error || 'Unknown error'));\n}\n\nif (!response.screenshot) {\n  throw new Error('No screenshot in Playwright response');\n}\n\n// Return REAL scraped data from Regrid\nreturn {\n  json: {\n    property_id: response.property_id,\n    parcel_id: response.parcel_id,\n    screenshot: response.screenshot,\n    // This contains REAL data scraped by Playwright from Regrid\n    regrid_data: response.regrid_data || {},\n    success: response.success\n  }\n};"
+      },
+      "id": "5f2e8a5c-89b7-4ac1-a2b6-2e7de9e3c7f1",
+      "name": "Parse Playwright Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Use REAL Regrid data from Playwright scraping\nconst input = $input.first().json;\nconst regridData = input.regrid_data || {};\n\n// Store REAL scraped data to database\nreturn {\n  json: {\n    property_id: input.property_id,\n    regrid_id: regridData.regrid_id || null,\n    ll_uuid: regridData.ll_uuid || null,\n    property_type: regridData.property_type || null,\n    property_class: regridData.property_class || null,\n    land_use: regridData.land_use || null,\n    zoning: regridData.zoning || null,\n    lot_size_sqft: regridData.lot_size_sqft || null,\n    lot_size_acres: regridData.lot_size_acres || null,\n    lot_dimensions: regridData.lot_dimensions || null,\n    building_sqft: regridData.building_sqft || null,\n    year_built: regridData.year_built || null,\n    bedrooms: regridData.bedrooms || null,\n    bathrooms: regridData.bathrooms || null,\n    assessed_value: regridData.assessed_value || null,\n    market_value: regridData.market_value || null,\n    latitude: regridData.latitude || null,\n    longitude: regridData.longitude || null,\n    water_service: regridData.water_service || null,\n    sewer_service: regridData.sewer_service || null,\n    raw_data: regridData,\n    screenshot_url: null,\n    data_quality_score: regridData.data_quality_score || 0.0,\n    scraped_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "b9e77a60-c3b3-4b7e-9e87-4d2a1e7de3f0",
+      "name": "Prepare DB Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/regrid_data",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "e2608b26-24a4-4df7-b56c-f71965e84bf2",
+      "name": "Update Regrid Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2020, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "VawZXqGCW65f83oC",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const screenshot = $('Parse Playwright Response').first().json.screenshot;\nconst propertyId = $('Parse Playwright Response').first().json.property_id;\n\nif (!screenshot) {\n  throw new Error('No screenshot data');\n}\n\nconst buffer = Buffer.from(screenshot, 'base64');\n\nreturn {\n  binary: {\n    data: {\n      data: buffer,\n      mimeType: 'image/png',\n      fileName: `property_${propertyId}.png`\n    }\n  },\n  json: {\n    property_id: propertyId\n  }\n};"
+      },
+      "id": "a3b7c8d9-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+      "name": "Convert Screenshot to Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "screenshots",
+        "fileName": "=property_{{ $json.property_id }}.png",
+        "options": {}
+      },
+      "id": "b4c8d9e0-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
+      "name": "Upload to Supabase Storage",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "VawZXqGCW65f83oC",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/regrid_data?property_id=eq.{{ $('Parse Playwright Response').first().json.property_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"screenshot_url\": \"{{ $json.path }}\"\n}",
+        "options": {}
+      },
+      "id": "c5d9e0f1-6a7b-8c9d-0e1f-2a3b4c5d6e7f",
+      "name": "Update Screenshot URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2680, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "VawZXqGCW65f83oC",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/update_batch_progress",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_job_id\": \"{{ $('When clicking \\'Test workflow\\'').first().json.job_id }}\",\n  \"p_last_item_id\": \"{{ $('Parse Playwright Response').first().json.property_id }}\",\n  \"p_items_processed\": 1,\n  \"p_items_failed\": 0,\n  \"p_error_message\": null\n}",
+        "options": {}
+      },
+      "id": "d6e0f1a2-7b8c-9d0e-1f2a-3b4c5d6e7f8a",
+      "name": "Update Job Progress",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2900, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "VawZXqGCW65f83oC",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e7f1a2b3-8c9d-0e1f-2a3b-4c5d6e7f8a9b",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1140, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    job_id: \"test-batch-job-uuid\"\n  }\n};"
+      },
+      "id": "f8a2b3c4-9d0e-1f2a-3b4c-5d6e7f8a9b0c",
+      "name": "Set Test Job ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    }
+  ],
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [[{"node": "Set Test Job ID", "type": "main", "index": 0}]]
+    },
+    "Set Test Job ID": {
+      "main": [[{"node": "Get Properties to Scrape", "type": "main", "index": 0}]]
+    },
+    "Get Properties to Scrape": {
+      "main": [[{"node": "Loop Over Properties", "type": "main", "index": 0}]]
+    },
+    "Loop Over Properties": {
+      "main": [
+        [{"node": "Prepare Regrid URL", "type": "main", "index": 0}],
+        [{"node": "No Operation, do nothing", "type": "main", "index": 0}]
+      ]
+    },
+    "Prepare Regrid URL": {
+      "main": [[{"node": "Run Playwright Screenshot", "type": "main", "index": 0}]]
+    },
+    "Run Playwright Screenshot": {
+      "main": [[{"node": "Parse Playwright Response", "type": "main", "index": 0}]]
+    },
+    "Parse Playwright Response": {
+      "main": [[{"node": "Prepare DB Data", "type": "main", "index": 0}]]
+    },
+    "Prepare DB Data": {
+      "main": [[{"node": "Update Regrid Data", "type": "main", "index": 0}]]
+    },
+    "Update Regrid Data": {
+      "main": [[{"node": "Convert Screenshot to Binary", "type": "main", "index": 0}]]
+    },
+    "Convert Screenshot to Binary": {
+      "main": [[{"node": "Upload to Supabase Storage", "type": "main", "index": 0}]]
+    },
+    "Upload to Supabase Storage": {
+      "main": [[{"node": "Update Screenshot URL", "type": "main", "index": 0}]]
+    },
+    "Update Screenshot URL": {
+      "main": [[{"node": "Update Job Progress", "type": "main", "index": 0}]]
+    },
+    "Update Job Progress": {
+      "main": [[{"node": "Loop Over Properties", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-01-12T00:00:00.000Z",
+  "versionId": "d6d452cf-01d2-4b39-8c94-6105bd0b0f0a"
+}

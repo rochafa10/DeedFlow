@@ -94,7 +94,7 @@ export default function ForgotPasswordPage() {
                 {GENERIC_SUCCESS_MESSAGE}
               </p>
               <p className="text-sm text-slate-500 mb-6">
-                The link will expire in 1 hour. If you don't see the email, check your spam folder.
+                The link will expire in 1 hour. If you don&apos;t see the email, check your spam folder.
               </p>
 
               {/* Development Mode Notice */}
@@ -117,7 +117,7 @@ export default function ForgotPasswordPage() {
 
           {/* Resend Link */}
           <p className="text-center text-sm text-slate-500 mt-4">
-            Didn't receive the email?{" "}
+            Didn&apos;t receive the email?{" "}
             <button
               onClick={() => {
                 setIsSubmitted(false)
@@ -162,7 +162,7 @@ export default function ForgotPasswordPage() {
               Forgot Password?
             </h1>
             <p className="text-slate-600">
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we&apos;ll send you a link to reset your password.
             </p>
           </div>
 

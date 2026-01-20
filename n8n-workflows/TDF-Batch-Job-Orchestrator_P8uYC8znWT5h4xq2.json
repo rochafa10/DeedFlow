@@ -1,0 +1,153 @@
+{
+  "name": "TDF - Batch Job Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "batch-job",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "batch-job-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\n// Determine the action from request\nconst action = body.action || 'status';\nconst jobType = body.job_type || 'regrid_scraping';\nconst countyId = body.county_id || null;\nconst batchSize = body.batch_size || 50;\nconst jobId = body.job_id || null;\n\n// Map actions to RPC functions\nconst actionMap = {\n  'create': 'create_batch_job',\n  'get_next': 'get_next_batch',\n  'update': 'update_batch_progress',\n  'pause': 'pause_batch_job',\n  'resume': 'resume_batch_job',\n  'complete': 'complete_batch_job',\n  'status': 'get_batch_status'\n};\n\nconst rpcFunction = actionMap[action] || 'get_batch_status';\n\n// Build parameters based on action\nlet params = {};\nswitch(action) {\n  case 'create':\n    params = { p_job_type: jobType, p_county_id: countyId, p_batch_size: batchSize };\n    break;\n  case 'get_next':\n    params = { p_job_type: jobType, p_batch_size: batchSize };\n    break;\n  case 'update':\n    params = { p_job_type: jobType, p_property_id: body.property_id, p_success: body.success, p_error: body.error };\n    break;\n  case 'pause':\n  case 'resume':\n  case 'complete':\n    params = { p_job_id: jobId };\n    break;\n  case 'status':\n    params = jobId ? { p_job_id: jobId } : {};\n    break;\n}\n\nreturn [{\n  json: {\n    action,\n    rpc_function: rpcFunction,\n    params,\n    request_body: body\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        340
+      ],
+      "id": "parse-request",
+      "name": "Parse Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/{{ $json.rpc_function }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.params) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        340
+      ],
+      "id": "call-rpc",
+      "name": "Call Supabase RPC",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst request = $('Parse Request').first().json;\n\nreturn [{\n  json: {\n    status: 'success',\n    action: request.action,\n    rpc_function: request.rpc_function,\n    result: result\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        340
+      ],
+      "id": "format-response",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        340
+      ],
+      "id": "respond-webhook",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Call Supabase RPC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Supabase RPC": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "P8uYC8znWT5h4xq2",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-batch",
+      "name": "TDF-Batch"
+    }
+  ],
+  "active": false,
+  "backupDate": "2026-01-11"
+}

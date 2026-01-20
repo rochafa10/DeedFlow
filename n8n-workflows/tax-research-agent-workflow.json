@@ -1,0 +1,429 @@
+{
+  "id": "48zvrtwvoxqrh8v8",
+  "name": "TDF - Tax Auction Research Agent",
+  "description": "AI Agent that researches county tax auctions using Perplexity and stores results in Supabase. Mirrors the Claude Research Agent functionality.",
+  "nodes": [
+    {
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [200, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tax-research",
+        "responseMode": "lastNode",
+        "responseData": "firstEntryJson"
+      },
+      "webhookId": "tax-research-webhook"
+    },
+    {
+      "id": "ai-agent",
+      "name": "Tax Research Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [500, 300],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.prompt || 'Research ' + $json.body.county + ' County, ' + $json.body.state + ' tax auctions' }}",
+        "options": {
+          "systemMessage": "You are a Tax Auction Research Agent specializing in finding, validating, and storing county tax auction information across the United States.\n\n## Your Mission\nResearch county tax auctions comprehensively and return all findings in a structured JSON format.\n\n## Research Strategy\n\n### Phase 1: Discovery with Perplexity\n1. Get county overview - official tax claim bureau, contacts, website\n2. Find upcoming sale dates and types (Upset, Judicial, Repository for PA)\n3. Identify the auction format (online vs in-person)\n4. Get registration requirements and deadlines\n\n### Phase 2: Document Finding\n1. Find property list documents (PDFs)\n2. Find registration forms and bidder affidavits\n3. Find sale conditions and legal notices\n4. Find past sale results\n\n### Phase 3: Store Data\nAfter research, use the Supabase tools to store:\n1. Get or create county using get_or_create_county RPC\n2. Store official links (Tax Claim Bureau contact info)\n3. Store upcoming sales (dates, locations, platforms)\n4. Store documents (PDFs, property lists)\n5. Store additional resources (GIS, Assessment)\n6. Store important notes (deadlines, payment methods, auction format)\n7. Add research log entry\n\n## Output Format\nReturn a JSON summary with:\n- county_info: name, state, county_id\n- official_contact: bureau name, phone, email, website\n- upcoming_sales: array of sales with dates and types\n- documents_found: count and list of document types\n- auction_format: 'online' or 'in-person'\n- key_notes: important registration/payment info\n- data_quality_score: 1-10\n\n## State-Specific Knowledge\n### Pennsylvania (PA)\n- System: Three-tier (Upset -> Judicial -> Repository)\n- Authority: County Tax Claim Bureau\n- Common Vendor: Bid4Assets (but some are in-person only)\n- Key Terms: upset sale, judicial sale, repository sale"
+        }
+      }
+    },
+    {
+      "id": "openai-model",
+      "name": "OpenAI GPT-4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [500, 500],
+      "parameters": {
+        "model": {
+          "mode": "id",
+          "value": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      }
+    },
+    {
+      "id": "perplexity-tool",
+      "name": "Perplexity Research",
+      "type": "n8n-nodes-base.perplexityTool",
+      "typeVersion": 1,
+      "position": [700, 500],
+      "parameters": {
+        "model": "sonar-pro",
+        "toolDescription": "Use this tool to research county tax auction information. Query for: county overview, tax sale dates, official contacts, auction procedures, registration requirements, and document URLs. This tool provides comprehensive research with citations."
+      }
+    },
+    {
+      "id": "supabase-get-county",
+      "name": "Get/Create County",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [700, 600],
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_or_create_county",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"p_county_name\": \"{county_name}\", \"p_state_code\": \"{state_code}\"}",
+        "toolDescription": "Use this tool to get or create a county in the database. Returns the county UUID. Parameters: county_name (e.g., 'Centre'), state_code (e.g., 'PA'). Always call this first to get the county_id for subsequent operations.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_name",
+              "type": "string",
+              "description": "The name of the county (e.g., 'Centre', 'Blair')"
+            },
+            {
+              "name": "state_code",
+              "type": "string",
+              "description": "Two-letter state code (e.g., 'PA', 'FL')"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "supabase-upsert-link",
+      "name": "Upsert Official Link",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [700, 700],
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_official_link",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"p_county_id\": \"{county_id}\", \"p_link_type\": \"{link_type}\", \"p_url\": \"{url}\", \"p_title\": \"{title}\", \"p_phone\": \"{phone}\", \"p_email\": \"{email}\"}",
+        "toolDescription": "Use this tool to store official contact information for a county. Parameters: county_id (UUID from get_or_create_county), link_type ('tax_claim_bureau'), url (official website), title (office name), phone, email. Use for Tax Claim Bureau contact info.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "type": "string",
+              "description": "UUID of the county from get_or_create_county"
+            },
+            {
+              "name": "link_type",
+              "type": "string",
+              "description": "Type of link, usually 'tax_claim_bureau'"
+            },
+            {
+              "name": "url",
+              "type": "string",
+              "description": "Official website URL"
+            },
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Office name (e.g., 'Centre County Tax Claim Bureau')"
+            },
+            {
+              "name": "phone",
+              "type": "string",
+              "description": "Phone number"
+            },
+            {
+              "name": "email",
+              "type": "string",
+              "description": "Email address"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "supabase-upsert-sale",
+      "name": "Upsert Upcoming Sale",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [700, 800],
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_upcoming_sale",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"p_county_id\": \"{county_id}\", \"p_sale_type\": \"{sale_type}\", \"p_sale_date\": \"{sale_date}\", \"p_platform\": \"{platform}\", \"p_location\": \"{location}\", \"p_status\": \"scheduled\"}",
+        "toolDescription": "Use this tool to store upcoming tax sale information. Parameters: county_id (UUID), sale_type ('upset', 'judicial', 'repository'), sale_date (ISO format like '2026-09-15T10:00:00Z'), platform ('Bid4Assets' or 'In-Person'), location (physical address or 'Online'). Use for each upcoming sale.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "type": "string",
+              "description": "UUID of the county"
+            },
+            {
+              "name": "sale_type",
+              "type": "string",
+              "description": "Type: 'upset', 'judicial', or 'repository'"
+            },
+            {
+              "name": "sale_date",
+              "type": "string",
+              "description": "Sale date in ISO format (e.g., '2026-09-15T10:00:00Z')"
+            },
+            {
+              "name": "platform",
+              "type": "string",
+              "description": "Auction platform: 'Bid4Assets', 'In-Person', etc."
+            },
+            {
+              "name": "location",
+              "type": "string",
+              "description": "Physical location or 'Online'"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "supabase-upsert-document",
+      "name": "Upsert Document",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [900, 500],
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_document",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"p_county_id\": \"{county_id}\", \"p_document_type\": \"{document_type}\", \"p_title\": \"{title}\", \"p_url\": \"{url}\", \"p_file_format\": \"{file_format}\", \"p_year\": {year}}",
+        "toolDescription": "Use this tool to store document information (PDFs, property lists). Parameters: county_id (UUID), document_type ('property_list', 'sale_results', 'registration', 'legal_notice', 'other'), title (document name), url (direct link), file_format ('pdf'), year (number like 2025). Use for each document found.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "type": "string",
+              "description": "UUID of the county"
+            },
+            {
+              "name": "document_type",
+              "type": "string",
+              "description": "Type: 'property_list', 'sale_results', 'registration', 'legal_notice', 'other'"
+            },
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Document title"
+            },
+            {
+              "name": "url",
+              "type": "string",
+              "description": "Direct URL to the document"
+            },
+            {
+              "name": "file_format",
+              "type": "string",
+              "description": "File format, usually 'pdf'"
+            },
+            {
+              "name": "year",
+              "type": "number",
+              "description": "Year of the document (e.g., 2025)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "supabase-upsert-resource",
+      "name": "Upsert Resource",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [900, 600],
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_additional_resource",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"p_county_id\": \"{county_id}\", \"p_resource_type\": \"{resource_type}\", \"p_title\": \"{title}\", \"p_url\": \"{url}\"}",
+        "toolDescription": "Use this tool to store additional resources like GIS maps and assessment offices. Parameters: county_id (UUID), resource_type ('gis', 'assessment', 'payment'), title (resource name), url (website link). Use for GIS, Assessment, and Payment portal links.",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "type": "string",
+              "description": "UUID of the county"
+            },
+            {
+              "name": "resource_type",
+              "type": "string",
+              "description": "Type: 'gis', 'assessment', 'payment'"
+            },
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Resource title"
+            },
+            {
+              "name": "url",
+              "type": "string",
+              "description": "Resource URL"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "supabase-upsert-note",
+      "name": "Upsert Important Note",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [900, 700],
+      "parameters": {
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_important_note",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"p_county_id\": \"{county_id}\", \"p_note_type\": \"{note_type}\", \"p_note_text\": \"{note_text}\", \"p_priority\": {priority}}",
+        "toolDescription": "Use this tool to store important notes about auction requirements. Parameters: county_id (UUID), note_type ('auction_format', 'deadline', 'payment', 'system'), note_text (the information), priority (1-10, higher is more important). Use for registration deadlines, payment methods, auction format (in-person vs online).",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "county_id",
+              "type": "string",
+              "description": "UUID of the county"
+            },
+            {
+              "name": "note_type",
+              "type": "string",
+              "description": "Type: 'auction_format', 'deadline', 'payment', 'system'"
+            },
+            {
+              "name": "note_text",
+              "type": "string",
+              "description": "The note content"
+            },
+            {
+              "name": "priority",
+              "type": "number",
+              "description": "Priority 1-10, higher is more important"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "memory",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [500, 600],
+      "parameters": {
+        "contextWindowLength": 10,
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.session_id || 'default-session' }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Tax Research Agent", "type": "main", "index": 0}]]
+    },
+    "OpenAI GPT-4": {
+      "ai_languageModel": [[{"node": "Tax Research Agent", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Perplexity Research": {
+      "ai_tool": [[{"node": "Tax Research Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Get/Create County": {
+      "ai_tool": [[{"node": "Tax Research Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Upsert Official Link": {
+      "ai_tool": [[{"node": "Tax Research Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Upsert Upcoming Sale": {
+      "ai_tool": [[{"node": "Tax Research Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Upsert Document": {
+      "ai_tool": [[{"node": "Tax Research Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Upsert Resource": {
+      "ai_tool": [[{"node": "Tax Research Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Upsert Important Note": {
+      "ai_tool": [[{"node": "Tax Research Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Simple Memory": {
+      "ai_memory": [[{"node": "Tax Research Agent", "type": "ai_memory", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

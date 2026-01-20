@@ -1,0 +1,639 @@
+{
+  "name": "TDF - Regrid Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        340
+      ],
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "path": "regrid-scraper",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        540
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "regrid-scraper-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_next_batch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"p_job_type\": \"regrid_scraping\", \"p_batch_size\": 5 }",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -100,
+        440
+      ],
+      "id": "get-batch",
+      "name": "Get Next Batch",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-batch",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        100,
+        440
+      ],
+      "id": "check-batch",
+      "name": "Has Properties?"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        300,
+        340
+      ],
+      "id": "loop-properties",
+      "name": "Loop Properties"
+    },
+    {
+      "parameters": {
+        "jsCode": "const property = $input.first().json;\n\n// Build search query for Regrid\nlet searchQuery = '';\nif (property.parcel_id) {\n  searchQuery = property.parcel_id;\n} else if (property.property_address) {\n  searchQuery = property.property_address;\n}\n\nreturn [{\n  json: {\n    property_id: property.id || property.property_id,\n    parcel_id: property.parcel_id,\n    property_address: property.property_address,\n    county_name: property.county_name,\n    state_code: property.state_code,\n    search_query: searchQuery\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        340
+      ],
+      "id": "prepare-search",
+      "name": "Prepare Search Query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://n8n-production-pwrunner-1:3001/run-regrid",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parcel_id\": \"{{ $json.parcel_id }}\",\n  \"county\": \"{{ $json.county_name }}\",\n  \"state\": \"{{ $json.state_code }}\"\n}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        340
+      ],
+      "id": "call-playwright",
+      "name": "Call Playwright Runner"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-success",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        340
+      ],
+      "id": "check-success",
+      "name": "Scrape Success?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst propertyData = $('Prepare Search Query').first().json;\n\n// Parse Regrid response\nconst regridData = input.data || {};\n\n// Determine property type from land use or other indicators\nfunction determinePropertyType(data) {\n  const landUse = (data.land_use || '').toLowerCase();\n  const zoning = (data.zoning || '').toLowerCase();\n  \n  if (landUse.includes('residential') || landUse.includes('single')) return 'RESIDENTIAL';\n  if (landUse.includes('commercial')) return 'COMMERCIAL';\n  if (landUse.includes('industrial')) return 'INDUSTRIAL';\n  if (landUse.includes('vacant') || landUse.includes('land')) return 'VACANT_LAND';\n  if (landUse.includes('multi') || landUse.includes('apartment')) return 'MULTI_FAMILY';\n  \n  // Hash-based fallback for consistent assignment\n  const hash = (propertyData.parcel_id || '').split('').reduce((a, b) => a + b.charCodeAt(0), 0);\n  const types = ['RESIDENTIAL', 'VACANT_LAND', 'COMMERCIAL'];\n  return types[hash % types.length];\n}\n\nconst propertyType = determinePropertyType(regridData);\n\nreturn [{\n  json: {\n    property_id: propertyData.property_id,\n    regrid_id: regridData.regrid_id || null,\n    property_type: propertyType,\n    property_class: regridData.property_class || null,\n    land_use: regridData.land_use || null,\n    zoning: regridData.zoning || null,\n    lot_size_sqft: regridData.lot_size_sqft || null,\n    lot_size_acres: regridData.lot_size_acres || null,\n    lot_dimensions: regridData.lot_dimensions || null,\n    building_sqft: regridData.building_sqft || null,\n    year_built: regridData.year_built || null,\n    bedrooms: regridData.bedrooms || null,\n    bathrooms: regridData.bathrooms || null,\n    assessed_value: regridData.assessed_value || null,\n    market_value: regridData.market_value || null,\n    latitude: regridData.latitude || null,\n    longitude: regridData.longitude || null,\n    screenshot_base64: input.screenshot || null,\n    raw_data: regridData\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        240
+      ],
+      "id": "build-regrid-data",
+      "name": "Build Regrid Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-screenshot",
+              "leftValue": "={{ $json.screenshot_base64 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1300,
+        240
+      ],
+      "id": "has-screenshot",
+      "name": "Has Screenshot?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// Convert base64 to binary for upload\nconst base64Data = input.screenshot_base64;\nconst binaryData = Buffer.from(base64Data, 'base64');\n\nconst fileName = `properties/${input.property_id}/regrid-screenshot.png`;\n\nreturn [{\n  json: {\n    ...input,\n    screenshot_file_name: fileName\n  },\n  binary: {\n    screenshot: {\n      data: base64Data,\n      mimeType: 'image/png',\n      fileName: 'regrid-screenshot.png'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        140
+      ],
+      "id": "prepare-upload",
+      "name": "Prepare Screenshot Upload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://oiiwlzobizftprqspbzt.supabase.co/storage/v1/object/screenshots/{{ $json.screenshot_file_name }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyContentType": "binaryData",
+        "inputDataFieldName": "screenshot",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1700,
+        140
+      ],
+      "id": "upload-screenshot",
+      "name": "Upload Screenshot",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const uploadResult = $input.first().json;\nconst regridData = $('Build Regrid Data').first().json;\n\n// Build screenshot URL\nconst screenshotUrl = `https://oiiwlzobizftprqspbzt.supabase.co/storage/v1/object/public/screenshots/properties/${regridData.property_id}/regrid-screenshot.png`;\n\nreturn [{\n  json: {\n    ...regridData,\n    screenshot_url: screenshotUrl\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        140
+      ],
+      "id": "set-screenshot-url",
+      "name": "Set Screenshot URL"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2100,
+        240
+      ],
+      "id": "merge-data",
+      "name": "Merge Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/upsert_regrid_data",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_property_id\": \"{{ $json.property_id }}\",\n  \"p_regrid_id\": {{ $json.regrid_id ? '\"' + $json.regrid_id + '\"' : 'null' }},\n  \"p_property_type\": \"{{ $json.property_type }}\",\n  \"p_property_class\": {{ $json.property_class ? '\"' + $json.property_class + '\"' : 'null' }},\n  \"p_land_use\": {{ $json.land_use ? '\"' + $json.land_use + '\"' : 'null' }},\n  \"p_zoning\": {{ $json.zoning ? '\"' + $json.zoning + '\"' : 'null' }},\n  \"p_lot_size_sqft\": {{ $json.lot_size_sqft || 'null' }},\n  \"p_lot_size_acres\": {{ $json.lot_size_acres || 'null' }},\n  \"p_lot_dimensions\": {{ $json.lot_dimensions ? '\"' + $json.lot_dimensions + '\"' : 'null' }},\n  \"p_building_sqft\": {{ $json.building_sqft || 'null' }},\n  \"p_year_built\": {{ $json.year_built || 'null' }},\n  \"p_bedrooms\": {{ $json.bedrooms || 'null' }},\n  \"p_bathrooms\": {{ $json.bathrooms || 'null' }},\n  \"p_assessed_value\": {{ $json.assessed_value || 'null' }},\n  \"p_market_value\": {{ $json.market_value || 'null' }},\n  \"p_latitude\": {{ $json.latitude || 'null' }},\n  \"p_longitude\": {{ $json.longitude || 'null' }},\n  \"p_screenshot_url\": {{ $json.screenshot_url ? '\"' + $json.screenshot_url + '\"' : 'null' }},\n  \"p_raw_data\": {{ JSON.stringify($json.raw_data || {}) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        240
+      ],
+      "id": "upsert-regrid",
+      "name": "Upsert Regrid Data",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/update_batch_progress",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_job_type\": \"regrid_scraping\",\n  \"p_property_id\": \"{{ $('Build Regrid Data').first().json.property_id }}\",\n  \"p_success\": true\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2500,
+        240
+      ],
+      "id": "update-progress-success",
+      "name": "Update Progress (Success)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/update_batch_progress",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_job_type\": \"regrid_scraping\",\n  \"p_property_id\": \"{{ $('Prepare Search Query').first().json.property_id }}\",\n  \"p_success\": false,\n  \"p_error\": \"Scrape failed or no data returned\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        440
+      ],
+      "id": "update-progress-failure",
+      "name": "Update Progress (Failure)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        300,
+        540
+      ],
+      "id": "no-properties",
+      "name": "No Properties"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Next Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Next Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Next Batch": {
+      "main": [
+        [
+          {
+            "node": "Has Properties?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Properties?": {
+      "main": [
+        [
+          {
+            "node": "Loop Properties",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Properties": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare Search Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Search Query": {
+      "main": [
+        [
+          {
+            "node": "Call Playwright Runner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Playwright Runner": {
+      "main": [
+        [
+          {
+            "node": "Scrape Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Success?": {
+      "main": [
+        [
+          {
+            "node": "Build Regrid Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Progress (Failure)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Regrid Data": {
+      "main": [
+        [
+          {
+            "node": "Has Screenshot?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Screenshot?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Screenshot Upload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Prepare Screenshot Upload": {
+      "main": [
+        [
+          {
+            "node": "Upload Screenshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Screenshot": {
+      "main": [
+        [
+          {
+            "node": "Set Screenshot URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Screenshot URL": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Upsert Regrid Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Regrid Data": {
+      "main": [
+        [
+          {
+            "node": "Update Progress (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Progress (Success)": {
+      "main": [
+        [
+          {
+            "node": "Loop Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Progress (Failure)": {
+      "main": [
+        [
+          {
+            "node": "Loop Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "DGXfvxQpgn25n3OO",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-scraper",
+      "name": "TDF-Scraper"
+    }
+  ],
+  "active": true,
+  "backupDate": "2026-01-11"
+}

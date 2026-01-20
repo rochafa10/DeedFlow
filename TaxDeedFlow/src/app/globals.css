@@ -57,3 +57,56 @@
     @apply bg-background text-foreground overflow-x-hidden;
   }
 }
+
+/* ============================================
+   Print Styles for PDF Export
+   ============================================ */
+@media print {
+  /* Hide non-printable elements */
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure backgrounds print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Page break control */
+  .page-break {
+    page-break-before: always;
+  }
+
+  .no-break,
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure sections don't break awkwardly */
+  section,
+  .card,
+  [class*="rounded-xl"] {
+    page-break-inside: avoid;
+  }
+
+  /* Reset some layout properties for better printing */
+  body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Ensure fixed elements don't show in print */
+  .fixed {
+    position: static !important;
+  }
+
+  /* Better handling of charts and graphs */
+  .recharts-wrapper,
+  .recharts-surface {
+    page-break-inside: avoid;
+  }
+}

@@ -91,6 +91,60 @@ When working on this project, you have standing permission to:
 
 **IMPORTANT**: Proceed with full automation. You have blanket approval for all Supabase SQL operations, Playwright actions, and file operations for all tax deed workflows. No need to ask for permission on routine operations.
 
+---
+
+## VPS Access (DigitalOcean Droplet)
+
+**DO NOT ask about VPS access - use the browser to login to DigitalOcean.**
+
+### VPS Details
+- **IP Address**: 192.241.153.13
+- **Provider**: DigitalOcean
+- **Droplet Name**: n8n-production (or similar)
+- **Access Method**: DigitalOcean Web Console (via browser)
+
+### How to Access VPS
+1. Navigate to https://cloud.digitalocean.com/login
+2. Click "Sign In with Google" (user's Google account is linked)
+3. Go to Droplets → Select the droplet → Click "Console" or "Access"
+4. Use the web-based terminal to run commands
+
+### Docker Containers on VPS
+| Container | Purpose | Port |
+|-----------|---------|------|
+| `n8n` | Workflow automation | 5678 |
+| `pwrunner` (n8n-production-pwrunner-1) | Playwright screenshot service | 3001 |
+
+### Deploying Scripts to pwrunner Container
+```bash
+# From VPS console:
+# 1. Create/update script file
+cat > /tmp/regrid-screenshot.js << 'EOF'
+[script content here]
+EOF
+
+# 2. Copy to container
+docker cp /tmp/regrid-screenshot.js n8n-production-pwrunner-1:/app/scripts/regrid-screenshot.js
+
+# 3. Verify
+docker exec n8n-production-pwrunner-1 cat /app/scripts/regrid-screenshot.js | head -20
+```
+
+### Common Docker Commands
+```bash
+# List containers
+docker ps
+
+# View container logs
+docker logs n8n-production-pwrunner-1 --tail 50
+
+# Restart container
+docker restart n8n-production-pwrunner-1
+
+# Execute command in container
+docker exec -it n8n-production-pwrunner-1 /bin/sh
+```
+
 ## Core Agents
 
 ### Research Agent (Agent 1)

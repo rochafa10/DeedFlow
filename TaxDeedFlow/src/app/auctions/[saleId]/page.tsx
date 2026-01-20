@@ -24,6 +24,8 @@ import {
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
+import { AuctionRulesViewer } from "@/components/auctions/AuctionRulesViewer"
+import { AuctionChat } from "@/components/auctions/AuctionChat"
 
 // Type definitions for API response
 interface AuctionData {
@@ -104,6 +106,9 @@ interface AuctionData {
     format: string
     propertyCount: number
     publicationDate: string
+    extractedText: string | null
+    textExtractedAt: string | null
+    year: number | null
   }[]
   contacts: {
     id: string
@@ -124,6 +129,7 @@ export default function AuctionDetailPage() {
   const [auction, setAuction] = useState<AuctionData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const saleId = params.saleId as string
 
@@ -189,7 +195,7 @@ export default function AuctionDetailPage() {
         })
       }
       // Save to localStorage
-      localStorage.setItem(`auction-checklist-${saleId}`, JSON.stringify([...newSet]))
+      localStorage.setItem(`auction-checklist-${saleId}`, JSON.stringify(Array.from(newSet)))
       return newSet
     })
   }
@@ -672,159 +678,114 @@ export default function AuctionDetailPage() {
 
             {/* Auction Rules Tab */}
             {activeTab === "rules" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                      <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                      Bidder Requirements
-                    </h3>
-                    <ul className="space-y-2">
-                      {bidderRequirements.map((req, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <button
-                            onClick={() => toggleRequirement(index)}
-                            className={cn(
-                              "flex items-center justify-center h-5 w-5 rounded border-2 flex-shrink-0 mt-0.5 transition-colors",
-                              checkedRequirements.has(index)
-                                ? "bg-green-500 border-green-500 text-white"
-                                : "border-slate-300 dark:border-slate-600 hover:border-green-400"
-                            )}
-                            aria-label={checkedRequirements.has(index) ? "Uncheck requirement" : "Check requirement"}
-                          >
-                            {checkedRequirements.has(index) && (
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <span className={cn(
-                            "transition-colors",
-                            checkedRequirements.has(index)
-                              ? "text-slate-400 dark:text-slate-500 line-through"
-                              : "text-slate-600 dark:text-slate-400"
-                          )}>
-                            {req}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    {bidderRequirements.length > 0 && (
-                      <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                        {checkedRequirements.size} of {bidderRequirements.length} completed
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                      <Gavel className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                      Bidding Process
-                    </h3>
-                    <ol className="space-y-2">
-                      {biddingProcess.map((step, index) => (
-                        <li key={index} className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
-                          <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium px-2 py-0.5 rounded flex-shrink-0">
-                            {index + 1}
-                          </span>
-                          <span>{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Payment Methods</h4>
-                      <ul className="space-y-1">
-                        {paymentMethods.map((method, index) => (
-                          <li key={index} className="text-slate-600 dark:text-slate-400 text-sm">
-                            {method}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Payment Deadline</h4>
-                      <p className="text-slate-600 dark:text-slate-400 text-sm">{paymentDeadline}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Redemption Period</h4>
-                      <p className="text-slate-600 dark:text-slate-400 text-sm">{redemptionPeriod}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contact Information */}
-                {auction.contacts.length > 0 && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Contact Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      {primaryContact?.phone && (
-                        <div>
-                          <div className="text-slate-500 dark:text-slate-400">Phone</div>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{primaryContact.phone}</div>
-                        </div>
-                      )}
-                      {primaryContact?.email && (
-                        <div>
-                          <div className="text-slate-500 dark:text-slate-400">Email</div>
-                          <a href={`mailto:${primaryContact.email}`} className="font-medium text-primary hover:underline">
-                            {primaryContact.email}
-                          </a>
-                        </div>
-                      )}
-                      {primaryContact?.url && (
-                        <div>
-                          <div className="text-slate-500 dark:text-slate-400">Website</div>
-                          <a href={primaryContact.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline flex items-center gap-1">
-                            Visit Website
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <AuctionRulesViewer
+                rules={auction.rules}
+                depositAmount={auction.depositAmount}
+                countyName={auction.county}
+                saleType={auction.type}
+                onAskQuestion={() => setIsChatOpen(true)}
+              />
             )}
 
             {/* Documents Tab */}
             {activeTab === "documents" && (
               <div>
-                {auction.documents.length > 0 ? (
-                  <div className="space-y-3">
-                    {auction.documents.map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded">
-                            <FileText className="h-5 w-5 text-red-600 dark:text-red-400" />
-                          </div>
+                {/* Check for outdated documents */}
+                {(() => {
+                  const currentYear = new Date().getFullYear()
+                  const outdatedDocs = auction.documents.filter(d => d.year && d.year < currentYear)
+                  if (outdatedDocs.length > 0) {
+                    return (
+                      <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                           <div>
-                            <div className="font-medium text-slate-900 dark:text-slate-100">{doc.title}</div>
-                            <div className="text-sm text-slate-500 dark:text-slate-400">
-                              {doc.format?.toUpperCase() || "Document"}
-                              {doc.publicationDate && ` • Added ${new Date(doc.publicationDate).toLocaleDateString()}`}
-                              {doc.propertyCount && ` • ${doc.propertyCount} properties`}
-                            </div>
+                            <h4 className="font-semibold text-amber-800 dark:text-amber-300">
+                              Outdated Documents
+                            </h4>
+                            <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                              These documents are from {Array.from(new Set(outdatedDocs.map(d => d.year))).join(", ")} but we are now in {currentYear}.
+                              The county has not yet published {currentYear} documents. Contact the county at (814) 317-2361 to verify current dates and requirements.
+                            </p>
                           </div>
                         </div>
-                        {doc.url && (
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                          >
-                            <Download className="h-4 w-4" />
-                            Download
-                          </a>
-                        )}
                       </div>
-                    ))}
+                    )
+                  }
+                  return null
+                })()}
+                {auction.documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {auction.documents.map((doc) => {
+                      const currentYear = new Date().getFullYear()
+                      const isOutdated = doc.year && doc.year < currentYear
+                      return (
+                        <div
+                          key={doc.id}
+                          className={cn(
+                            "flex items-center justify-between p-4 rounded-lg border transition-colors",
+                            isOutdated
+                              ? "bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/20"
+                              : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "p-2 rounded",
+                              isOutdated
+                                ? "bg-amber-100 dark:bg-amber-900/30"
+                                : "bg-red-100 dark:bg-red-900/30"
+                            )}>
+                              <FileText className={cn(
+                                "h-5 w-5",
+                                isOutdated
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-red-600 dark:text-red-400"
+                              )} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-slate-900 dark:text-slate-100">{doc.title}</span>
+                                {isOutdated && (
+                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                    ⚠️ {doc.year} - Outdated
+                                  </span>
+                                )}
+                                {doc.extractedText && doc.extractedText.length > 100 ? (
+                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                    ✓ AI Ready
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                                    PDF Only
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-slate-500 dark:text-slate-400">
+                                {doc.format?.toUpperCase() || "Document"}
+                                {doc.year && ` • Year: ${doc.year}`}
+                                {doc.publicationDate && ` • Added ${new Date(doc.publicationDate).toLocaleDateString()}`}
+                                {doc.propertyCount && ` • ${doc.propertyCount} properties`}
+                                {doc.extractedText && doc.extractedText.length > 100 && (
+                                  <span className="text-green-600 dark:text-green-400"> • {Math.round(doc.extractedText.length / 1000)}K chars extracted</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {doc.url && (
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-3 py-1.5 text-sm text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download
+                            </a>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-slate-500 dark:text-slate-400">
@@ -835,6 +796,18 @@ export default function AuctionDetailPage() {
             )}
           </div>
         </div>
+
+        {/* AI Chat Panel */}
+        <AuctionChat
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          saleId={saleId}
+          countyName={auction.county}
+          stateName={auction.stateName || auction.state}
+          saleType={auction.type}
+          rules={auction.rules}
+          documents={auction.documents}
+        />
       </main>
     </div>
   )

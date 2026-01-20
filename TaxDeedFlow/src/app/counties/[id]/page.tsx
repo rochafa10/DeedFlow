@@ -962,13 +962,50 @@ export default function CountyDetailPage() {
                   onClick={async () => {
                     setBatchStarting(true)
                     try {
-                      // TODO: Actually call the API to create a batch job
-                      await new Promise(resolve => setTimeout(resolve, 1500))
-                      toast.success("Batch job started successfully")
+                      // Create the batch job via API
+                      const response = await fetch("/api/batch-jobs", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          job_type: "regrid_scraping",
+                          county_id: county.id,
+                          batch_size: batchSize,
+                        }),
+                      })
+
+                      if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}))
+                        throw new Error(errorData.message || "Failed to create batch job")
+                      }
+
+                      const result = await response.json()
+                      const jobId = result.data?.id
+
+                      // Start the job immediately (change status to in_progress)
+                      if (jobId) {
+                        const startResponse = await fetch(`/api/batch-jobs/${jobId}`, {
+                          method: "PATCH",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            status: "in_progress",
+                          }),
+                        })
+
+                        if (!startResponse.ok) {
+                          console.warn("Job created but failed to start immediately")
+                        }
+                      }
+
+                      toast.success("Batch job created and started! The n8n workflow will process properties automatically.")
                       setShowBatchModal(false)
                       router.push("/batch-jobs")
                     } catch (err) {
-                      toast.error("Failed to start batch job")
+                      console.error("Batch job error:", err)
+                      toast.error(err instanceof Error ? err.message : "Failed to start batch job")
                     } finally {
                       setBatchStarting(false)
                     }

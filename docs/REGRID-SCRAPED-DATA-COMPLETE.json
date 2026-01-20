@@ -1,0 +1,180 @@
+{
+  "property_id": "3b6aa1b0-988f-43cc-a7d2-ea4f7f82c795",
+  "parcel_id": "01.05-16..-094.00-000",
+  "scraped_at": "2026-01-12T03:00:00.000Z",
+  "source_url": "https://app.regrid.com/us/pa/blair#p=/us/pa/blair/altoona/54859",
+  
+  "core_property_info": {
+    "parcel_id": "01.05-16..-094.00-000",
+    "address": "1810 12TH AVE",
+    "city": "Altoona",
+    "state": "PA",
+    "zip_code": "16601",
+    "full_address": "1810 12th Ave, Altoona, PA 16601",
+    "regrid_uuid": "2daed71f-bd97-4837-9287-f8ce8f0313ca",
+    "regrid_id": "2daed71f-bd97-4837-9287-f8ce8f0313ca",
+    "ll_uuid": "2daed71f-bd97-4837-9287-f8ce8f0313ca"
+  },
+  
+  "owner_information": {
+    "owner_name_assessor": "ACKER ROBERT A",
+    "owner_name_enhanced": "ROBERT A ACKER",
+    "owner_name_deeded": "Unlock with Team (Add-On)",
+    "mailing_address": "423 Allegheny St, Ste 143",
+    "mailing_city": "Hollidaysburg",
+    "mailing_state": "PA",
+    "mailing_zip": "16648-2047",
+    "mailing_full": "423 Allegheny St, Ste 143, Hollidaysburg, PA 16648-2047"
+  },
+  
+  "property_details": {
+    "property_type": "L1",
+    "property_class": "Mixed",
+    "lot_type": "Interior",
+    "land_use_code": "100",
+    "land_use_ownership": "1100 : Private persons and private joint ownership",
+    "zoning_type": "Mixed",
+    "zoning_subtype": "Mixed Use",
+    "zoning_area_id": "18872827",
+    "zoning_code_link": "https://ecode360.com/31994860"
+  },
+  
+  "lot_information": {
+    "lot_size_acres": 0.069,
+    "lot_size_acres_display": "0.07 Acres",
+    "lot_size_sqft": 3006.84,
+    "lot_dimensions": "25 X 120",
+    "frontage_ft": 25,
+    "depth_ft": 120,
+    "calculated_parcel_area": "0.07 Acres"
+  },
+  
+  "structure_details": {
+    "building_count": 0,
+    "building_sqft": 0,
+    "total_address_count": 0,
+    "year_built": null,
+    "bedrooms": null,
+    "bathrooms": null,
+    "stories": null,
+    "note": "No structures detected"
+  },
+  
+  "location_data": {
+    "latitude": 40.512463,
+    "longitude": -78.409138,
+    "centroid_coordinates": "40.512463, -78.409138",
+    "neighborhood_code": "5024",
+    "census_tract_2020": "42013100400",
+    "census_blockgroup_2020": "420131004001",
+    "census_block_2020": "420131004001014",
+    "school_district": "Altoona Area School District",
+    "school_district_code": "1"
+  },
+  
+  "valuation_data": {
+    "parcel_value_type": "MARKET",
+    "total_parcel_value": 3000.00,
+    "total_parcel_value_display": "$3,000.00",
+    "land_value": 3000.00,
+    "land_value_display": "$3,000.00",
+    "improvement_value": 0.00,
+    "improvement_value_display": "$0.00",
+    "assessed_value": 3000.00,
+    "assessed_land_value": 3000.00,
+    "assessed_improvement_value": 0.00,
+    "market_value": null,
+    "last_sale_price": 4000.00,
+    "last_sale_price_display": "$4,000.00",
+    "last_sale_date": "2000-03-10",
+    "new_clean_green_land_value": 0,
+    "new_clean_green_building_value": 0,
+    "new_clean_green_total_value": 0
+  },
+  
+  "legal_plat_data": {
+    "book": "1456",
+    "page": "159",
+    "lot": "94",
+    "district_number": "01.",
+    "ward_number": "05",
+    "map_number": "16..",
+    "leasehold_number": "000",
+    "control_number": "02168840",
+    "first_alternative_parcel_id": "02168840",
+    "par_num": "01.05-16..-094.00-000"
+  },
+  
+  "geographic_information": {
+    "elevation_highest_ft": 371.4,
+    "elevation_lowest_ft": 369.24,
+    "elevation_ft": 371.4,
+    "roughness_rating": "5",
+    "distance_to_transmission_line_ft": 793,
+    "terrain": "Steep",
+    "federal_qualified_opportunity_zone": "No"
+  },
+  
+  "utilities": {
+    "water_service": "None",
+    "sewer_service": "Unknown",
+    "gas_availability": "GWS",
+    "road": "Paved",
+    "utilities_combined": "Water: None, Sewer: Unknown, Gas: GWS, Road: Paved"
+  },
+  
+  "risk_factors": {
+    "fema_nri_risk_rating": "Very Low",
+    "fema_flood_zone": "X",
+    "fema_flood_zone_subtype": "AREA OF MINIMAL FLOOD HAZARD",
+    "fema_flood_zone_raw_data": "[{\"zone\":\"X\",\"subtype\":\"AREA OF MINIMAL FLOOD HAZARD\",\"percent\":100}]",
+    "fema_flood_zone_data_date": "2023-10-17",
+    "insite_score": "Low"
+  },
+  
+  "demographics": {
+    "housing_affordability_index": 194,
+    "population_density": 6601.1,
+    "median_household_income_current": 56676.00,
+    "median_household_income_display": "$56,676.00",
+    "housing_units_growth_cagr_past_5_years": -0.54,
+    "population_growth_cagr_past_5_years": -1.04,
+    "housing_units_growth_cagr_next_5_years": 0,
+    "population_growth_cagr_next_5_years": -0.73,
+    "median_household_income_growth_cagr_next_5_years": 2.81
+  },
+  
+  "vacancy_indicators": {
+    "usps_vacancy_indicator_date": "2026-01-01",
+    "usps_delivery_point_validation": "N",
+    "delivery_point_validation_codes": "N N",
+    "delivery_point_validation_notes": "AAM3",
+    "delivery_point_match_type": "S",
+    "cass_error_codes": "4.1,14.7,A1"
+  },
+  
+  "dataset_matching": {
+    "placekey": "235@63p-trk-psq",
+    "precisely_id": "P0000JCD2BCK"
+  },
+  
+  "additional_items": {
+    "census_zip_code_tabulation_area": "16601",
+    "five_digit_parcel_zip_code": "16601",
+    "first_line": "423 ALLEGHENY ST, STE 143",
+    "last_line": "HOLLIDAYSBURG, PA 16648-2047",
+    "land_description": "25 X 120"
+  },
+  
+  "metadata": {
+    "data_quality_score": 0.875,
+    "last_refresh": "March 18, 2025",
+    "scraping_method": "browser_mcp",
+    "panel_closed": true,
+    "screenshot_captured": true,
+    "screenshot_with_panel": ".playwright-mcp/regrid-property-details-1810-12th-ave.png",
+    "screenshot_clean_map": ".playwright-mcp/regrid-map-clean-1810-12th-ave.png"
+  },
+  
+  "raw_extracted_text_sample": "Property Details\n1810 12th Ave\nFull Address\n1810 12th Ave,\nAltoona, PA 16601\nMeasurements\n0.07 Acres\nOwner\nACKER ROBERT A\nParcel Details\nParcel ID\n01.05-16..-094.00-000\nParcel Address\n1810 12TH AVE\nParcel Address City\nAltoona\nParcel Address Zip Code\n16601\nRegrid UUID\n2daed71f-bd97-4837-9287-f8ce8f0313ca"
+}

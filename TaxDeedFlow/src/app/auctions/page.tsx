@@ -684,13 +684,15 @@ export default function AuctionsPage() {
                       <td className="px-4 py-4">
                         <div>
                           <div className="text-sm text-slate-700">
-                            {new Date(auction.registrationDeadline).toLocaleDateString(
-                              "en-US",
-                              { month: "short", day: "numeric" }
-                            )}
+                            {auction.registrationDeadline
+                              ? new Date(auction.registrationDeadline).toLocaleDateString(
+                                  "en-US",
+                                  { month: "short", day: "numeric" }
+                                )
+                              : "TBD"}
                           </div>
                           <div className="text-xs text-slate-500">
-                            Deposit: {auction.depositRequired}
+                            Deposit: {auction.depositRequired || "N/A"}
                           </div>
                         </div>
                       </td>
@@ -797,16 +799,18 @@ export default function AuctionsPage() {
                         <div>
                           <div className="text-slate-500">Registration Deadline</div>
                           <div className="font-medium text-slate-900">
-                            {new Date(auction.registrationDeadline).toLocaleDateString(
-                              "en-US",
-                              { month: "short", day: "numeric", year: "numeric" }
-                            )}
+                            {auction.registrationDeadline
+                              ? new Date(auction.registrationDeadline).toLocaleDateString(
+                                  "en-US",
+                                  { month: "short", day: "numeric", year: "numeric" }
+                                )
+                              : "TBD"}
                           </div>
                         </div>
                         <div>
                           <div className="text-slate-500">Deposit Required</div>
                           <div className="font-medium text-slate-900">
-                            {auction.depositRequired}
+                            {auction.depositRequired || "N/A"}
                           </div>
                         </div>
                       </div>

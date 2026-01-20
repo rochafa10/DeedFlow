@@ -1,0 +1,465 @@
+"""
+Fix the Convert Screenshot to Binary node in the n8n workflow.
+
+The issue is that the node is not correctly receiving the screenshot data.
+We need to ensure the sourceProperty correctly references the screenshot field.
+"""
+
+import json
+
+# The fix: Update the Parse Playwright Response node to output the screenshot
+# in a way that the Convert Screenshot to Binary node can correctly access it.
+
+# Also, we need to ensure the connections are set up so that the Convert Screenshot
+# node receives data directly from Parse Playwright Response, not from Update Database.
+
+workflow_update = {
+    "id": "DGXfvxQpgn25n3OO",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Check for Jobs",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [112, 400]
+        },
+        {
+            "parameters": {
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/batch_jobs",
+                "sendQuery": True,
+                "queryParameters": {
+                    "parameters": [
+                        {"name": "status", "value": "in.(pending,in_progress)"},
+                        {"name": "job_type", "value": "eq.regrid_scraping"},
+                        {"name": "select", "value": "id,county_id,batch_size,processed_items,total_items,current_batch"},
+                        {"name": "order", "value": "created_at.asc"},
+                        {"name": "limit", "value": "1"}
+                    ]
+                },
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"}
+                    ]
+                },
+                "options": {}
+            },
+            "id": "get-pending-jobs",
+            "name": "Get Pending Jobs",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [304, 400]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": True,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 1
+                    },
+                    "conditions": [
+                        {
+                            "id": "check-job-exists",
+                            "leftValue": "={{ Object.keys($json).length }}",
+                            "rightValue": 0,
+                            "operator": {"type": "number", "operation": "gt"}
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "check-jobs",
+            "name": "Has Jobs?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [512, 400]
+        },
+        {
+            "parameters": {
+                "jsCode": """const jobs = $input.all();
+console.log('Input jobs:', JSON.stringify(jobs, null, 2));
+if (jobs.length > 0 && jobs[0].json) {
+  const job = jobs[0].json;
+  if (job.id) {
+    console.log('Found job:', job.id);
+    return [{ json: { job_id: job.id, county_id: job.county_id, batch_size: job.batch_size || 50, total_items: job.total_items || 0, processed_items: job.processed_items || 0 } }];
+  }
+  if (Array.isArray(job) && job.length > 0) {
+    const firstJob = job[0];
+    console.log('Found job (array):', firstJob.id);
+    return [{ json: { job_id: firstJob.id, county_id: firstJob.county_id, batch_size: firstJob.batch_size || 50, total_items: firstJob.total_items || 0, processed_items: firstJob.processed_items || 0 } }];
+  }
+}
+console.log('No valid job found');
+return [{ json: { job_id: null } }];"""
+            },
+            "id": "extract-job",
+            "name": "Extract Job Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [720, 384]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_next_batch",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "application/json"}
+                    ]
+                },
+                "sendBody": True,
+                "specifyBody": "json",
+                "jsonBody": "={\"p_job_id\": \"{{ $json.job_id }}\"}",
+                "options": {}
+            },
+            "id": "get-properties",
+            "name": "Get Properties to Scrape",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [960, 384]
+        },
+        {
+            "parameters": {
+                "jsCode": """// Get property from loop
+const property = $input.first().json;
+
+const propertyId = property.item_id;
+
+if (!propertyId) {
+  console.error('ERROR: No item_id found! Available fields:', Object.keys(property));
+  throw new Error('Property ID (item_id) not found in input');
+}
+
+console.log('Processing property:', propertyId, property.parcel_id);
+
+// Build Regrid URL - Playwright will scrape REAL data from this URL
+const county = property.county_name?.toLowerCase().replace(/\\s+/g, '-') || 'unknown';
+const state = property.state_code?.toLowerCase() || 'pa';
+const parcelClean = (property.parcel_id || '').replace(/[^a-zA-Z0-9]/g, '');
+const regridUrl = `https://app.regrid.com/us/${state}/${county}/parcel/${parcelClean}`;
+
+// Pass to Playwright - NO FAKE DATA GENERATION!
+return [{
+  json: {
+    property_id: propertyId,
+    parcel_id: property.parcel_id,
+    county_name: property.county_name,
+    state_code: property.state_code,
+    property_address: property.property_address,
+    regrid_url: regridUrl
+  }
+}];"""
+            },
+            "id": "scrape-regrid-api",
+            "name": "Prepare Regrid URL",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1200, 384]
+        },
+        {
+            "parameters": {
+                "url": "http://n8n-production-pwrunner-1:3001/run-regrid",
+                "sendQuery": True,
+                "queryParameters": {
+                    "parameters": [
+                        {"name": "parcel", "value": "={{ $json.parcel_id }}"},
+                        {"name": "county", "value": "={{ $json.county_name }}"},
+                        {"name": "state", "value": "={{ $json.state_code }}"},
+                        {"name": "property_id", "value": "={{ $json.property_id }}"}
+                    ]
+                },
+                "options": {"timeout": 120000}
+            },
+            "id": "run-playwright-screenshot",
+            "name": "Run Playwright Screenshot",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [1472, 384]
+        },
+        {
+            "parameters": {
+                "jsCode": """// Parse REAL data from Playwright scraping
+const input = $input.first().json;
+
+let response;
+if (typeof input.data === 'string') {
+  try {
+    response = JSON.parse(input.data);
+  } catch (e) {
+    throw new Error('Failed to parse Playwright response: ' + e.message);
+  }
+} else if (input.success !== undefined) {
+  response = input;
+} else if (typeof input === 'string') {
+  response = JSON.parse(input);
+} else {
+  response = input;
+}
+
+if (!response.success) {
+  throw new Error('Playwright screenshot failed: ' + (response.error || 'Unknown error'));
+}
+
+if (!response.screenshot) {
+  throw new Error('No screenshot in Playwright response');
+}
+
+const regridData = response.regrid_data || {};
+
+// Prepare data for database (only columns that exist in regrid_data table)
+const dbData = {
+  property_id: response.property_id,
+  regrid_id: regridData.regrid_id || regridData.ll_uuid || null,
+  ll_uuid: regridData.ll_uuid || null,
+  property_type: regridData.property_type || null,
+  property_class: regridData.property_class || null,
+  land_use: regridData.land_use || null,
+  zoning: regridData.zoning || null,
+  lot_size_sqft: regridData.lot_size_sqft || null,
+  lot_size_acres: regridData.lot_size_acres || null,
+  lot_dimensions: regridData.lot_dimensions || null,
+  building_sqft: regridData.building_sqft || null,
+  year_built: regridData.year_built || null,
+  bedrooms: regridData.bedrooms || null,
+  bathrooms: regridData.bathrooms || null,
+  assessed_value: regridData.assessed_value || null,
+  assessed_land_value: regridData.assessed_land_value || null,
+  assessed_improvement_value: regridData.assessed_improvement_value || null,
+  market_value: regridData.market_value || null,
+  latitude: regridData.latitude || null,
+  longitude: regridData.longitude || null,
+  water_service: regridData.water_service || null,
+  sewer_service: regridData.sewer_service || null,
+  additional_fields: regridData.additional_fields || null,
+  data_quality_score: regridData.data_quality_score || 0.0,
+  scraped_at: new Date().toISOString()
+};
+
+// Return all fields needed for both database update and screenshot processing
+// IMPORTANT: screenshot must be a valid base64 string
+return {
+  json: {
+    property_id: response.property_id,
+    parcel_id: response.parcel_id,
+    screenshot: response.screenshot,
+    db_data: dbData,
+    success: response.success
+  }
+};"""
+            },
+            "id": "parse-playwright-response",
+            "name": "Parse Playwright Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1744, 384]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/regrid_data?on_conflict=property_id",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "application/json"},
+                        {"name": "Prefer", "value": "resolution=merge-duplicates,return=minimal"}
+                    ]
+                },
+                "sendBody": True,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json.db_data) }}",
+                "options": {}
+            },
+            "id": "update-database",
+            "name": "Update Database",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [2016, 500]
+        },
+        {
+            "parameters": {
+                "operation": "toBinary",
+                "sourceProperty": "screenshot",
+                "binaryPropertyName": "data",
+                "options": {
+                    "fileName": "screenshot.jpeg",
+                    "mimeType": "image/jpeg"
+                }
+            },
+            "id": "convert-screenshot",
+            "name": "Convert Screenshot to Binary",
+            "type": "n8n-nodes-base.convertToFile",
+            "typeVersion": 1.1,
+            "position": [2016, 300]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://oiiwlzobizftprqspbzt.supabase.co/storage/v1/object/screenshots/{{ $('Parse Playwright Response').first().json.parcel_id.replace(/[^a-zA-Z0-9]/g, '_') }}.jpeg",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "image/jpeg"}
+                    ]
+                },
+                "sendBody": True,
+                "contentType": "binaryData",
+                "inputDataFieldName": "data",
+                "options": {}
+            },
+            "id": "upload-screenshot",
+            "name": "Upload Screenshot to Supabase",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [2256, 300]
+        },
+        {
+            "parameters": {
+                "method": "PATCH",
+                "url": "=https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/regrid_data?property_id=eq.{{ $('Parse Playwright Response').first().json.property_id }}",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "application/json"},
+                        {"name": "Prefer", "value": "return=minimal"}
+                    ]
+                },
+                "sendBody": True,
+                "specifyBody": "json",
+                "jsonBody": "={\"screenshot_url\": \"https://oiiwlzobizftprqspbzt.supabase.co/storage/v1/object/public/screenshots/{{ $('Parse Playwright Response').first().json.parcel_id.replace(/[^a-zA-Z0-9]/g, '_') }}.jpeg\"}",
+                "options": {}
+            },
+            "id": "update-screenshot-url",
+            "name": "Update Screenshot URL",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [2480, 300]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/update_batch_progress",
+                "sendHeaders": True,
+                "headerParameters": {
+                    "parameters": [
+                        {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9paXdsem9iaXpmdHBycXNwYnp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDc4MzUsImV4cCI6MjA3MDYyMzgzNX0.idwK7IxweMNK64lOGZlWUFV9pA9zljZmZY65rAiDFzg"},
+                        {"name": "Content-Type", "value": "application/json"}
+                    ]
+                },
+                "sendBody": True,
+                "specifyBody": "json",
+                "jsonBody": "={\"p_job_id\": \"{{ $('Extract Job Data').first().json.job_id }}\", \"p_last_item_id\": \"{{ $('Parse Playwright Response').first().json.property_id }}\", \"p_items_processed\": 1, \"p_items_failed\": 0, \"p_error_message\": null}",
+                "options": {}
+            },
+            "id": "update-progress",
+            "name": "Update Job Progress",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [2720, 300]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "regrid-scraper",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Manual Trigger (Webhook)",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [112, 208],
+            "webhookId": "2327e93e-2835-4da1-8e14-1f240810aead"
+        }
+    ],
+    "connections": {
+        "Check for Jobs": {
+            "main": [[{"node": "Get Pending Jobs", "type": "main", "index": 0}]]
+        },
+        "Get Pending Jobs": {
+            "main": [[{"node": "Has Jobs?", "type": "main", "index": 0}]]
+        },
+        "Has Jobs?": {
+            "main": [
+                [{"node": "Extract Job Data", "type": "main", "index": 0}],
+                []
+            ]
+        },
+        "Extract Job Data": {
+            "main": [[{"node": "Get Properties to Scrape", "type": "main", "index": 0}]]
+        },
+        "Get Properties to Scrape": {
+            "main": [[{"node": "Prepare Regrid URL", "type": "main", "index": 0}]]
+        },
+        "Manual Trigger (Webhook)": {
+            "main": [[{"node": "Get Pending Jobs", "type": "main", "index": 0}]]
+        },
+        "Prepare Regrid URL": {
+            "main": [[{"node": "Run Playwright Screenshot", "type": "main", "index": 0}]]
+        },
+        "Run Playwright Screenshot": {
+            "main": [[{"node": "Parse Playwright Response", "type": "main", "index": 0}]]
+        },
+        "Parse Playwright Response": {
+            "main": [
+                [
+                    {"node": "Update Database", "type": "main", "index": 0},
+                    {"node": "Convert Screenshot to Binary", "type": "main", "index": 0}
+                ]
+            ]
+        },
+        "Update Database": {
+            "main": [[]]
+        },
+        "Convert Screenshot to Binary": {
+            "main": [[{"node": "Upload Screenshot to Supabase", "type": "main", "index": 0}]]
+        },
+        "Upload Screenshot to Supabase": {
+            "main": [[{"node": "Update Screenshot URL", "type": "main", "index": 0}]]
+        },
+        "Update Screenshot URL": {
+            "main": [[{"node": "Update Job Progress", "type": "main", "index": 0}]]
+        },
+        "Update Job Progress": {
+            "main": [[]]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "callerPolicy": "workflowsFromSameOwner",
+        "availableInMCP": False
+    }
+}
+
+# Save the workflow update
+with open("temp/workflow_update_v3.json", "w") as f:
+    json.dump(workflow_update, f, indent=2)
+
+print("Workflow update saved to temp/workflow_update_v3.json")
+print("\nThe workflow configuration looks correct. The issue might be:")
+print("1. The screenshot data is being passed correctly but n8n has a bug with very large base64 strings")
+print("2. The error message is misleading - it's showing the value instead of the field name")
+print("\nLet me check the latest execution to see what data was actually received...")

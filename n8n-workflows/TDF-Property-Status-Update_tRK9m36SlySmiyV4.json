@@ -1,0 +1,221 @@
+{
+  "name": "TDF - Property Status Update",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "schedule-trigger",
+      "name": "Daily 6AM Trigger"
+    },
+    {
+      "parameters": {
+        "path": "property-status-update",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        540
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "property-status-update-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/update_property_auction_status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        440
+      ],
+      "id": "update-status",
+      "name": "Update Property Auction Status",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\n\n// Parse the update result\nconst summary = {\n  updated_at: new Date().toISOString(),\n  properties_updated: result.properties_updated || 0,\n  expired_count: result.expired_count || 0,\n  active_count: result.active_count || 0,\n  unknown_count: result.unknown_count || 0,\n  message: `Updated ${result.properties_updated || 0} properties. ${result.expired_count || 0} expired, ${result.active_count || 0} active, ${result.unknown_count || 0} unknown.`\n};\n\nreturn [{ json: summary }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        440
+      ],
+      "id": "format-summary",
+      "name": "Format Summary"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_active_property_counts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        440
+      ],
+      "id": "get-counts",
+      "name": "Get Active Property Counts",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const summary = $('Format Summary').first().json;\nconst counts = $input.first().json;\n\nreturn [{\n  json: {\n    ...summary,\n    current_counts: counts,\n    status: 'completed'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        440
+      ],
+      "id": "combine-results",
+      "name": "Combine Results"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        440
+      ],
+      "id": "respond-webhook",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Daily 6AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Update Property Auction Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Update Property Auction Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Property Auction Status": {
+      "main": [
+        [
+          {
+            "node": "Format Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Summary": {
+      "main": [
+        [
+          {
+            "node": "Get Active Property Counts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Property Counts": {
+      "main": [
+        [
+          {
+            "node": "Combine Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "tRK9m36SlySmiyV4",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-maintenance",
+      "name": "TDF-Maintenance"
+    }
+  ],
+  "active": false,
+  "backupDate": "2026-01-11"
+}

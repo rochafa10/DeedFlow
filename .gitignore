@@ -59,3 +59,25 @@ nul
 
 # Logs
 *.log
+
+# Auto Claude data directory
+.auto-claude/
+
+# Session notes
+SESSION-*.md
+
+# SQLite databases
+*.db
+
+# Temp Claude directories
+tmpclaude-*/
+
+# Debug screenshots
+regrid-*.png
+
+# Node modules (already in TaxDeedFlow/.gitignore but adding here too)
+node_modules/
+
+# Build output
+.next/
+out/

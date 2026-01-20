@@ -124,12 +124,14 @@ interface PropertyDetail {
   lastModifiedBy: string
 }
 
-type PropertyStatus = "parsed" | "enriched" | "validated" | "approved"
+// Pipeline stages and auction statuses
+type PropertyStatus = "parsed" | "enriched" | "validated" | "approved" | "active" | "pending" | "expired" | "sold" | "withdrawn" | "unknown"
 
 const STATUS_CONFIG: Record<
   PropertyStatus,
   { label: string; color: string; icon: React.ReactNode }
 > = {
+  // Pipeline stages
   parsed: {
     label: "Parsed",
     color: "bg-slate-100 text-slate-700",
@@ -149,6 +151,37 @@ const STATUS_CONFIG: Record<
     label: "Approved",
     color: "bg-green-100 text-green-700",
     icon: <CheckCircle2 className="h-4 w-4" />,
+  },
+  // Auction statuses
+  active: {
+    label: "Active",
+    color: "bg-green-100 text-green-700",
+    icon: <CheckCircle2 className="h-4 w-4" />,
+  },
+  pending: {
+    label: "Pending",
+    color: "bg-amber-100 text-amber-700",
+    icon: <Clock className="h-4 w-4" />,
+  },
+  expired: {
+    label: "Expired",
+    color: "bg-slate-100 text-slate-500",
+    icon: <Clock className="h-4 w-4" />,
+  },
+  sold: {
+    label: "Sold",
+    color: "bg-purple-100 text-purple-700",
+    icon: <Gavel className="h-4 w-4" />,
+  },
+  withdrawn: {
+    label: "Withdrawn",
+    color: "bg-red-100 text-red-700",
+    icon: <X className="h-4 w-4" />,
+  },
+  unknown: {
+    label: "Unknown",
+    color: "bg-slate-100 text-slate-500",
+    icon: <AlertTriangle className="h-4 w-4" />,
   },
 }
 
@@ -234,7 +267,99 @@ export default function PropertyDetailPage() {
   const [showPropertyDeleteConfirm, setShowPropertyDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Scraping state
+  const [isFetchingRegrid, setIsFetchingRegrid] = useState(false)
+  const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false)
+
   const propertyId = params.id as string
+
+  // Function to fetch Regrid data
+  const fetchRegridData = async () => {
+    if (!property) return
+
+    setIsFetchingRegrid(true)
+    try {
+      const response = await fetch("/api/scrape/regrid", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          property_id: property.id,
+          parcel_id: property.parcelId,
+          address: property.address,
+          county: property.county,
+          state: property.state,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success("Regrid data fetched", {
+          description: `Data quality score: ${Math.round((result.data_quality_score || 0.5) * 100)}%`,
+        })
+        // Reload property data to show the new Regrid data
+        window.location.reload()
+      } else {
+        toast.error("Failed to fetch Regrid data", {
+          description: result.error || "Unknown error occurred",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching Regrid data:", error)
+      toast.error("Failed to fetch Regrid data", {
+        description: error instanceof Error ? error.message : "Network error",
+      })
+    } finally {
+      setIsFetchingRegrid(false)
+    }
+  }
+
+  // Function to capture screenshot
+  const captureScreenshot = async () => {
+    if (!property) return
+
+    setIsCapturingScreenshot(true)
+    try {
+      // Build Regrid search URL
+      const regridUrl = `https://app.regrid.com/us/${property.state.toLowerCase()}/${property.county.toLowerCase().replace(/\s+/g, '-')}`
+
+      const response = await fetch("/api/scrape/screenshot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          property_id: property.id,
+          regrid_url: regridUrl,
+          parcel_id: property.parcelId,
+          address: property.address,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success("Screenshot captured", {
+          description: "Property screenshot has been saved.",
+        })
+        // Reload property data to show the new screenshot
+        window.location.reload()
+      } else {
+        toast.error("Failed to capture screenshot", {
+          description: result.error || "Unknown error occurred",
+        })
+      }
+    } catch (error) {
+      console.error("Error capturing screenshot:", error)
+      toast.error("Failed to capture screenshot", {
+        description: error instanceof Error ? error.message : "Network error",
+      })
+    } finally {
+      setIsCapturingScreenshot(false)
+    }
+  }
 
   // Handle property deletion
   const handleDeleteProperty = async () => {
@@ -289,6 +414,7 @@ export default function PropertyDetailPage() {
 
     const newItem: WatchlistItem = {
       id: `watchlist-${Date.now()}`,
+      userId: user?.id || "anonymous",
       propertyId: propertyId,
       parcelId: property.parcelId,
       address: property.address,
@@ -515,7 +641,7 @@ export default function PropertyDetailPage() {
               Access Denied
             </h2>
             <p className="text-slate-600 mb-4">
-              You don't have permission to view this property. This resource belongs to another user.
+              You don&apos;t have permission to view this property. This resource belongs to another user.
             </p>
             <p className="text-sm text-slate-500">
               If you believe this is an error, please contact support.
@@ -544,7 +670,7 @@ export default function PropertyDetailPage() {
               Property Not Found
             </h2>
             <p className="text-slate-600">
-              The property you're looking for doesn't exist or has been removed.
+              The property you&apos;re looking for doesn&apos;t exist or has been removed.
             </p>
           </div>
         </main>
@@ -552,7 +678,12 @@ export default function PropertyDetailPage() {
     )
   }
 
-  const statusConfig = STATUS_CONFIG[property.status as PropertyStatus]
+  // Get status config with fallback for unexpected status values
+  const statusConfig = STATUS_CONFIG[property.status as PropertyStatus] ?? {
+    label: property.status || "Unknown",
+    color: "bg-slate-100 text-slate-500",
+    icon: <AlertTriangle className="h-4 w-4" />,
+  }
   const validationConfig = property.validation
     ? VALIDATION_CONFIG[property.validation as ValidationStatus]
     : null
@@ -857,6 +988,155 @@ export default function PropertyDetailPage() {
           </div>
         </div>
 
+        {/* Data Status Card - Shows missing data and action buttons */}
+        <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
+          <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Data Enrichment Status
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Regrid Data Status */}
+            <div className={cn(
+              "flex items-center justify-between p-3 rounded-lg border",
+              property.regridData
+                ? "bg-green-50 border-green-200"
+                : "bg-amber-50 border-amber-200"
+            )}>
+              <div className="flex items-center gap-2">
+                {property.regridData ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                )}
+                <span className={cn(
+                  "text-sm font-medium",
+                  property.regridData ? "text-green-700" : "text-amber-700"
+                )}>
+                  Regrid Data
+                </span>
+              </div>
+              {!property.regridData && canEdit && (
+                <button
+                  onClick={fetchRegridData}
+                  disabled={isFetchingRegrid}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors disabled:opacity-50"
+                >
+                  {isFetchingRegrid ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Fetching...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="h-3 w-3" />
+                      Fetch
+                    </>
+                  )}
+                </button>
+              )}
+              {property.regridData && (
+                <span className="text-xs text-green-600">Complete</span>
+              )}
+            </div>
+
+            {/* Screenshot Status */}
+            <div className={cn(
+              "flex items-center justify-between p-3 rounded-lg border",
+              property.images && property.images.length > 0
+                ? "bg-green-50 border-green-200"
+                : "bg-amber-50 border-amber-200"
+            )}>
+              <div className="flex items-center gap-2">
+                {property.images && property.images.length > 0 ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                )}
+                <span className={cn(
+                  "text-sm font-medium",
+                  property.images && property.images.length > 0 ? "text-green-700" : "text-amber-700"
+                )}>
+                  Screenshot
+                </span>
+              </div>
+              {(!property.images || property.images.length === 0) && canEdit && (
+                <button
+                  onClick={captureScreenshot}
+                  disabled={isCapturingScreenshot}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors disabled:opacity-50"
+                >
+                  {isCapturingScreenshot ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Capturing...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="h-3 w-3" />
+                      Capture
+                    </>
+                  )}
+                </button>
+              )}
+              {property.images && property.images.length > 0 && (
+                <span className="text-xs text-green-600">{property.images.length} image(s)</span>
+              )}
+            </div>
+
+            {/* Validation Status */}
+            <div className={cn(
+              "flex items-center justify-between p-3 rounded-lg border",
+              property.validationData
+                ? property.validationData.status === "approved"
+                  ? "bg-green-50 border-green-200"
+                  : property.validationData.status === "caution"
+                    ? "bg-amber-50 border-amber-200"
+                    : "bg-red-50 border-red-200"
+                : "bg-slate-50 border-slate-200"
+            )}>
+              <div className="flex items-center gap-2">
+                {property.validationData ? (
+                  property.validationData.status === "approved" ? (
+                    <ShieldCheck className="h-5 w-5 text-green-600" />
+                  ) : property.validationData.status === "caution" ? (
+                    <ShieldAlert className="h-5 w-5 text-amber-600" />
+                  ) : (
+                    <ShieldX className="h-5 w-5 text-red-600" />
+                  )
+                ) : (
+                  <Shield className="h-5 w-5 text-slate-400" />
+                )}
+                <span className={cn(
+                  "text-sm font-medium",
+                  property.validationData
+                    ? property.validationData.status === "approved"
+                      ? "text-green-700"
+                      : property.validationData.status === "caution"
+                        ? "text-amber-700"
+                        : "text-red-700"
+                    : "text-slate-500"
+                )}>
+                  Validation
+                </span>
+              </div>
+              {property.validationData ? (
+                <span className={cn(
+                  "text-xs",
+                  property.validationData.status === "approved"
+                    ? "text-green-600"
+                    : property.validationData.status === "caution"
+                      ? "text-amber-600"
+                      : "text-red-600"
+                )}>
+                  {property.validationData.status.charAt(0).toUpperCase() + property.validationData.status.slice(1)}
+                </span>
+              ) : (
+                <span className="text-xs text-slate-400">Pending</span>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div className="border-b border-slate-200">
@@ -1036,13 +1316,13 @@ export default function PropertyDetailPage() {
                       <div>
                         <div className="text-sm text-slate-500">Lot Size (Acres)</div>
                         <div className="font-medium text-slate-900">
-                          {property.regridData.lotSizeAcres} acres
+                          {property.regridData.lotSizeAcres != null ? `${property.regridData.lotSizeAcres} acres` : 'N/A'}
                         </div>
                       </div>
                       <div>
                         <div className="text-sm text-slate-500">Lot Size (Sq Ft)</div>
                         <div className="font-medium text-slate-900">
-                          {property.regridData.lotSizeSqFt.toLocaleString()} sq ft
+                          {property.regridData.lotSizeSqFt?.toLocaleString() ?? 'N/A'} {property.regridData.lotSizeSqFt ? 'sq ft' : ''}
                         </div>
                       </div>
                       <div>
@@ -1069,19 +1349,19 @@ export default function PropertyDetailPage() {
                       <div>
                         <div className="text-sm text-slate-500">Assessed Land Value</div>
                         <div className="font-medium text-slate-900">
-                          ${property.regridData.assessedLandValue.toLocaleString()}
+                          {property.regridData.assessedLandValue != null ? `$${property.regridData.assessedLandValue.toLocaleString()}` : 'N/A'}
                         </div>
                       </div>
                       <div>
                         <div className="text-sm text-slate-500">Assessed Improvement Value</div>
                         <div className="font-medium text-slate-900">
-                          ${property.regridData.assessedImprovementValue.toLocaleString()}
+                          {property.regridData.assessedImprovementValue != null ? `$${property.regridData.assessedImprovementValue.toLocaleString()}` : 'N/A'}
                         </div>
                       </div>
                       <div>
                         <div className="text-sm text-slate-500">Market Value</div>
                         <div className="font-medium text-slate-900 text-lg">
-                          ${property.regridData.marketValue.toLocaleString()}
+                          {property.regridData.marketValue != null ? `$${property.regridData.marketValue.toLocaleString()}` : 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -1519,7 +1799,7 @@ export default function PropertyDetailPage() {
                     <StickyNote className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No notes for this property yet.</p>
                     <p className="text-sm mt-2">
-                      Click "Add Note" to add your observations and reminders.
+                      Click &quot;Add Note&quot; to add your observations and reminders.
                     </p>
                   </div>
                 ) : null}
@@ -1624,7 +1904,7 @@ export default function PropertyDetailPage() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
                   <RefreshCw className="h-4 w-4" />
-                  Server Version (User B's changes)
+                  Server Version (User B&apos;s changes)
                 </h3>
                 <div className="text-sm text-blue-700 space-y-1">
                   <p><strong>Version:</strong> {conflict.serverVersion.version}</p>
@@ -1663,8 +1943,8 @@ export default function PropertyDetailPage() {
               <div className="text-sm text-slate-600 bg-slate-100 p-3 rounded-lg">
                 <strong>What would you like to do?</strong>
                 <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li><strong>Force Save:</strong> Overwrite User B's changes with your changes</li>
-                  <li><strong>Use Server Version:</strong> Discard your changes and use User B's version</li>
+                  <li><strong>Force Save:</strong> Overwrite User B&apos;s changes with your changes</li>
+                  <li><strong>Use Server Version:</strong> Discard your changes and use User B&apos;s version</li>
                 </ul>
               </div>
             </div>

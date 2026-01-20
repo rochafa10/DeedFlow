@@ -1,0 +1,219 @@
+{
+  "name": "TDF - Daily Pipeline Review",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "orchestrator/daily-review",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "daily-review-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_orchestrator_work_queue",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        240
+      ],
+      "id": "get-work-queue",
+      "name": "Get Orchestrator Work Queue",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/detect_bottlenecks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        440
+      ],
+      "id": "detect-bottlenecks",
+      "name": "Detect Bottlenecks",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_session_plan",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"p_max_properties\": 150, \"p_max_agents\": 3 }",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        640
+      ],
+      "id": "get-session-plan",
+      "name": "Get Session Plan",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all inputs\nconst workQueue = $('Get Orchestrator Work Queue').first().json || [];\nconst bottlenecks = $('Detect Bottlenecks').first().json || [];\nconst sessionPlan = $('Get Session Plan').first().json || [];\n\n// Build daily review summary\nconst summary = {\n  generated_at: new Date().toISOString(),\n  review_type: 'daily_pipeline_review',\n  \n  // Work Queue Summary\n  work_queue: {\n    total_items: Array.isArray(workQueue) ? workQueue.length : 0,\n    by_agent: {},\n    high_priority: []\n  },\n  \n  // Bottleneck Analysis\n  bottlenecks: {\n    count: Array.isArray(bottlenecks) ? bottlenecks.length : 0,\n    critical: [],\n    details: Array.isArray(bottlenecks) ? bottlenecks : []\n  },\n  \n  // Recommended Session Plan\n  recommended_plan: {\n    items: Array.isArray(sessionPlan) ? sessionPlan : [],\n    total_properties: 0,\n    estimated_agents: 0\n  }\n};\n\n// Process work queue\nif (Array.isArray(workQueue)) {\n  workQueue.forEach(item => {\n    const agent = item.agent_name || 'UNKNOWN';\n    if (!summary.work_queue.by_agent[agent]) {\n      summary.work_queue.by_agent[agent] = 0;\n    }\n    summary.work_queue.by_agent[agent] += item.pending_count || 0;\n    \n    if (item.priority <= 2) {\n      summary.work_queue.high_priority.push(item);\n    }\n  });\n}\n\n// Process bottlenecks\nif (Array.isArray(bottlenecks)) {\n  summary.bottlenecks.critical = bottlenecks.filter(b => (b.score || 0) >= 0.8);\n}\n\n// Process session plan\nif (Array.isArray(sessionPlan)) {\n  summary.recommended_plan.total_properties = sessionPlan.reduce((sum, p) => sum + (p.batch_size || 0), 0);\n  summary.recommended_plan.estimated_agents = new Set(sessionPlan.map(p => p.agent_name)).size;\n}\n\nreturn [{ json: summary }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        440
+      ],
+      "id": "build-review",
+      "name": "Build Daily Review"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        440
+      ],
+      "id": "respond-webhook",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Orchestrator Work Queue",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Detect Bottlenecks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Session Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Orchestrator Work Queue": {
+      "main": [
+        [
+          {
+            "node": "Build Daily Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Bottlenecks": {
+      "main": [
+        [
+          {
+            "node": "Build Daily Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Session Plan": {
+      "main": [
+        [
+          {
+            "node": "Build Daily Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Daily Review": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "pHmJgmtMCbRyTtne",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-orchestrator",
+      "name": "TDF-Orchestrator"
+    }
+  ],
+  "active": true,
+  "backupDate": "2026-01-11"
+}

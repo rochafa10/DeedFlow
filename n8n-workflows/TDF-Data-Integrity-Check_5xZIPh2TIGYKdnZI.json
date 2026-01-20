@@ -1,0 +1,323 @@
+{
+  "name": "TDF - Data Integrity Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "schedule-trigger",
+      "name": "Daily 7AM Trigger"
+    },
+    {
+      "parameters": {
+        "path": "data-integrity-check",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        540
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "data-integrity-check-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_agent_work_report",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        240
+      ],
+      "id": "get-work-report",
+      "name": "Get Agent Work Report",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_county_work_summary",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        440
+      ],
+      "id": "get-county-summary",
+      "name": "Get County Work Summary",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_active_property_counts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        640
+      ],
+      "id": "get-property-counts",
+      "name": "Get Active Property Counts",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        400,
+        440
+      ],
+      "id": "merge-reports",
+      "name": "Merge Reports"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Combine all reports\nconst workReport = items[0]?.json || [];\nconst countySummary = items[1]?.json || [];\nconst propertyCounts = items[2]?.json || [];\n\n// Build summary\nconst summary = {\n  generated_at: new Date().toISOString(),\n  agent_work_report: Array.isArray(workReport) ? workReport : [workReport],\n  county_summary: Array.isArray(countySummary) ? countySummary : [countySummary],\n  property_counts: Array.isArray(propertyCounts) ? propertyCounts : [propertyCounts],\n  \n  // Calculate totals\n  total_pending_work: 0,\n  high_priority_count: 0,\n  counties_with_work: 0\n};\n\n// Calculate totals from work report\nif (Array.isArray(summary.agent_work_report)) {\n  summary.total_pending_work = summary.agent_work_report.reduce((sum, r) => sum + (r.pending_count || 0), 0);\n  summary.high_priority_count = summary.agent_work_report.filter(r => r.priority === 'HIGH').length;\n}\n\n// Count counties needing work\nif (Array.isArray(summary.county_summary)) {\n  summary.counties_with_work = summary.county_summary.filter(c => \n    (c.needs_regrid || 0) > 0 || (c.needs_validation || 0) > 0\n  ).length;\n}\n\nreturn [{ json: summary }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        440
+      ],
+      "id": "build-summary",
+      "name": "Build Summary Report"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/record_pipeline_metrics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        440
+      ],
+      "id": "record-metrics",
+      "name": "Record Pipeline Metrics",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1000,
+        440
+      ],
+      "id": "respond-webhook",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Daily 7AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Agent Work Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get County Work Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Active Property Counts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Agent Work Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get County Work Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Active Property Counts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Agent Work Report": {
+      "main": [
+        [
+          {
+            "node": "Merge Reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get County Work Summary": {
+      "main": [
+        [
+          {
+            "node": "Merge Reports",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get Active Property Counts": {
+      "main": [
+        [
+          {
+            "node": "Merge Reports",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Reports": {
+      "main": [
+        [
+          {
+            "node": "Build Summary Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary Report": {
+      "main": [
+        [
+          {
+            "node": "Record Pipeline Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Pipeline Metrics": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "5xZIPh2TIGYKdnZI",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-integrity",
+      "name": "TDF-Integrity"
+    }
+  ],
+  "active": true,
+  "backupDate": "2026-01-11"
+}

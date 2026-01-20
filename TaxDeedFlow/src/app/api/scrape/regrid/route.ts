@@ -23,11 +23,14 @@ export async function POST(request: NextRequest) {
   const expectedKey = process.env.INTERNAL_API_KEY || "tdf-internal-scraper-key"
 
   if (authHeader !== expectedKey) {
-    // Allow requests from n8n without key for now (internal network)
+    // Allow requests from n8n or the app itself
     const origin = request.headers.get("origin") || ""
     const referer = request.headers.get("referer") || ""
     const isInternal = origin.includes("n8n.lfb-investments.com") ||
                        referer.includes("n8n.lfb-investments.com") ||
+                       origin.includes("localhost") || // Allow app requests
+                       origin.includes("127.0.0.1") || // Allow local development
+                       origin.includes("taxdeedflow") || // Allow production app
                        !origin // Direct API call (no browser origin)
 
     if (!isInternal && authHeader !== expectedKey) {
@@ -54,15 +57,18 @@ export async function POST(request: NextRequest) {
     // Scrape Regrid data using their public search
     const regridData = await scrapeRegridData(parcel_id, address, county, state)
 
-    if (!regridData.success) {
+    if (!regridData.success || !regridData.data) {
       console.error(`[Regrid Scraper] Failed to scrape ${parcel_id}:`, regridData.error)
       return NextResponse.json({
         success: false,
-        error: regridData.error,
+        error: regridData.error || "No data returned",
         property_id,
         parcel_id,
       }, { status: 422 })
     }
+
+    // Extract data for cleaner code
+    const data = regridData.data
 
     // Store in database
     const supabase = createServerClient()
@@ -79,29 +85,29 @@ export async function POST(request: NextRequest) {
       .from("regrid_data")
       .upsert({
         property_id,
-        regrid_id: regridData.data.regrid_id,
-        ll_uuid: regridData.data.ll_uuid,
-        property_type: regridData.data.property_type,
-        property_class: regridData.data.property_class,
-        land_use: regridData.data.land_use,
-        zoning: regridData.data.zoning,
-        lot_size_sqft: regridData.data.lot_size_sqft,
-        lot_size_acres: regridData.data.lot_size_acres,
-        lot_dimensions: regridData.data.lot_dimensions,
-        building_sqft: regridData.data.building_sqft,
-        year_built: regridData.data.year_built,
-        bedrooms: regridData.data.bedrooms,
-        bathrooms: regridData.data.bathrooms,
-        assessed_value: regridData.data.assessed_value,
-        market_value: regridData.data.market_value,
-        latitude: regridData.data.latitude,
-        longitude: regridData.data.longitude,
-        water_service: regridData.data.water_service,
-        sewer_service: regridData.data.sewer_service,
-        additional_fields: regridData.data.additional_fields,
-        raw_html: regridData.data.raw_html,
+        regrid_id: data.regrid_id,
+        ll_uuid: data.ll_uuid,
+        property_type: data.property_type,
+        property_class: data.property_class,
+        land_use: data.land_use,
+        zoning: data.zoning,
+        lot_size_sqft: data.lot_size_sqft,
+        lot_size_acres: data.lot_size_acres,
+        lot_dimensions: data.lot_dimensions,
+        building_sqft: data.building_sqft,
+        year_built: data.year_built,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        assessed_value: data.assessed_value,
+        market_value: data.market_value,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        water_service: data.water_service,
+        sewer_service: data.sewer_service,
+        additional_fields: data.additional_fields,
+        raw_html: data.raw_html,
         scraped_at: new Date().toISOString(),
-        data_quality_score: regridData.data.data_quality_score,
+        data_quality_score: data.data_quality_score,
       }, {
         onConflict: "property_id",
       })
@@ -131,7 +137,7 @@ export async function POST(request: NextRequest) {
       property_id,
       parcel_id,
       regrid_data: regridRecord,
-      data_quality_score: regridData.data.data_quality_score,
+      data_quality_score: data.data_quality_score,
     })
 
   } catch (error) {

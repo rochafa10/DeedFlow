@@ -264,7 +264,7 @@ function generateWorkQueue(counties: any[], properties: any[], batchJobs: any[])
 
   // Calculate needs from properties (this is simplified - ideally we'd have a subquery)
   // For now, use the total minus processed
-  for (const [countyId, data] of countyPropertyMap) {
+  for (const [countyId, data] of Array.from(countyPropertyMap)) {
     if (data.total > 0) {
       // Check for active batch jobs for this county
       const activeJob = batchJobs.find(

@@ -33,7 +33,6 @@ export async function GET(
         property_count,
         location,
         status,
-        notes,
         created_at,
         updated_at,
         counties (
@@ -67,7 +66,9 @@ export async function GET(
       )
     }
 
-    const countyId = sale.counties?.id
+    // Type cast: Supabase returns single object for FK relations but types it as array
+    const counties = sale.counties as unknown as { id: string; county_name: string; state_code: string; state_name: string } | null
+    const countyId = counties?.id
 
     // Fetch related data in parallel
     const [
@@ -175,10 +176,10 @@ export async function GET(
     // Transform data to frontend format
     const auctionData = {
       id: sale.id,
-      county: sale.counties?.county_name || "Unknown",
+      county: counties?.county_name || "Unknown",
       countyId: countyId,
-      state: sale.counties?.state_code || "??",
-      stateName: sale.counties?.state_name || "",
+      state: counties?.state_code || "??",
+      stateName: counties?.state_name || "",
       date: sale.sale_date,
       type: sale.sale_type || "Tax Deed",
       platform: sale.platform || "Unknown",
@@ -194,7 +195,7 @@ export async function GET(
       status: sale.status || "upcoming",
       daysUntil,
       urgency,
-      notes: sale.notes,
+      notes: null, // notes column doesn't exist in upcoming_sales table
 
       // Auction rules
       rules: rules ? {
@@ -254,7 +255,7 @@ export async function GET(
         createdAt: a.created_at,
       })),
 
-      // Documents
+      // Documents (including extracted text for AI chat)
       documents: documents.map((d: any) => ({
         id: d.id,
         type: d.document_type,
@@ -263,6 +264,9 @@ export async function GET(
         format: d.file_format,
         propertyCount: d.property_count,
         publicationDate: d.publication_date,
+        extractedText: d.extracted_text || null,
+        textExtractedAt: d.text_extracted_at || null,
+        year: d.year || null,
       })),
 
       // Contact info from official links

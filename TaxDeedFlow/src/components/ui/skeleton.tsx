@@ -1,22 +1,25 @@
 "use client"
 
+import * as React from "react"
 import { cn } from "@/lib/utils"
 
-interface SkeletonProps {
-  className?: string
+export interface SkeletonProps {
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 /**
  * Skeleton component for loading states.
  * Uses a subtle pulse animation with a light gray background.
  */
-export function Skeleton({ className }: SkeletonProps) {
+export function Skeleton({ className, style }: SkeletonProps) {
   return (
     <div
       className={cn(
         "animate-pulse rounded-md bg-slate-200",
         className
       )}
+      style={style}
     />
   )
 }
