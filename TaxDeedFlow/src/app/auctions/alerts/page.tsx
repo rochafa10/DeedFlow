@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   Bell,
@@ -14,15 +14,17 @@ import {
   Filter,
   Search,
   ExternalLink,
+  Loader2,
+  Database,
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 
-// Mock alerts data - extended version
-const MOCK_ALERTS = [
+// Sample alerts shown when no real alerts exist in database
+const SAMPLE_ALERTS = [
   {
-    id: "1",
-    type: "critical",
+    id: "sample-1",
+    type: "critical" as const,
     title: "Westmoreland Registration Deadline",
     message: "Registration closes in 1 day for Westmoreland County auction",
     date: "2026-01-09",
@@ -33,8 +35,8 @@ const MOCK_ALERTS = [
     acknowledged: false,
   },
   {
-    id: "2",
-    type: "warning",
+    id: "sample-2",
+    type: "warning" as const,
     title: "Westmoreland Auction Imminent",
     message: "Westmoreland County auction is in 7 days. Ensure due diligence is complete.",
     date: "2026-01-09",
@@ -45,8 +47,8 @@ const MOCK_ALERTS = [
     acknowledged: false,
   },
   {
-    id: "3",
-    type: "info",
+    id: "sample-3",
+    type: "info" as const,
     title: "New Property List Available",
     message: "Blair County has posted an updated property list with 15 new parcels added to the auction.",
     date: "2026-01-08",
@@ -57,8 +59,8 @@ const MOCK_ALERTS = [
     acknowledged: false,
   },
   {
-    id: "4",
-    type: "info",
+    id: "sample-4",
+    type: "info" as const,
     title: "Philadelphia Auction Announced",
     message: "Philadelphia County has announced their spring tax lien auction. Registration opens Feb 1.",
     date: "2026-01-05",
@@ -68,58 +70,24 @@ const MOCK_ALERTS = [
     auctionDate: "2026-04-15",
     acknowledged: true,
   },
-  {
-    id: "5",
-    type: "warning",
-    title: "Blair Registration Opens Soon",
-    message: "Blair County auction registration opens in 14 days. Prepare your documents.",
-    date: "2026-01-04",
-    auctionId: "2",
-    county: "Blair",
-    state: "PA",
-    auctionDate: "2026-03-11",
-    acknowledged: true,
-  },
-  {
-    id: "6",
-    type: "critical",
-    title: "Deposit Deadline Approaching",
-    message: "Westmoreland County requires deposit submission by Jan 8. Action required immediately.",
-    date: "2026-01-07",
-    auctionId: "1",
-    county: "Westmoreland",
-    state: "PA",
-    auctionDate: "2026-01-16",
-    acknowledged: false,
-  },
-  {
-    id: "7",
-    type: "info",
-    title: "Cambria Property List Updated",
-    message: "Cambria County has updated their tax sale property list. 23 properties removed.",
-    date: "2026-01-03",
-    auctionId: "4",
-    county: "Cambria",
-    state: "PA",
-    auctionDate: "2026-05-20",
-    acknowledged: true,
-  },
-  {
-    id: "8",
-    type: "warning",
-    title: "Somerset Auction Date Changed",
-    message: "Somerset County has moved their auction from Sep 1 to Sep 8. Update your calendar.",
-    date: "2026-01-02",
-    auctionId: "5",
-    county: "Somerset",
-    state: "PA",
-    auctionDate: "2026-09-08",
-    acknowledged: true,
-  },
 ]
+
+interface Alert {
+  id: string
+  type: "critical" | "warning" | "info"
+  title: string
+  message: string
+  date: string
+  auctionId: string | null
+  county: string
+  state: string
+  auctionDate: string | null
+  acknowledged: boolean
+}
 
 type AlertType = "critical" | "warning" | "info"
 type FilterType = "all" | "critical" | "warning" | "info" | "unacknowledged"
+type DataSource = "live" | "sample" | "loading" | "error"
 
 const ALERT_CONFIG: Record<AlertType, {
   color: string
@@ -150,10 +118,42 @@ const ALERT_CONFIG: Record<AlertType, {
 export default function AuctionAlertsPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [alerts, setAlerts] = useState(MOCK_ALERTS)
+  const [alerts, setAlerts] = useState<Alert[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState<FilterType>("all")
   const [showFilters, setShowFilters] = useState(false)
+  const [dataSource, setDataSource] = useState<DataSource>("loading")
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Fetch alerts from API
+  const fetchAlerts = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/alerts')
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch alerts')
+      }
+
+      const data = await response.json()
+
+      if (data.alerts && data.alerts.length > 0) {
+        setAlerts(data.alerts)
+        setDataSource("live")
+      } else {
+        // No real alerts, use sample data
+        setAlerts(SAMPLE_ALERTS)
+        setDataSource("sample")
+      }
+    } catch (error) {
+      console.error('Error fetching alerts:', error)
+      // Fallback to sample data on error
+      setAlerts(SAMPLE_ALERTS)
+      setDataSource("sample")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -161,6 +161,13 @@ export default function AuctionAlertsPage() {
       router.push("/login")
     }
   }, [isAuthenticated, authLoading, router])
+
+  // Fetch alerts on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAlerts()
+    }
+  }, [isAuthenticated, fetchAlerts])
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -210,17 +217,42 @@ export default function AuctionAlertsPage() {
   })
 
   // Handle acknowledge
-  const handleAcknowledge = (alertId: string) => {
+  const handleAcknowledge = async (alertId: string) => {
+    // Optimistic update
     setAlerts((prev) =>
       prev.map((alert) =>
         alert.id === alertId ? { ...alert, acknowledged: true } : alert
       )
     )
+
+    // If using live data, update in database
+    if (dataSource === "live" && !alertId.startsWith("sample-")) {
+      try {
+        await fetch('/api/alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alertId, acknowledge: true }),
+        })
+      } catch (error) {
+        console.error('Failed to acknowledge alert:', error)
+        // Could revert optimistic update here if needed
+      }
+    }
   }
 
   // Handle acknowledge all
-  const handleAcknowledgeAll = () => {
+  const handleAcknowledgeAll = async () => {
+    // Optimistic update
     setAlerts((prev) => prev.map((alert) => ({ ...alert, acknowledged: true })))
+
+    // If using live data, update in database
+    if (dataSource === "live") {
+      try {
+        await fetch('/api/alerts', { method: 'PATCH' })
+      } catch (error) {
+        console.error('Failed to acknowledge all alerts:', error)
+      }
+    }
   }
 
   // Count stats
@@ -245,12 +277,33 @@ export default function AuctionAlertsPage() {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Bell className="h-6 w-6 text-primary" />
-              Auction Alerts
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                <Bell className="h-6 w-6 text-primary" />
+                Auction Alerts
+              </h1>
+              {/* Data Source Badge */}
+              {!isLoading && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full",
+                    dataSource === "live"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700"
+                  )}
+                >
+                  <Database className="h-3 w-3" />
+                  {dataSource === "live" ? "Live Data" : "Sample Data"}
+                </span>
+              )}
+            </div>
             <p className="text-slate-600 mt-1">
               Stay updated on auction deadlines and important notifications
+              {dataSource === "sample" && (
+                <span className="text-amber-600 text-sm ml-2">
+                  (Showing sample data - no real alerts in database)
+                </span>
+              )}
             </p>
           </div>
 
@@ -323,7 +376,12 @@ export default function AuctionAlertsPage() {
 
         {/* Alerts List */}
         <div className="space-y-4">
-          {sortedAlerts.length > 0 ? (
+          {isLoading ? (
+            <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
+              <Loader2 className="h-8 w-8 text-primary mx-auto mb-4 animate-spin" />
+              <p className="text-slate-500">Loading alerts...</p>
+            </div>
+          ) : sortedAlerts.length > 0 ? (
             sortedAlerts.map((alert) => {
               const config = ALERT_CONFIG[alert.type as AlertType]
               return (
@@ -381,6 +439,7 @@ export default function AuctionAlertsPage() {
                             <Calendar className="h-3.5 w-3.5" />
                             {alert.county}, {alert.state}
                           </div>
+                          {alert.auctionDate && (
                           <div>
                             Auction:{" "}
                             {new Date(alert.auctionDate).toLocaleDateString("en-US", {
@@ -388,6 +447,7 @@ export default function AuctionAlertsPage() {
                               day: "numeric",
                             })}
                           </div>
+                        )}
                         </div>
 
                         <div className="flex items-center gap-3 mt-3">
