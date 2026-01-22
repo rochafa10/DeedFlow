@@ -250,9 +250,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Regrid credentials from environment or defaults
-const REGRID_EMAIL = process.env.REGRID_EMAIL || "lulu.lopes.sousa@gmail.com"
-const REGRID_PASSWORD = process.env.REGRID_PASSWORD || "Bia@2020"
+// Regrid credentials from environment variables
+const REGRID_EMAIL = process.env.REGRID_EMAIL
+const REGRID_PASSWORD = process.env.REGRID_PASSWORD
 
 /**
  * Logs into Regrid.com using Playwright
@@ -261,6 +261,12 @@ const REGRID_PASSWORD = process.env.REGRID_PASSWORD || "Bia@2020"
  */
 async function loginToRegrid(page: any): Promise<boolean> {
   try {
+    // Validate credentials are set
+    if (!REGRID_EMAIL || !REGRID_PASSWORD) {
+      console.error("[Screenshot API] Regrid credentials not configured in environment variables")
+      return false
+    }
+
     console.log("[Screenshot API] Attempting Regrid login...")
 
     // Navigate to Regrid main app page
