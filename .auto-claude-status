@@ -3,7 +3,7 @@
   "spec": "001-add-csv-json-export-for-property-reports",
   "state": "building",
   "subtasks": {
-    "completed": 1,
+    "completed": 2,
     "total": 5,
     "in_progress": 1,
     "failed": 0
@@ -18,8 +18,8 @@
     "max": 1
   },
   "session": {
-    "number": 3,
-    "started_at": "2026-01-21T23:57:21.230073"
+    "number": 1,
+    "started_at": "2026-01-22T02:00:50.895401"
   },
-  "last_update": "2026-01-22T00:08:38.820942"
+  "last_update": "2026-01-22T02:00:50.967966"
 }
