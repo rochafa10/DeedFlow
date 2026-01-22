@@ -25,7 +25,19 @@ import { createServerClient } from "@/lib/supabase/client"
 export async function POST(request: NextRequest) {
   // Simple API key validation for n8n workflow calls
   const authHeader = request.headers.get("x-api-key")
-  const expectedKey = process.env.INTERNAL_API_KEY || "tdf-internal-scraper-key"
+  const expectedKey = process.env.INTERNAL_API_KEY
+
+  // Validate that INTERNAL_API_KEY is configured
+  if (!expectedKey) {
+    console.error("[Screenshot API] INTERNAL_API_KEY environment variable is not set")
+    return NextResponse.json(
+      {
+        error: "Server configuration error",
+        message: "Missing required environment variable: INTERNAL_API_KEY. Please configure it in .env.local (see .env.example for template)"
+      },
+      { status: 500 }
+    )
+  }
 
   if (authHeader !== expectedKey) {
     // Allow requests from n8n or the app itself
@@ -250,9 +262,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Regrid credentials from environment or defaults
-const REGRID_EMAIL = process.env.REGRID_EMAIL || "lulu.lopes.sousa@gmail.com"
-const REGRID_PASSWORD = process.env.REGRID_PASSWORD || "Bia@2020"
+// Regrid credentials from environment variables
+const REGRID_EMAIL = process.env.REGRID_EMAIL
+const REGRID_PASSWORD = process.env.REGRID_PASSWORD
 
 /**
  * Logs into Regrid.com using Playwright
@@ -261,6 +273,12 @@ const REGRID_PASSWORD = process.env.REGRID_PASSWORD || "Bia@2020"
  */
 async function loginToRegrid(page: any): Promise<boolean> {
   try {
+    // Validate credentials are set
+    if (!REGRID_EMAIL || !REGRID_PASSWORD) {
+      console.error("[Screenshot API] Regrid credentials not configured in environment variables")
+      return false
+    }
+
     console.log("[Screenshot API] Attempting Regrid login...")
 
     // Navigate to Regrid main app page
