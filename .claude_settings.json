@@ -1,0 +1,39 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Write(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Edit(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Glob(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Grep(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Read(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks\\.auto-claude\\specs\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Write(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks\\.auto-claude\\specs\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Edit(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude\\worktrees\\tasks\\012-fix-weak-api-authentication-with-spoofable-checks\\.auto-claude\\specs\\012-fix-weak-api-authentication-with-spoofable-checks/**)",
+      "Read(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude/**)",
+      "Write(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude/**)",
+      "Edit(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude/**)",
+      "Glob(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude/**)",
+      "Grep(C:\\Users\\fs_ro\\Documents\\TAX DEED FLOW\\.auto-claude/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}

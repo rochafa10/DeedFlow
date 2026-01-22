@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
-import { validateApiAuth, unauthorizedResponse } from "@/lib/auth/api-auth"
+import { validateInternalApiAuth } from "@/lib/auth/internal-api-auth"
 
 /**
  * POST /api/scrape/screenshot
@@ -25,10 +25,13 @@ import { validateApiAuth, unauthorizedResponse } from "@/lib/auth/api-auth"
  */
 export async function POST(request: NextRequest) {
   // Validate internal API authentication
-  const authResult = await validateApiAuth(request)
+  const authResult = await validateInternalApiAuth(request)
 
-  if (!authResult.authenticated) {
-    return unauthorizedResponse(authResult.error)
+  if (!authResult.valid) {
+    return NextResponse.json(
+      { error: "Unauthorized", message: authResult.error || "Authentication required" },
+      { status: 401 }
+    )
   }
 
   try {
