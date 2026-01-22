@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
+import { validateInternalApiAuth } from "@/lib/auth/internal-api-auth"
 
 /**
  * POST /api/scrape/regrid
@@ -18,27 +19,14 @@ import { createServerClient } from "@/lib/supabase/client"
  * }
  */
 export async function POST(request: NextRequest) {
-  // Simple API key validation for n8n workflow calls
-  const authHeader = request.headers.get("x-api-key")
-  const expectedKey = process.env.INTERNAL_API_KEY || "tdf-internal-scraper-key"
+  // Validate internal API authentication
+  const authResult = await validateInternalApiAuth(request)
 
-  if (authHeader !== expectedKey) {
-    // Allow requests from n8n or the app itself
-    const origin = request.headers.get("origin") || ""
-    const referer = request.headers.get("referer") || ""
-    const isInternal = origin.includes("n8n.lfb-investments.com") ||
-                       referer.includes("n8n.lfb-investments.com") ||
-                       origin.includes("localhost") || // Allow app requests
-                       origin.includes("127.0.0.1") || // Allow local development
-                       origin.includes("taxdeedflow") || // Allow production app
-                       !origin // Direct API call (no browser origin)
-
-    if (!isInternal && authHeader !== expectedKey) {
-      return NextResponse.json(
-        { error: "Unauthorized", message: "Invalid API key" },
-        { status: 401 }
-      )
-    }
+  if (!authResult.valid) {
+    return NextResponse.json(
+      { error: "Unauthorized", message: authResult.error || "Authentication required" },
+      { status: 401 }
+    )
   }
 
   try {
