@@ -25,7 +25,19 @@ import { createServerClient } from "@/lib/supabase/client"
 export async function POST(request: NextRequest) {
   // Simple API key validation for n8n workflow calls
   const authHeader = request.headers.get("x-api-key")
-  const expectedKey = process.env.INTERNAL_API_KEY || "tdf-internal-scraper-key"
+  const expectedKey = process.env.INTERNAL_API_KEY
+
+  // Validate that INTERNAL_API_KEY is configured
+  if (!expectedKey) {
+    console.error("[Screenshot API] INTERNAL_API_KEY environment variable is not set")
+    return NextResponse.json(
+      {
+        error: "Server configuration error",
+        message: "Missing required environment variable: INTERNAL_API_KEY. Please configure it in .env.local (see .env.example for template)"
+      },
+      { status: 500 }
+    )
+  }
 
   if (authHeader !== expectedKey) {
     // Allow requests from n8n or the app itself
