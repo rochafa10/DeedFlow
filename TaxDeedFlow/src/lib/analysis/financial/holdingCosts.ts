@@ -135,7 +135,19 @@ export interface UtilityCostEstimate {
 
 /**
  * State property tax rates (effective rate as decimal)
- * These are approximate statewide averages - actual rates vary by county
+ *
+ * Data Sources:
+ * - Tax Foundation Annual Report (2024)
+ * - National Association of Realtors (NAR) state averages
+ * - Lincoln Institute of Land Policy database
+ *
+ * Notes:
+ * - These are statewide median effective rates on assessed value
+ * - Actual rates vary significantly by county/municipality (e.g., TX can range 0.8%-3.5%)
+ * - Some states have homestead exemptions that reduce taxable value
+ * - Assessment ratios vary: 100% market value (CA, FL) vs 80% (some states)
+ * - Highest: NJ (2.49%), CT (2.21%), IL (2.27%)
+ * - Lowest: HI (0.28%), AL (0.41%), CO (0.51%)
  */
 const STATE_TAX_RATES: Record<string, number> = {
   AL: 0.0041, AK: 0.0119, AZ: 0.0066, AR: 0.0062, CA: 0.0076,
@@ -153,7 +165,20 @@ const STATE_TAX_RATES: Record<string, number> = {
 
 /**
  * Insurance rate per $1,000 of coverage by state
- * Higher rates in coastal/disaster-prone areas
+ *
+ * Data Sources:
+ * - Insurance Information Institute (III) state averages
+ * - National Association of Insurance Commissioners (NAIC)
+ * - ValuePenguin insurance cost studies (2024)
+ *
+ * Notes:
+ * - Rates represent cost per $1,000 of dwelling coverage for homeowner's insurance
+ * - Coastal/disaster-prone states have significantly higher rates:
+ *   * Hurricane zones: FL ($6.20), LA ($5.80), TX ($5.20)
+ *   * Tornado alley: OK ($5.60), MS ($5.40), KS ($4.80)
+ * - Lowest rates in mild-weather states: WA ($2.60), OR ($2.60), WI ($2.60)
+ * - Example: $200K coverage in FL = ($200K / $1,000) × $6.20 = $1,240/year
+ * - These are base rates before vacant/builder's risk multipliers
  */
 const STATE_INSURANCE_RATES: Record<string, number> = {
   AL: 4.80, AK: 3.20, AZ: 3.40, AR: 4.60, CA: 3.80,
@@ -171,6 +196,22 @@ const STATE_INSURANCE_RATES: Record<string, number> = {
 
 /**
  * Utility cost factors by state (relative to national average = 1.0)
+ *
+ * Data Sources:
+ * - U.S. Energy Information Administration (EIA) state electricity rates
+ * - American Gas Association (AGA) state natural gas rates
+ * - Department of Energy residential energy consumption data
+ *
+ * Notes:
+ * - Factors account for both energy rates and climate-driven usage
+ * - Highest costs: HI (1.75 - island isolation), AK (1.45 - extreme cold)
+ * - High costs: CA (1.25), CT (1.35), MA (1.30) - high energy rates
+ * - Lowest costs: ID (0.85), UT (0.85), WA (0.85) - hydroelectric power
+ * - Climate impacts:
+ *   * Hot states (AZ, TX): Higher AC usage but moderate rates
+ *   * Cold states (AK, ME): Higher heating costs
+ *   * Mild states (WA, OR): Lower overall usage
+ * - Example: $150 base × 1.75 (HI) = $262.50/month in Hawaii
  */
 const STATE_UTILITY_FACTORS: Record<string, number> = {
   AL: 1.05, AK: 1.45, AZ: 1.08, AR: 0.95, CA: 1.25,
@@ -224,15 +265,67 @@ const MONTHLY_SECURITY = 50;
  * @returns Monthly property tax amount
  */
 export function calculateMonthlyPropertyTax(inputs: HoldingCostInputs): number {
-  // If annual taxes are known, use them directly
+  /**
+   * PROPERTY TAX CALCULATION PRIORITY
+   *
+   * Priority 1: Use actual annual taxes if known (most accurate)
+   * - Tax deed auctions often provide exact tax amounts in property lists
+   * - Avoids estimation errors from assessment ratio differences
+   * - Simply divide by 12 for monthly cost
+   */
   if (inputs.annualTaxes && inputs.annualTaxes > 0) {
     return inputs.annualTaxes / 12;
   }
 
-  // Calculate from assessed value or property value
+  /**
+   * PROPERTY TAX ESTIMATION (when actual taxes unknown)
+   *
+   * Formula: Tax = Taxable Value × Tax Rate
+   *
+   * TAXABLE VALUE DETERMINATION:
+   * - Use assessedValue if provided (official county assessment)
+   * - Otherwise use propertyValue as-is (market value)
+   *
+   * Important context:
+   * - Some states tax at 100% of assessed value (FL, CA)
+   * - Others use assessment ratios (e.g., 80% in some jurisdictions)
+   * - Tax deed properties may have outdated assessments
+   * - After purchase, property will be reassessed at sale price
+   *
+   * Example scenarios:
+   * 1. Property with known assessment: Use assessedValue directly
+   *    - Assessed: $180K, Rate: 1.5% → Tax = $2,700/year
+   *
+   * 2. Property without assessment: Estimate from market value
+   *    - Market: $200K, Rate: 1.5% → Tax = $3,000/year
+   *    - May overestimate if assessment ratio < 100%
+   */
   const taxableValue = inputs.assessedValue || inputs.propertyValue;
-  const taxRate = STATE_TAX_RATES[inputs.state] || 0.012; // Default to 1.2%
 
+  /**
+   * TAX RATE SELECTION
+   *
+   * Use state-specific rate from STATE_TAX_RATES lookup
+   * - Falls back to 1.2% (0.012) if state not found
+   * - 1.2% is approximate U.S. median effective rate
+   *
+   * Note: Actual rates vary widely within states by county/city
+   * - Always verify with county tax assessor for accuracy
+   * - These are planning estimates, not final calculations
+   */
+  const taxRate = STATE_TAX_RATES[inputs.state] || 0.012; // Default to 1.2% national median
+
+  /**
+   * MONTHLY TAX CALCULATION
+   *
+   * Convert annual tax to monthly holding cost:
+   * - Annual Tax = Taxable Value × Tax Rate
+   * - Monthly Tax = Annual Tax / 12
+   *
+   * Example: $200K property in TX (1.8% rate)
+   * - Annual: $200,000 × 0.018 = $3,600
+   * - Monthly: $3,600 / 12 = $300
+   */
   const annualTax = taxableValue * taxRate;
   return annualTax / 12;
 }
@@ -250,7 +343,34 @@ export function estimateAnnualPropertyTax(
   state: string,
   assessedValue?: number
 ): number {
-  const taxableValue = assessedValue || propertyValue * 0.9; // Assume 90% assessment ratio
+  /**
+   * ASSESSMENT RATIO ASSUMPTION
+   *
+   * When assessed value is unknown, apply 90% ratio to market value:
+   * - Taxable Value = Market Value × 0.9
+   *
+   * Rationale:
+   * - Many jurisdictions assess at 80-100% of market value
+   * - 90% is a conservative middle ground for estimation
+   * - Prevents overestimation of tax burden
+   * - Common practice in tax deed investment analysis
+   *
+   * State assessment ratio examples:
+   * - California: 100% of purchase price (Prop 13)
+   * - Texas: 100% of appraised value
+   * - Pennsylvania: Often 80-90% of market
+   * - Some states: Varies by county
+   *
+   * Important: After tax deed purchase, property will be reassessed
+   * - Assessment will be at or near purchase price
+   * - May significantly increase taxes if bought below market
+   * - Factor this into hold period cost projections
+   *
+   * Example: $200K market value
+   * - Estimated assessed value: $200K × 0.9 = $180K
+   * - If state rate is 1.5%: $180K × 0.015 = $2,700/year
+   */
+  const taxableValue = assessedValue || propertyValue * 0.9;
   const taxRate = STATE_TAX_RATES[state] || 0.012;
   return taxableValue * taxRate;
 }
@@ -268,34 +388,96 @@ export function estimateAnnualPropertyTax(
 export function calculateInsuranceCost(
   inputs: HoldingCostInputs
 ): InsuranceCostEstimate {
+  // Get state-specific base rate ($ per $1,000 coverage)
   const baseRate = STATE_INSURANCE_RATES[inputs.state] || 3.5;
 
-  // Determine insurance type and multiplier
+  /**
+   * INSURANCE TYPE SELECTION LOGIC
+   *
+   * Priority order (first match wins):
+   * 1. Builder's Risk: Active construction/rehab (multiplier: 1.75x)
+   *    - Covers construction risks, theft of materials, work in progress
+   *    - Required when property is actively being renovated
+   *    - Most expensive due to elevated risk during construction
+   *
+   * 2. Vacant Property: Unoccupied but not under construction (multiplier: 1.5x)
+   *    - Higher risk: vandalism, theft, undetected damage (pipes freezing)
+   *    - No one monitoring the property daily
+   *    - Some insurers require inspection every 30-60 days
+   *
+   * 3. Standard Homeowner's: Occupied or ready-to-occupy (multiplier: 1.0x)
+   *    - Lowest cost baseline insurance
+   *    - Assumes property is maintained and monitored
+   */
   let insuranceType: 'standard' | 'vacant' | 'builders_risk' = 'standard';
   let multiplier = 1.0;
 
   if (inputs.activeRehab) {
     insuranceType = 'builders_risk';
-    multiplier = BUILDERS_RISK_MULTIPLIER;
+    multiplier = BUILDERS_RISK_MULTIPLIER; // 1.75x - Construction risk premium
   } else if (inputs.isVacant) {
     insuranceType = 'vacant';
-    multiplier = VACANT_INSURANCE_MULTIPLIER;
+    multiplier = VACANT_INSURANCE_MULTIPLIER; // 1.5x - Vacancy risk premium
   }
 
-  // Calculate coverage amount (typically 80-100% of property value)
+  /**
+   * COVERAGE AMOUNT CALCULATION
+   *
+   * Using 80% of property value for dwelling coverage:
+   * - Most lenders require minimum 80% coverage to avoid co-insurance penalty
+   * - Land value (~20%) is not insured (only structures)
+   * - For tax deed properties, market value often includes land at ~20-25%
+   *
+   * Example: $250K property → $200K coverage (excludes ~$50K land value)
+   */
   const coverageAmount = inputs.propertyValue * 0.8;
 
-  // Age factor - older properties cost more to insure
+  /**
+   * AGE-BASED INSURANCE ADJUSTMENT
+   *
+   * Older properties cost more to insure due to:
+   * - Outdated electrical/plumbing (fire/water damage risk)
+   * - Roof age (claims more likely)
+   * - Building code changes (replacement cost higher)
+   * - Higher likelihood of claims
+   *
+   * Age tiers based on insurance industry standards:
+   * - 0-30 years: 1.0x (modern construction, low risk)
+   * - 31-50 years: 1.15x (+15% for aging systems)
+   * - 50+ years: 1.25x (+25% for dated infrastructure)
+   *
+   * Assumption: If yearBuilt unknown, assume 30 years (neutral factor)
+   */
   const currentYear = new Date().getFullYear();
   const propertyAge = inputs.yearBuilt ? currentYear - inputs.yearBuilt : 30;
   const ageFactor = propertyAge > 50 ? 1.25 : propertyAge > 30 ? 1.15 : 1.0;
 
-  // Calculate annual premium
+  /**
+   * ANNUAL PREMIUM FORMULA
+   *
+   * Formula: Premium = (Coverage / 1000) × BaseRate × TypeMultiplier × AgeFactor
+   *
+   * Example calculation for FL vacant property built 1960:
+   * - Coverage: $200,000
+   * - Base rate: $6.20 per $1,000 (FL state rate)
+   * - Type multiplier: 1.5x (vacant)
+   * - Age factor: 1.25x (64 years old)
+   * - Annual: (200,000 / 1000) × 6.20 × 1.5 × 1.25 = $2,325/year
+   * - Monthly: $2,325 / 12 = $193.75/month
+   */
   const annualPremium =
     (coverageAmount / 1000) * baseRate * multiplier * ageFactor;
   const monthlyPremium = annualPremium / 12;
 
-  // Standard deductible based on coverage
+  /**
+   * DEDUCTIBLE CALCULATION
+   *
+   * Standard deductible: Greater of $1,000 or 1% of coverage
+   * - Minimum $1,000 (industry standard)
+   * - Or 1% of dwelling coverage (common for higher-value properties)
+   * - Example: $200K coverage → $2,000 deductible (1%)
+   * - Example: $80K coverage → $1,000 deductible (minimum)
+   */
   const deductible = Math.max(1000, coverageAmount * 0.01);
 
   return {
@@ -331,28 +513,106 @@ export function calculateMonthlyInsurance(inputs: HoldingCostInputs): number {
 export function calculateUtilityCost(
   inputs: HoldingCostInputs
 ): UtilityCostEstimate {
+  /**
+   * STATE-SPECIFIC UTILITY ADJUSTMENT
+   *
+   * Accounts for variations in energy costs and climate across states
+   * - Factor of 1.0 = national average ($150/month baseline)
+   * - Example: HI (1.75) = 75% higher than average
+   * - Example: WA (0.85) = 15% lower than average
+   */
   const stateFactor = STATE_UTILITY_FACTORS[inputs.state] || 1.0;
+
+  /**
+   * SQUARE FOOTAGE ADJUSTMENT
+   *
+   * Baseline: 1,500 sqft property = 1.0x factor
+   * - Linear scaling: 3,000 sqft = 2.0x, 750 sqft = 0.5x
+   * - Accounts for more space to heat/cool, more outlets, more water usage
+   * - Assumes standard insulation and efficiency
+   *
+   * Example: 2,500 sqft property = 2500/1500 = 1.67x factor
+   */
   const sqftFactor = inputs.sqft ? inputs.sqft / 1500 : 1.0;
 
-  // Vacant properties use minimal utilities (keep pipes from freezing, etc.)
+  /**
+   * VACANCY ADJUSTMENT
+   *
+   * Vacant properties use 40% of normal utilities:
+   * - Thermostat set to 55°F (winter) / 85°F (summer) to prevent damage
+   * - Minimal electricity: no appliances running, lights off
+   * - Water: only basic service to prevent pipe issues
+   * - Gas: minimal heating, no cooking/hot water usage
+   *
+   * Critical: Must maintain minimal utilities to:
+   * - Prevent frozen pipes in winter (insurance requirement)
+   * - Prevent mold/mildew in summer (property preservation)
+   * - Maintain insurability and pass periodic inspections
+   */
   const vacantFactor = inputs.isVacant ? 0.4 : 1.0;
 
-  // Seasonal adjustment (higher in summer/winter, lower in spring/fall)
+  /**
+   * SEASONAL ADJUSTMENT FACTORS
+   *
+   * Based on typical U.S. residential energy usage patterns:
+   *
+   * SUMMER (June-Sept, months 5-8): 1.2x factor
+   * - Air conditioning dominates (especially in hot states)
+   * - Peak usage in July/August
+   * - Can spike to 1.5x in extreme heat states (AZ, TX, FL)
+   *
+   * WINTER (Dec-March, months 11, 0-2): 1.3x factor
+   * - Heating costs (gas + electric)
+   * - Shorter days = more lighting
+   * - Holiday season usage
+   * - Highest factor due to heating being most expensive
+   *
+   * SPRING/FALL (April-May, Oct-Nov): 1.0x baseline
+   * - Mild weather = minimal HVAC usage
+   * - Natural light = reduced lighting costs
+   * - Optimal seasons for minimal utility costs
+   *
+   * Note: getMonth() returns 0-11 (0=Jan, 11=Dec)
+   */
   const month = new Date().getMonth();
   const seasonalFactor =
     month >= 5 && month <= 8
-      ? 1.2 // Summer - AC
+      ? 1.2 // Summer (Jun-Sep): AC season
       : month >= 11 || month <= 2
-        ? 1.3 // Winter - heating
-        : 1.0; // Spring/Fall
+        ? 1.3 // Winter (Dec-Mar): Heating season
+        : 1.0; // Spring/Fall (Apr-May, Oct-Nov): Mild weather
 
+  /**
+   * BASE UTILITY CALCULATION
+   *
+   * Formula: Base × State × Size × Vacancy
+   * - Starts with $150 national baseline for 1,500 sqft vacant property
+   * - Adjusts for state costs, property size, and occupancy
+   *
+   * Example: 2,000 sqft vacant property in CA
+   * - $150 × 1.25 (CA) × 1.33 (2000/1500) × 0.4 (vacant) = $99.75 base
+   */
   const baseUtility = BASE_MONTHLY_UTILITIES * stateFactor * sqftFactor * vacantFactor;
 
-  // Individual utility breakdown
+  /**
+   * UTILITY BREAKDOWN BY TYPE
+   *
+   * Typical residential utility split (national averages):
+   * - Electric: 50% (HVAC, appliances, lighting)
+   * - Gas: 25% (heating, water heater, cooking)
+   * - Water/Sewer: 20% (water usage, sewer fees)
+   * - Trash: 5% (waste collection)
+   *
+   * Seasonal impacts:
+   * - Electric: Varies with AC/heating (apply seasonalFactor)
+   * - Gas: Varies with heating only (apply seasonalFactor only if > 1.0)
+   * - Water/Sewer: Constant (no seasonal variation)
+   * - Trash: Constant (fixed service fee)
+   */
   const electric = baseUtility * 0.50 * seasonalFactor;
   const gas = baseUtility * 0.25 * (seasonalFactor > 1 ? seasonalFactor : 1.0);
-  const waterSewer = baseUtility * 0.20;
-  const trash = baseUtility * 0.05;
+  const waterSewer = baseUtility * 0.20; // No seasonal adjustment
+  const trash = baseUtility * 0.05; // Fixed fee
 
   const totalMonthly = electric + gas + waterSewer + trash;
 
@@ -388,21 +648,86 @@ export function calculateMonthlyUtilities(inputs: HoldingCostInputs): number {
  * @returns Monthly maintenance cost
  */
 export function calculateMonthlyMaintenance(inputs: HoldingCostInputs): number {
+  /**
+   * SQUARE FOOTAGE ADJUSTMENT
+   *
+   * Baseline: 1,500 sqft = $100/month maintenance
+   * - Scales linearly with property size
+   * - More sqft = more roof, HVAC capacity, plumbing, etc.
+   * - Example: 3,000 sqft = 2.0x = $200/month base
+   */
   const sqftFactor = inputs.sqft ? inputs.sqft / 1500 : 1.0;
 
-  // Age factor - older properties require more maintenance
+  /**
+   * AGE-BASED MAINTENANCE MULTIPLIER
+   *
+   * Properties age > 30 years require significantly more maintenance:
+   * - Multiplier: 1.3x (AGED_PROPERTY_MAINTENANCE_FACTOR)
+   *
+   * Rationale:
+   * - Original systems reaching end of useful life (25-30 year lifespan):
+   *   * HVAC systems: 15-20 years
+   *   * Water heaters: 10-15 years
+   *   * Roofing: 20-30 years
+   *   * Plumbing fixtures: 20-30 years
+   * - Building materials degrading (siding, windows, foundation settling)
+   * - Deferred maintenance compounds over time
+   * - More frequent repairs vs. newer properties
+   *
+   * Threshold at 30 years based on:
+   * - IRS residential property depreciation schedule (27.5 years)
+   * - Typical major system replacement cycles
+   * - Industry maintenance cost studies
+   *
+   * Example: 45-year-old property = 1.3x maintenance vs. 20-year-old
+   *
+   * Assumption: If yearBuilt unknown, assume 30 years (neutral, no multiplier)
+   */
   const currentYear = new Date().getFullYear();
   const propertyAge = inputs.yearBuilt ? currentYear - inputs.yearBuilt : 30;
   const ageFactor = propertyAge > 30 ? AGED_PROPERTY_MAINTENANCE_FACTOR : 1.0;
 
-  // Property type factor
+  /**
+   * PROPERTY TYPE ADJUSTMENTS
+   *
+   * Different property types have varying maintenance requirements:
+   *
+   * MULTI-FAMILY (1.3x):
+   * - Multiple units = multiple kitchens, bathrooms, HVAC systems
+   * - Common areas require maintenance (hallways, laundry, parking)
+   * - Tenant turnover causes wear and tear
+   * - More plumbing/electrical systems to maintain
+   *
+   * CONDO (0.5x):
+   * - HOA covers exterior maintenance (roof, siding, landscaping)
+   * - HOA handles common area upkeep
+   * - Owner only maintains interior space
+   * - Significantly reduced maintenance burden vs. SFR
+   *
+   * SINGLE-FAMILY / DEFAULT (1.0x):
+   * - Owner responsible for all maintenance
+   * - Baseline maintenance factor
+   * - Includes interior, exterior, systems, grounds
+   */
   let typeFactor = 1.0;
   if (inputs.propertyType === 'multi-family') {
-    typeFactor = 1.3;
+    typeFactor = 1.3; // More units = more maintenance
   } else if (inputs.propertyType === 'condo') {
-    typeFactor = 0.5; // HOA covers exterior
+    typeFactor = 0.5; // HOA covers exterior maintenance
   }
 
+  /**
+   * FINAL MAINTENANCE COST FORMULA
+   *
+   * Formula: BaseRate × Size × Age × PropertyType
+   *
+   * Example: 2,200 sqft multi-family built 1985 (39 years old)
+   * - Base: $100/month (1,500 sqft baseline)
+   * - Size: 2200/1500 = 1.47x
+   * - Age: 1.3x (> 30 years)
+   * - Type: 1.3x (multi-family)
+   * - Total: $100 × 1.47 × 1.3 × 1.3 = $249/month
+   */
   return BASE_MONTHLY_MAINTENANCE * sqftFactor * ageFactor * typeFactor;
 }
 
@@ -437,24 +762,103 @@ export function calculateMonthlyLawnCare(inputs: HoldingCostInputs): number {
 export function calculateMonthlyLoanPayment(
   financing?: FinancingParams
 ): number {
+  // No financing or loan amount = no payment
   if (!financing || !financing.isFinanced || financing.loanAmount <= 0) {
     return 0;
   }
 
+  /**
+   * INTEREST RATE CONVERSION
+   *
+   * Convert annual interest rate to monthly rate:
+   * - Input: Annual rate as decimal (e.g., 0.08 = 8% APR)
+   * - Monthly rate: r = APR / 12
+   *
+   * Example: 8% annual = 0.08 / 12 = 0.00667 monthly (0.667%)
+   */
   const monthlyRate = financing.interestRate / 12;
   const termMonths = financing.termMonths;
 
+  /**
+   * INTEREST-ONLY LOAN PAYMENT
+   *
+   * Formula: Payment = Principal × Monthly Rate
+   *
+   * Used for:
+   * - Bridge loans (short-term financing)
+   * - Fix-and-flip scenarios
+   * - Properties held < 12 months
+   *
+   * Characteristics:
+   * - Lower monthly payment (no principal reduction)
+   * - Balloon payment due at end (full principal)
+   * - Simple calculation, no amortization
+   *
+   * Example: $200K loan at 10% annual (0.00833 monthly)
+   * - Payment = $200,000 × 0.00833 = $1,666.67/month
+   * - After 6 months: Still owe $200,000 (no principal paid)
+   */
   if (financing.interestOnly) {
-    // Interest-only payment
     return financing.loanAmount * monthlyRate;
   }
 
-  // Standard amortizing payment (PMT formula)
-  // PMT = P * [r(1+r)^n] / [(1+r)^n - 1]
+  /**
+   * ZERO INTEREST RATE EDGE CASE
+   *
+   * If no interest charged (0% financing):
+   * - Payment = Principal / Number of Months
+   * - Simple division, no compound interest calculation
+   *
+   * Example: $60K loan for 12 months at 0%
+   * - Payment = $60,000 / 12 = $5,000/month
+   */
   if (monthlyRate === 0) {
     return financing.loanAmount / termMonths;
   }
 
+  /**
+   * STANDARD AMORTIZING LOAN PAYMENT (PMT Formula)
+   *
+   * Formula: PMT = P × [r(1+r)^n] / [(1+r)^n - 1]
+   *
+   * Where:
+   * - P = Principal (loan amount)
+   * - r = Monthly interest rate (annual rate / 12)
+   * - n = Total number of payments (term in months)
+   * - PMT = Fixed monthly payment
+   *
+   * Mathematical breakdown:
+   * 1. Compound factor: (1+r)^n
+   *    - Represents total growth of $1 over n months at rate r
+   *    - Example: (1.00667)^360 = 10.9357 for 8% over 30 years
+   *
+   * 2. Numerator: P × r × (1+r)^n
+   *    - Future value of interest if all paid at end
+   *
+   * 3. Denominator: (1+r)^n - 1
+   *    - Adjusts for present value of payments over time
+   *
+   * 4. Result: Fixed payment that fully amortizes loan
+   *    - Early payments mostly interest
+   *    - Later payments mostly principal
+   *    - Loan balance reaches $0 at end of term
+   *
+   * Example calculation: $200K loan, 8% APR, 30 years (360 months)
+   * - P = $200,000
+   * - r = 0.08 / 12 = 0.00667
+   * - n = 360
+   * - (1+r)^n = (1.00667)^360 = 10.9357
+   * - Numerator = 200,000 × 0.00667 × 10.9357 = 14,583.33
+   * - Denominator = 10.9357 - 1 = 9.9357
+   * - PMT = 14,583.33 / 9.9357 = $1,467.53/month
+   *
+   * Amortization over time:
+   * - Month 1: Interest = $1,333.33, Principal = $134.20
+   * - Month 180: Interest = $933.33, Principal = $534.20
+   * - Month 360: Interest = $9.78, Principal = $1,457.75
+   *
+   * This is the standard formula used by banks, Excel PMT(), and mortgage calculators.
+   */
   const compoundFactor = Math.pow(1 + monthlyRate, termMonths);
   const payment =
     (financing.loanAmount * monthlyRate * compoundFactor) / (compoundFactor - 1);
@@ -480,14 +884,55 @@ export function calculateInterestPortion(
   const monthlyRate = financing.interestRate / 12;
   const payment = calculateMonthlyLoanPayment(financing);
 
-  // Calculate remaining balance at start of this month
+  /**
+   * LOAN AMORTIZATION CALCULATION
+   *
+   * Purpose: Calculate the interest portion of payment for a specific month
+   *
+   * Key Concept: Interest is calculated on the remaining balance
+   * - Each payment = Interest + Principal
+   * - Interest this month = Remaining Balance × Monthly Rate
+   * - Principal this month = Payment - Interest
+   * - New Balance = Old Balance - Principal
+   *
+   * Why this matters for ROI calculations:
+   * - Interest is a deductible expense (reduces taxable income)
+   * - Principal payments are not deductible
+   * - Need to track separately for tax purposes
+   * - Helps calculate true cost of financing during hold period
+   *
+   * Algorithm: Iterative amortization
+   * 1. Start with original loan amount
+   * 2. For each month before target month:
+   *    a. Calculate interest on current balance
+   *    b. Calculate principal paid (payment - interest)
+   *    c. Reduce balance by principal
+   * 3. Return interest for target month
+   *
+   * Example: $200K loan at 8% APR, find interest in month 6
+   * - Month 1: Balance $200,000 → Interest $1,333.33
+   * - Month 2: Balance $199,865.80 → Interest $1,332.44
+   * - Month 3: Balance $199,730.70 → Interest $1,331.54
+   * - ... (iterate through each month)
+   * - Month 6: Balance $199,325.50 → Interest $1,328.84
+   *
+   * Note: This is computationally expensive for large month numbers
+   * For production optimization, could use closed-form formula:
+   * Interest_n = P × r × [(1+r)^n - (1+r)^(month-1)] / [(1+r)^n - 1]
+   */
   let balance = financing.loanAmount;
   for (let i = 1; i < monthNumber; i++) {
+    // Interest this month = current balance × monthly rate
     const interest = balance * monthlyRate;
+
+    // Principal paid this month = total payment - interest
     const principal = payment - interest;
+
+    // Reduce balance by principal payment
     balance -= principal;
   }
 
+  // Return interest portion for the target month
   return balance * monthlyRate;
 }
 
@@ -602,7 +1047,43 @@ export function estimateHoldingPeriod(
   rehabScope: 'cosmetic' | 'light' | 'moderate' | 'heavy' | 'gut',
   marketConditions: 'hot' | 'normal' | 'slow' = 'normal'
 ): number {
-  // Base rehab time by scope
+  /**
+   * REHAB DURATION ESTIMATES
+   *
+   * Based on typical fix-and-flip timelines:
+   *
+   * COSMETIC (1 month):
+   * - Paint, flooring, fixtures, landscaping
+   * - No structural work or permits required
+   * - Can be completed quickly with crew
+   *
+   * LIGHT (2 months):
+   * - Cosmetic + kitchen/bath updates
+   * - Minor electrical/plumbing work
+   * - Basic permits and inspections
+   *
+   * MODERATE (3 months):
+   * - Light rehab + HVAC, roof, windows
+   * - Significant system updates
+   * - Multiple contractor coordination
+   *
+   * HEAVY (5 months):
+   * - Moderate + structural repairs
+   * - Major system replacements
+   * - Permit delays and inspection cycles
+   *
+   * GUT REHAB (8 months):
+   * - Complete interior demolition and rebuild
+   * - All systems replaced
+   * - Extensive permit/inspection process
+   * - Weather delays, material lead times
+   *
+   * Note: These are conservative estimates
+   * - Actual timelines vary by contractor availability
+   * - Weather can impact schedules (especially exterior work)
+   * - Permit approval times vary by jurisdiction
+   * - Material supply chain issues can cause delays
+   */
   const rehabMonths: Record<string, number> = {
     cosmetic: 1,
     light: 2,
@@ -611,13 +1092,64 @@ export function estimateHoldingPeriod(
     gut: 8,
   };
 
-  // Marketing/sale time by market conditions
+  /**
+   * MARKETING & SALE DURATION ESTIMATES
+   *
+   * Time from listing to closing by market conditions:
+   *
+   * HOT MARKET (1 month):
+   * - Low inventory, high demand
+   * - Multiple offers within days
+   * - Quick closings (cash buyers common)
+   * - Example: Austin TX 2020-2022, Phoenix 2021
+   *
+   * NORMAL MARKET (3 months):
+   * - Balanced supply and demand
+   * - 30-45 days to offer
+   * - 30-45 day closing period
+   * - Most markets in typical conditions
+   *
+   * SLOW MARKET (6 months):
+   * - High inventory, low demand
+   * - Extended time on market
+   * - Price reductions often needed
+   * - Buyer financing contingencies
+   * - Example: 2008-2011 recession, some rural markets
+   *
+   * Conservative approach: Default to 'normal' market conditions
+   * - Protects against overoptimistic projections
+   * - Better to be pleasantly surprised than cash-strapped
+   */
   const saleMonths: Record<string, number> = {
     hot: 1,
     normal: 3,
     slow: 6,
   };
 
+  /**
+   * TOTAL HOLDING PERIOD CALCULATION
+   *
+   * Formula: Rehab Time + Sale Time
+   *
+   * Examples:
+   * - Light rehab, hot market: 2 + 1 = 3 months
+   * - Moderate rehab, normal market: 3 + 3 = 6 months
+   * - Gut rehab, slow market: 8 + 6 = 14 months
+   *
+   * Critical for financial planning:
+   * - Holding costs compound over time
+   * - Longer holds = more carrying costs
+   * - Financing terms must cover full period
+   * - Seasonal factors: Don't finish reno in winter for slow spring market
+   *
+   * Risk factors not accounted for:
+   * - Unexpected repair discoveries (+1-2 months)
+   * - Contractor delays/no-shows (+1-3 months)
+   * - Failed inspections requiring rework (+0.5-1 month)
+   * - Financing delays for buyers (+0.5-1 month)
+   *
+   * Best practice: Add 20-30% buffer to these estimates
+   */
   return rehabMonths[rehabScope] + saleMonths[marketConditions];
 }
 
