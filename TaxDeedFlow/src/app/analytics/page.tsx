@@ -22,6 +22,7 @@ import { BidRatioChart } from "@/components/analytics/BidRatioChart"
 import { CountyTrendsChart } from "@/components/analytics/CountyTrendsChart"
 import { PricePredictionCard } from "@/components/analytics/PricePredictionCard"
 import { cn } from "@/lib/utils"
+import type { ARVAnalysis } from "@/lib/analysis/financial/types"
 
 // ============================================
 // Type Definitions
@@ -65,15 +66,6 @@ interface CountyTrendData {
   avgSalePrice: number | null
   totalVolume: number | null
   avgBidRatio: number | null
-}
-
-interface ARVAnalysis {
-  estimatedValue: number
-  lowEstimate: number
-  highEstimate: number
-  confidence: "high" | "medium" | "low"
-  comparablesCount: number
-  pricePerSqft: number | null
 }
 
 // ============================================
@@ -197,11 +189,11 @@ export default function AnalyticsPage() {
 
         // Set sample prediction (mock data for now)
         setSamplePrediction({
-          estimatedValue: 45000,
+          estimatedARV: 45000,
           lowEstimate: 38000,
           highEstimate: 52000,
           confidence: "medium",
-          comparablesCount: 12,
+          comparablesUsed: 12,
           pricePerSqft: 85,
         })
       } catch (error) {
@@ -452,7 +444,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Auction History Chart */}
               <AuctionHistoryChart
-                data={auctionHistory}
+                history={auctionHistory}
                 countyName={selectedCountyDetails?.county_name || ""}
                 showOpeningBid={true}
                 showAverageLine={true}
@@ -460,7 +452,7 @@ export default function AnalyticsPage() {
 
               {/* Bid Ratio Chart */}
               <BidRatioChart
-                data={auctionHistory}
+                history={auctionHistory}
                 countyName={selectedCountyDetails?.county_name || ""}
               />
             </div>
@@ -470,8 +462,8 @@ export default function AnalyticsPage() {
               <CountyTrendsChart
                 data={countyTrends}
                 metric="avgSalePrice"
-                groupBy="month"
-                selectedCounties={selectedCounty ? [selectedCounty] : []}
+                groupByQuarter={false}
+                countyFilter={selectedCounty ? [selectedCounty] : []}
                 showAverageLine={true}
               />
             )}
@@ -486,7 +478,7 @@ export default function AnalyticsPage() {
                 <PricePredictionCard
                   arvAnalysis={samplePrediction}
                   currentPrice={35000}
-                  historicalCount={samplePrediction.comparablesCount}
+                  historicalCount={samplePrediction.comparablesUsed}
                 />
               </div>
             )}

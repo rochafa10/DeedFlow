@@ -68,11 +68,12 @@ export async function GET(request: Request) {
 
     // Extract property details for prediction
     const countyId = propertyData.county_id
-    const propertyType = propertyData.regrid_data?.property_type || "residential"
+    const regridRecord = propertyData.regrid_data?.[0]
+    const propertyType = regridRecord?.property_type || "residential"
     const openingBid = propertyData.total_due || 0
-    const assessedValue = propertyData.regrid_data?.assessed_value || null
-    const lotSizeSqft = propertyData.regrid_data?.lot_size_sqft || null
-    const buildingSqft = propertyData.regrid_data?.building_sqft || null
+    const assessedValue = regridRecord?.assessed_value || null
+    const lotSizeSqft = regridRecord?.lot_size_sqft || null
+    const buildingSqft = regridRecord?.building_sqft || null
 
     // Get price prediction
     const { data: predictionData, error: predictionError } = await supabase.rpc(
@@ -146,12 +147,12 @@ export async function GET(request: Request) {
           openingBid,
           assessedValue,
         },
-        county: propertyData.counties
+        county: propertyData.counties?.[0]
           ? {
-              id: propertyData.counties.id,
-              name: propertyData.counties.county_name,
-              state: propertyData.counties.state_code,
-              stateName: propertyData.counties.state_name,
+              id: propertyData.counties[0].id,
+              name: propertyData.counties[0].county_name,
+              state: propertyData.counties[0].state_code,
+              stateName: propertyData.counties[0].state_name,
             }
           : null,
         prediction,
