@@ -202,6 +202,21 @@ function CompareValue({
  * - Confidence indicator
  * - Links to listings
  *
+ * Performance Optimization Note:
+ * This component does NOT require useMemo for calculations because:
+ * - All expensive calculations (avgSalePrice, suggestedArv, medianSalePrice, etc.)
+ *   are pre-computed and passed via the `analysis` prop
+ * - Inline calculations are trivial O(1) operations:
+ *   - String formatting: toFixed(), toUpperCase(), string interpolation
+ *   - Simple arithmetic in CompareValue: subtraction, comparisons, Math.abs()
+ *   - Conditional rendering logic
+ * - The .map() operations iterate over props that should trigger re-renders when changed
+ * - No reduce operations, complex array transformations, or expensive computations
+ *
+ * The component may benefit from React.memo() wrapper if parent components frequently
+ * update unrelated state, but this is an optional optimization to be added if profiling
+ * shows unnecessary re-renders.
+ *
  * @example
  * ```tsx
  * <ComparablesSection

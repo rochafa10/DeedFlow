@@ -4,6 +4,9 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { X, Send, MessageSquare, Loader2 } from "lucide-react"
 import { ChatMessage } from "./ChatMessage"
 import { SuggestedQuestions } from "./SuggestedQuestions"
+import { logger } from "@/lib/logger"
+
+const chatLogger = logger.withContext('Auction Chat')
 
 interface Message {
   id: string
@@ -177,7 +180,9 @@ export function AuctionChat({
       setMessages((prev) => [...prev, assistantMessage])
       setStreamingContent("")
     } catch (error) {
-      console.error("Chat error:", error)
+      chatLogger.error("Chat error", {
+        error: error instanceof Error ? error.message : String(error)
+      })
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: "error",

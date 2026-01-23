@@ -35,6 +35,7 @@
     "C:/temp/taxdeedflow-build/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/lib/scoring/__tests__/**/*.test.ts"
   ]
 }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/auth/api-auth"
 import { createServerClient } from "@/lib/supabase/client"
+import { logger } from "@/lib/logger"
+
+const apiLogger = logger.withContext("Property API")
 
 /**
  * GET /api/properties/[id]
@@ -50,7 +53,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      console.error("[API Property] Database error:", propertyError)
+      apiLogger.error("Database error", { error: propertyError.message })
       return NextResponse.json(
         { error: "Database error", message: propertyError.message },
         { status: 500 }
@@ -186,7 +189,7 @@ export async function GET(
       source: "database",
     })
   } catch (error) {
-    console.error("[API Property] Server error:", error)
+    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -233,7 +236,7 @@ export async function DELETE(
       .eq("id", propertyId)
 
     if (error) {
-      console.error("[API Property] Delete error:", error)
+      apiLogger.error("Delete error", { error: error.message })
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -245,7 +248,7 @@ export async function DELETE(
       message: "Property deleted successfully",
     })
   } catch (error) {
-    console.error("[API Property] Server error:", error)
+    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

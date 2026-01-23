@@ -26,6 +26,7 @@ import {
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { TooltipProps, TooltipPayloadItem } from "@/types/charts";
 
 // ============================================
 // Type Definitions
@@ -82,10 +83,10 @@ const COLORS = {
 // Custom Tooltip
 // ============================================
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: TooltipProps<WaterfallDataItem>) => {
   if (active && payload && payload.length) {
     // Find the visible bar data (not the invisible spacer)
-    const visibleData = payload.find((p: any) => p.dataKey === "visible");
+    const visibleData = payload.find((p: TooltipPayloadItem<WaterfallDataItem>) => p.dataKey === "visible");
     if (!visibleData) return null;
 
     const data = visibleData.payload;

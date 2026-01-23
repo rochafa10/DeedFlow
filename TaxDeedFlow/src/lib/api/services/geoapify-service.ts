@@ -7,6 +7,7 @@
  * API Documentation: https://www.geoapify.com/api/
  */
 
+import { logger } from '@/lib/logger';
 import { BaseApiService } from '../base-service';
 import {
   ApiConfig,
@@ -193,7 +194,9 @@ export class GeoapifyService extends BaseApiService {
     const apiKey = config?.apiKey || process.env.GEOAPIFY_API_KEY || '';
 
     if (!apiKey) {
-      console.warn('[GeoapifyService] No GEOAPIFY_API_KEY found. API calls will fail.');
+      logger.warn('No GEOAPIFY_API_KEY found. API calls will fail.', {
+        context: 'GeoapifyService'
+      });
     }
 
     const apiConfig: Partial<ApiConfig> & { baseUrl: string } = {

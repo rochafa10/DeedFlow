@@ -26,6 +26,7 @@ import {
 } from "recharts";
 import { Home, MapPin, Calendar, Info } from "lucide-react";
 import type { ComparableSale } from "@/lib/analysis/financial/types";
+import type { TooltipProps } from "@/types/charts";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +74,7 @@ const COLORS = {
 // Custom Tooltip
 // ============================================
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: TooltipProps<ChartDataPoint>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
 

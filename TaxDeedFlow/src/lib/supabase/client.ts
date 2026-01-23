@@ -1,13 +1,16 @@
 import { createClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
+
+// Create context logger for Supabase client
+const supabaseLogger = logger.withContext('Supabase Client')
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    "[Supabase] Missing environment variables. Using mock data mode.",
-    "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local"
-  )
+  supabaseLogger.warn('Missing environment variables. Using mock data mode.', {
+    message: 'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local'
+  })
 }
 
 // Create Supabase client - returns null if credentials not configured
@@ -26,7 +29,7 @@ export function createServerClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceRoleKey) {
-    console.warn("[Supabase Server] Missing service role key")
+    supabaseLogger.warn('Missing service role key')
     return null
   }
 

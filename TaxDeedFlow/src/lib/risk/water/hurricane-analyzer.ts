@@ -50,6 +50,9 @@ export const HURRICANE_RISK_STATES = {
   ] as const,
 };
 
+// Type helper for hurricane risk states
+type HurricaneRiskState = typeof HURRICANE_RISK_STATES.ALL_EXPOSED[number];
+
 // ============================================
 // Wind Zone Definitions
 // ============================================
@@ -260,7 +263,7 @@ function determineWindZone(
   const stateUpper = state.toUpperCase();
 
   // Check if state has hurricane exposure
-  if (!HURRICANE_RISK_STATES.ALL_EXPOSED.includes(stateUpper as any)) {
+  if (!isHurricaneRiskState(stateUpper)) {
     return null; // No hurricane risk
   }
 
@@ -330,7 +333,7 @@ function estimateStormSurgeZone(
   const stateUpper = state.toUpperCase();
 
   // Only coastal states have storm surge risk
-  if (!HURRICANE_RISK_STATES.ALL_EXPOSED.includes(stateUpper as any)) {
+  if (!isHurricaneRiskState(stateUpper)) {
     return null;
   }
 
@@ -630,6 +633,6 @@ export function createUnknownHurricaneRisk(
  * @param state - Two-letter state code
  * @returns true if the state may experience hurricanes
  */
-export function isHurricaneRiskState(state: string): boolean {
-  return HURRICANE_RISK_STATES.ALL_EXPOSED.includes(state.toUpperCase() as any);
+export function isHurricaneRiskState(state: string): state is HurricaneRiskState {
+  return (HURRICANE_RISK_STATES.ALL_EXPOSED as readonly string[]).includes(state.toUpperCase());
 }

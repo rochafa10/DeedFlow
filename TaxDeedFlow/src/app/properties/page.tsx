@@ -37,6 +37,7 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { useProfile } from "@/contexts/ProfileContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import { formatDate, DATE_FORMAT_KEY } from "@/lib/utils"
@@ -157,6 +158,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
 function PropertiesContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { activeProfile } = useProfile()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
@@ -911,10 +913,24 @@ function PropertiesContent() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Title */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Properties</h1>
-          <p className="text-slate-600 mt-1">
-            Browse and manage properties in the pipeline
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Properties</h1>
+              <p className="text-slate-600 mt-1">
+                Browse and manage properties in the pipeline
+              </p>
+            </div>
+            {/* Active Profile Indicator */}
+            {activeProfile && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+                <Star className="h-4 w-4 text-blue-600" />
+                <div className="text-sm">
+                  <span className="text-slate-600">Active Profile:</span>{" "}
+                  <span className="font-medium text-slate-900">{activeProfile.name}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Search and Filters Bar */}

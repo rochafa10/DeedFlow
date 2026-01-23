@@ -9,6 +9,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getFBICrimeService } from '@/lib/api/services/fbi-crime-service';
+import { logger } from '@/lib/logger';
+
+const apiLogger = logger.withContext('Crime API');
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
       source: 'FBI Crime Data Explorer',
     });
   } catch (error) {
-    console.error('[Crime API] Error fetching crime data:', error);
+    apiLogger.error('Error fetching crime data', { error: error instanceof Error ? error.message : String(error) });
 
     // Return a fallback response with moderate risk if API fails
     return NextResponse.json({

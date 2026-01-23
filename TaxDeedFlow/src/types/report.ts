@@ -17,6 +17,7 @@ import type {
   ConfidenceResult,
   PropertyType,
 } from './scoring';
+import type { TitleReport } from './title';
 
 // Re-export types from scoring for external consumers
 export type { PropertyData, PropertyType } from './scoring';
@@ -469,6 +470,8 @@ export interface PropertyReportData {
   costAnalysis: CostAnalysis;
   /** Auction details */
   auctionDetails: AuctionDetails;
+  /** Title search report (liens, chain of title, issues) */
+  titleReport?: TitleReport;
   /** Recommendations */
   recommendations: Recommendation[];
   /** Report metadata */

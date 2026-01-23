@@ -11,6 +11,7 @@ import {
   Activity,
   RefreshCw,
   Database,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/layout/Header"
@@ -127,7 +128,7 @@ export default function DashboardPage() {
                   <Skeleton className="h-5 w-5" />
                   <Skeleton className="h-5 w-32" />
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-0.5">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i}>
                       <div className="flex justify-between mb-1">
@@ -135,6 +136,14 @@ export default function DashboardPage() {
                         <Skeleton className="h-4 w-20" />
                       </div>
                       <Skeleton className="h-3 w-full rounded-full" />
+                      {/* Add connector skeleton between bars (except after last bar) */}
+                      {i < 3 && (
+                        <div className="flex flex-col items-center py-2" aria-hidden="true">
+                          <div className="flex flex-col -space-y-2 opacity-30">
+                            <Skeleton className="h-4 w-4 rounded" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -249,30 +258,33 @@ export default function DashboardPage() {
                   <TrendingUp className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   Pipeline Funnel
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-0.5">
                   <FunnelBar
                     label="Parsed"
                     count={dashboardData.funnel.parsed}
                     total={dashboardData.funnel.parsed}
-                    color="bg-slate-400"
+                    color="bg-slate-400 dark:bg-slate-500"
                   />
+                  <FunnelFlowConnector fromColor="text-slate-400 dark:text-slate-500" toColor="text-blue-500 dark:text-blue-400" />
                   <FunnelBar
                     label="Enriched"
                     count={dashboardData.funnel.enriched}
                     total={dashboardData.funnel.parsed}
-                    color="bg-blue-500"
+                    color="bg-blue-500 dark:bg-blue-400"
                   />
+                  <FunnelFlowConnector fromColor="text-blue-500 dark:text-blue-400" toColor="text-amber-500 dark:text-amber-400" />
                   <FunnelBar
                     label="Validated"
                     count={dashboardData.funnel.validated}
                     total={dashboardData.funnel.parsed}
-                    color="bg-amber-500"
+                    color="bg-amber-500 dark:bg-amber-400"
                   />
+                  <FunnelFlowConnector fromColor="text-amber-500 dark:text-amber-400" toColor="text-green-500 dark:text-green-400" />
                   <FunnelBar
                     label="Approved"
                     count={dashboardData.funnel.approved}
                     total={dashboardData.funnel.parsed}
-                    color="bg-green-500"
+                    color="bg-green-500 dark:bg-green-400"
                   />
                 </div>
               </div>
@@ -497,16 +509,28 @@ function FunnelBar({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
-        <span className="text-sm text-slate-500">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">
           {count.toLocaleString()} ({percentage.toFixed(1)}%)
         </span>
       </div>
-      <div className="w-full bg-slate-100 rounded-full h-3">
+      <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3">
         <div
           className={cn("h-3 rounded-full transition-all", color)}
           style={{ width: `${Math.max(percentage, 1)}%` }}
         />
+      </div>
+    </div>
+  )
+}
+
+function FunnelFlowConnector({ fromColor, toColor }: { fromColor?: string; toColor?: string }) {
+  return (
+    <div className="flex flex-col items-center py-2" aria-hidden="true">
+      {/* Visual flow indicator with stacked chevrons */}
+      <div className="flex flex-col -space-y-2 opacity-60 hover:opacity-100 transition-opacity">
+        <ChevronDown className={cn("h-4 w-4", fromColor || "text-slate-400 dark:text-slate-500")} />
+        <ChevronDown className={cn("h-4 w-4", toColor || "text-slate-400 dark:text-slate-500")} />
       </div>
     </div>
   )

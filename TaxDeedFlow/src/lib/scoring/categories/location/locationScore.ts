@@ -163,8 +163,17 @@ export function calculateLocationScore(
     }
   }
 
-  // Calculate total category score (sum of 5 components)
-  const totalScore = components.reduce((sum, c) => sum + c.score, 0);
+  // Calculate base score (sum of 5 components)
+  let totalScore = components.reduce((sum, c) => sum + c.score, 0);
+
+  // Apply landlocked and road access penalties
+  const accessPenalty = applyAccessPenalty(
+    externalData,
+    totalScore,
+    notes,
+    adjustments
+  );
+  totalScore = accessPenalty.adjustedScore;
 
   // Average confidence across components
   const avgConfidence = totalConfidence / LOCATION_COMPONENTS.length;
@@ -192,6 +201,82 @@ export function calculateLocationScore(
     notes,
     adjustments,
   };
+}
+
+// ============================================
+// Access Penalty Functions
+// ============================================
+
+/**
+ * Apply landlocked and road access penalties to location score
+ *
+ * @param externalData - External data containing access information
+ * @param baseScore - Base location score before penalties
+ * @param notes - Array to add penalty notes to
+ * @param adjustments - Array to add adjustment records to
+ * @returns Adjusted score and penalty details
+ */
+function applyAccessPenalty(
+  externalData: Partial<ExternalData> | null | undefined,
+  baseScore: number,
+  notes: string[],
+  adjustments: ScoreAdjustment[]
+): {
+  adjustedScore: number;
+  penaltyApplied: number;
+} {
+  let penaltyApplied = 0;
+  let adjustedScore = baseScore;
+
+  // Check if access data is available
+  if (!externalData?.accessData) {
+    return { adjustedScore, penaltyApplied };
+  }
+
+  const accessData = externalData.accessData;
+
+  // Apply landlocked penalty (-2 points)
+  if (accessData.landlocked === true) {
+    penaltyApplied += 2;
+    adjustedScore -= 2;
+    notes.push(
+      'CRITICAL: Property appears to be landlocked (no direct road access). -2 point penalty applied.'
+    );
+
+    // Add adjustment record for transparency
+    adjustments.push({
+      type: 'property_type',
+      factor: (adjustedScore / baseScore), // Calculate equivalent factor
+      reason: 'Landlocked property penalty: -2 points for no direct road access',
+      appliedTo: 'location.all',
+    });
+  }
+  // Apply private road penalty (-1 point) only if not landlocked
+  else if (
+    accessData.roadAccessType === 'private' ||
+    accessData.roadAccessType?.toLowerCase().includes('private')
+  ) {
+    penaltyApplied += 1;
+    adjustedScore -= 1;
+    notes.push(
+      'Property has private road access only. -1 point penalty applied.'
+    );
+
+    // Add adjustment record for transparency
+    adjustments.push({
+      type: 'property_type',
+      factor: (adjustedScore / baseScore), // Calculate equivalent factor
+      reason: 'Private road access penalty: -1 point for limited accessibility',
+      appliedTo: 'location.all',
+    });
+  }
+
+  // Ensure score doesn't go below 0
+  if (adjustedScore < 0) {
+    adjustedScore = 0;
+  }
+
+  return { adjustedScore, penaltyApplied };
 }
 
 // ============================================

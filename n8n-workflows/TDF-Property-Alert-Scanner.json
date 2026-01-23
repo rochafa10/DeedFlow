@@ -1,0 +1,207 @@
+{
+  "name": "TDF - Property Alert Scanner",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "schedule-trigger",
+      "name": "Daily 6AM Trigger"
+    },
+    {
+      "parameters": {
+        "path": "property-alert-scanner",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        540
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "property-alert-scanner-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/scan_properties_for_alerts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"p_property_ids\": null, \"p_rule_ids\": null }",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        440
+      ],
+      "id": "scan-properties",
+      "name": "Scan Properties for Alerts",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get scan results\nconst scanResult = $input.first().json;\n\n// Build summary\nconst summary = {\n  generated_at: new Date().toISOString(),\n  scan_type: 'property_alert_scanner',\n  \n  // Stats from the scan\n  alerts_created: scanResult?.alerts_created || 0,\n  rules_checked: scanResult?.rules_checked || 0,\n  properties_scanned: scanResult?.properties_scanned || 0,\n  \n  // Calculate efficiency\n  match_rate: scanResult?.properties_scanned > 0 \n    ? ((scanResult?.alerts_created || 0) / scanResult.properties_scanned * 100).toFixed(2) + '%'\n    : '0%',\n  \n  // Status message\n  message: `Scan complete: ${scanResult?.alerts_created || 0} new alert(s) created from ${scanResult?.properties_scanned || 0} properties checked against ${scanResult?.rules_checked || 0} rule(s)`,\n  \n  // Additional context\n  status: (scanResult?.alerts_created || 0) > 0 ? 'success_with_alerts' : 'success_no_alerts',\n  needs_attention: (scanResult?.alerts_created || 0) > 10 // Flag if many alerts created\n};\n\nreturn [{ json: summary }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        440
+      ],
+      "id": "build-summary",
+      "name": "Build Scan Summary"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/record_pipeline_metrics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_metric_name\": \"property_alert_scan\",\n  \"p_metric_value\": {{ $json.alerts_created }},\n  \"p_metric_context\": {\n    \"rules_checked\": {{ $json.rules_checked }},\n    \"properties_scanned\": {{ $json.properties_scanned }},\n    \"match_rate\": \"{{ $json.match_rate }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        440
+      ],
+      "id": "record-metrics",
+      "name": "Record Pipeline Metrics",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Build Scan Summary').item.json }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        440
+      ],
+      "id": "respond-webhook",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Daily 6AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scan Properties for Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scan Properties for Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan Properties for Alerts": {
+      "main": [
+        [
+          {
+            "node": "Build Scan Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scan Summary": {
+      "main": [
+        [
+          {
+            "node": "Record Pipeline Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Pipeline Metrics": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "property-alert-scanner",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-alerts",
+      "name": "TDF-Alerts"
+    },
+    {
+      "id": "tdf-background-jobs",
+      "name": "TDF-Background-Jobs"
+    }
+  ],
+  "active": false,
+  "backupDate": "2026-01-23"
+}

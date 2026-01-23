@@ -156,6 +156,7 @@ export const mockIdealExternalData: ExternalData = {
       end: new Date('2026-01-01'),
     },
   },
+  accessData: null,
 };
 
 /**
@@ -210,6 +211,7 @@ export const mockNullExternalData: ExternalData = {
   environmentalHazards: null,
   marketData: null,
   comparableSales: null,
+  accessData: null,
 };
 
 /**
@@ -311,6 +313,7 @@ export const mockVacantLandExternalData: ExternalData = {
       end: new Date('2025-12-31'),
     },
   },
+  accessData: null,
 };
 
 /**
@@ -526,6 +529,7 @@ export const mockContaminatedExternalData: ExternalData = {
       end: new Date('2025-12-31'),
     },
   },
+  accessData: null,
 };
 
 /**
@@ -667,6 +671,7 @@ export const mockFloodZoneExternalData: ExternalData = {
       end: new Date('2026-01-01'),
     },
   },
+  accessData: null,
 };
 
 // ============================================

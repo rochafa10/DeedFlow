@@ -18,10 +18,12 @@ import { InvestmentCalculator } from "./InvestmentCalculator";
 import { CostBreakdownCard } from "./CostBreakdownCard";
 import { ROIMetricsCard } from "./ROIMetricsCard";
 import { InvestmentRecommendation } from "./InvestmentRecommendation";
-import { CostPieChart } from "./charts/CostPieChart";
-import { ProfitWaterfallChart } from "./charts/ProfitWaterfallChart";
-import { ROIComparisonChart } from "./charts/ROIComparisonChart";
-import { ComparablesScatterPlot } from "./charts/ComparablesScatterPlot";
+import {
+  LazyCostPieChart as CostPieChart,
+  LazyProfitWaterfallChart as ProfitWaterfallChart,
+  LazyROIComparisonChart as ROIComparisonChart,
+  LazyComparablesScatterPlot as ComparablesScatterPlot,
+} from "./charts/LazyCharts";
 import type {
   FinancialAnalysis,
   ComparableSale,

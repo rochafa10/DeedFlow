@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
+import { logger } from "@/lib/logger"
+
+const apiLogger = logger.withContext("Properties With Regrid API")
 
 /**
  * GET /api/properties/with-regrid
@@ -39,7 +42,7 @@ export async function GET() {
       .limit(100)
 
     if (error) {
-      console.error("[API Properties With Regrid] Database error:", error)
+      apiLogger.error("Database error", { error: error.message })
       return NextResponse.json(
         {
           error: "Database error",
@@ -69,7 +72,7 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    console.error("[API Properties With Regrid] Server error:", error)
+    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       {
         error: "Server error",

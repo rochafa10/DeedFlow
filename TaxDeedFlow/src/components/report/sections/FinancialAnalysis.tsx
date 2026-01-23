@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useMemo } from "react";
 import {
   DollarSign,
   Calculator,
@@ -202,10 +203,13 @@ export function FinancialAnalysis({
   className,
 }: FinancialAnalysisProps) {
   // Calculate percentage
-  const percentage = Math.round((score / maxScore) * 100);
+  const percentage = useMemo(
+    () => Math.round((score / maxScore) * 100),
+    [score, maxScore]
+  );
 
-  // Prepare pie chart data
-  const costBreakdownData = [
+  // Prepare pie chart data (memoized for performance)
+  const costBreakdownData = useMemo(() => [
     {
       category: "Acquisition",
       amount: acquisitionCosts.total,
@@ -238,24 +242,32 @@ export function FinancialAnalysis({
           },
         ]
       : []),
-  ];
+  ], [acquisitionCosts.total, rehabCosts, holdingCosts, sellingCosts]);
 
-  // Calculate potential profit (if ARV known)
-  const potentialProfit =
-    afterRepairValue !== undefined
+  // Calculate potential profit (if ARV known) - memoized
+  const potentialProfit = useMemo(
+    () => afterRepairValue !== undefined
       ? afterRepairValue - totalInvestment
-      : undefined;
+      : undefined,
+    [afterRepairValue, totalInvestment]
+  );
 
-  const profitMargin =
-    potentialProfit !== undefined && afterRepairValue
+  // Calculate profit margin - memoized
+  const profitMargin = useMemo(
+    () => potentialProfit !== undefined && afterRepairValue
       ? (potentialProfit / afterRepairValue) * 100
-      : undefined;
+      : undefined,
+    [potentialProfit, afterRepairValue]
+  );
 
-  // Check for missing data
-  const missingData: string[] = [];
-  if (!rehabCosts) missingData.push("rehab costs");
-  if (!holdingCosts) missingData.push("holding costs");
-  if (!sellingCosts) missingData.push("selling costs");
+  // Check for missing data - memoized
+  const missingData = useMemo(() => {
+    const missing: string[] = [];
+    if (!rehabCosts) missing.push("rehab costs");
+    if (!holdingCosts) missing.push("holding costs");
+    if (!sellingCosts) missing.push("selling costs");
+    return missing;
+  }, [rehabCosts, holdingCosts, sellingCosts]);
 
   return (
     <ReportSection

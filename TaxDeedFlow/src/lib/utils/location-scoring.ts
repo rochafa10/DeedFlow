@@ -26,6 +26,35 @@ export interface LocationScores {
   };
 }
 
+/**
+ * Custom weight options for Walk Score calculation
+ */
+export interface WalkScoreWeights {
+  grocery: number;      // Default: 30
+  restaurant: number;   // Default: 25
+  shopping: number;     // Default: 20
+  healthcare: number;   // Default: 15
+  entertainment: number; // Default: 10
+}
+
+/**
+ * Custom weight options for Overall Location Score
+ */
+export interface OverallLocationWeights {
+  geoapify?: {
+    walk?: number;      // Default: 0.15 (15%)
+    transit?: number;   // Default: 0.10 (10%)
+    bike?: number;      // Default: 0.10 (10%)
+    school?: number;    // Default: 0.25 (25%)
+  };
+  census?: {
+    income?: number;        // Default: 0.10 (10%)
+    homeownership?: number; // Default: 0.10 (10%)
+    vacancy?: number;       // Default: 0.10 (10%)
+    crime?: number;         // Default: 0.10 (10%)
+  };
+}
+
 interface WalkScoreDetails {
   groceryScore: number;
   restaurantScore: number;
@@ -96,11 +125,14 @@ function countScore(count: number, idealCount: number, maxScore: number): number
  * - Healthcare access
  * - Entertainment/services
  */
-export function calculateWalkScore(amenities: AmenitiesSummary): { score: number; details: WalkScoreDetails } {
+export function calculateWalkScore(
+  amenities: AmenitiesSummary,
+  customWeights?: Partial<WalkScoreWeights>
+): { score: number; details: WalkScoreDetails } {
   const { counts, nearest } = amenities;
 
   // Weights for different amenity types (must sum to 100)
-  const WEIGHTS = {
+  const DEFAULT_WEIGHTS: WalkScoreWeights = {
     grocery: 30,      // Most essential for walkability
     restaurant: 25,   // Dining options
     shopping: 20,     // Retail access
@@ -108,32 +140,34 @@ export function calculateWalkScore(amenities: AmenitiesSummary): { score: number
     entertainment: 10 // Services/entertainment
   };
 
-  // Grocery score (0-30 points)
+  const WEIGHTS = { ...DEFAULT_WEIGHTS, ...customWeights };
+
+  // Grocery score (0-WEIGHTS.grocery points)
   // Distance-weighted + count bonus
   const nearestGroceryMeters = nearest.grocery_store?.distance || null;
   const groceryDistanceScore = nearestGroceryMeters
-    ? distanceDecay(nearestGroceryMeters, 400) * 20  // Up to 20 pts for proximity
+    ? distanceDecay(nearestGroceryMeters, 400) * (WEIGHTS.grocery * 0.67)  // ~67% for proximity
     : 0;
-  const groceryCountScore = countScore(counts.grocery_stores, 5, 10);  // Up to 10 pts for variety
+  const groceryCountScore = countScore(counts.grocery_stores, 5, WEIGHTS.grocery * 0.33);  // ~33% for variety
   const groceryScore = groceryDistanceScore + groceryCountScore;
 
-  // Restaurant score (0-25 points)
-  const restaurantCountScore = countScore(counts.restaurants, 20, 25);
+  // Restaurant score (0-WEIGHTS.restaurant points)
+  const restaurantCountScore = countScore(counts.restaurants, 20, WEIGHTS.restaurant);
   const nearestRestaurantMeters = null; // We don't track nearest restaurant
 
-  // Shopping score (0-20 points)
-  const shoppingScore = countScore(counts.shopping, 15, 20);
+  // Shopping score (0-WEIGHTS.shopping points)
+  const shoppingScore = countScore(counts.shopping, 15, WEIGHTS.shopping);
 
-  // Healthcare score (0-15 points)
+  // Healthcare score (0-WEIGHTS.healthcare points)
   const nearestHospitalMeters = nearest.hospital?.distance || null;
   const healthcareDistanceScore = nearestHospitalMeters
-    ? distanceDecay(nearestHospitalMeters, 1000) * 8  // Hospitals can be farther
+    ? distanceDecay(nearestHospitalMeters, 1000) * (WEIGHTS.healthcare * 0.53)  // ~53% for proximity
     : 0;
-  const healthcareCountScore = countScore(counts.hospitals + counts.pharmacies, 5, 7);
+  const healthcareCountScore = countScore(counts.hospitals + counts.pharmacies, 5, WEIGHTS.healthcare * 0.47);
   const healthcareScore = healthcareDistanceScore + healthcareCountScore;
 
-  // Entertainment/services score (0-10 points)
-  const entertainmentScore = countScore(counts.banks + counts.gas_stations, 8, 10);
+  // Entertainment/services score (0-WEIGHTS.entertainment points)
+  const entertainmentScore = countScore(counts.banks + counts.gas_stations, 8, WEIGHTS.entertainment);
 
   const totalScore = Math.round(
     groceryScore + restaurantCountScore + shoppingScore + healthcareScore + entertainmentScore
@@ -341,8 +375,11 @@ export function calculateSchoolRating(amenities: AmenitiesSummary): { score: num
 /**
  * Calculate all location scores from amenities data
  */
-export function calculateLocationScores(amenities: AmenitiesSummary): LocationScores {
-  const walkResult = calculateWalkScore(amenities);
+export function calculateLocationScores(
+  amenities: AmenitiesSummary,
+  customWalkWeights?: Partial<WalkScoreWeights>
+): LocationScores {
+  const walkResult = calculateWalkScore(amenities, customWalkWeights);
   const transitResult = calculateTransitScore(amenities);
   const bikeResult = calculateBikeScore(amenities);
   const schoolResult = calculateSchoolRating(amenities);
@@ -516,24 +553,36 @@ function scoreCrime(crimeRate: string | null | undefined): number {
  */
 export function calculateOverallLocationScore(
   locationScores: LocationScores,
-  censusData?: CensusDataForScoring | null
+  censusData?: CensusDataForScoring | null,
+  customWeights?: OverallLocationWeights
 ): OverallLocationScore {
   const { walkScore, transitScore, bikeScore, schoolRating } = locationScores;
 
-  // GEOAPIFY WEIGHTS (60% total)
-  const GEOAPIFY_WEIGHTS = {
+  // DEFAULT GEOAPIFY WEIGHTS (60% total)
+  const DEFAULT_GEOAPIFY_WEIGHTS = {
     walk: 0.15,      // 15% - walkability
     transit: 0.10,   // 10% - public transit
     bike: 0.10,      // 10% - bikeability
     school: 0.25     // 25% - schools (major for resale)
   };
 
-  // CENSUS WEIGHTS (40% total)
-  const CENSUS_WEIGHTS = {
+  // DEFAULT CENSUS WEIGHTS (40% total)
+  const DEFAULT_CENSUS_WEIGHTS = {
     income: 0.10,        // 10% - median income
     homeownership: 0.10, // 10% - stability indicator
     vacancy: 0.10,       // 10% - market health
     crime: 0.10          // 10% - safety
+  };
+
+  // Merge custom weights with defaults
+  const GEOAPIFY_WEIGHTS = {
+    ...DEFAULT_GEOAPIFY_WEIGHTS,
+    ...(customWeights?.geoapify || {})
+  };
+
+  const CENSUS_WEIGHTS = {
+    ...DEFAULT_CENSUS_WEIGHTS,
+    ...(customWeights?.census || {})
   };
 
   // Normalize Geoapify scores to 0-100 scale

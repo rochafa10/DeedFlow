@@ -25,6 +25,7 @@ import {
   Biohazard,
   Radiation,
   TrendingDown,
+  Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RiskCategoryScore, RiskWeights } from "@/types/risk-analysis";
@@ -107,6 +108,12 @@ const CATEGORY_CONFIG: Record<
     icon: <TrendingDown className="h-4 w-4" />,
     color: "#78716c", // stone-500
     description: "Terrain stability and landslide susceptibility",
+  },
+  drought: {
+    label: "Drought",
+    icon: <Sun className="h-4 w-4" />,
+    color: "#f59e0b", // amber-500
+    description: "Drought conditions and water availability",
   },
 };
 

@@ -38,8 +38,10 @@ export {
 // Risk Category (Placeholder - Phase 6C)
 // export { calculateRiskScore, riskComponents } from './risk';
 
-// Financial Category (Placeholder - Phase 6D)
-// export { calculateFinancialScore, financialComponents } from './financial';
+// Financial Category (Implemented)
+export {
+  calculateFinancialScore,
+} from './financial';
 
 // Market Category (Placeholder - Phase 6E)
 // export { calculateMarketScore, marketComponents } from './market';

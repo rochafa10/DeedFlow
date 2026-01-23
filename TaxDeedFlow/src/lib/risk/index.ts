@@ -7,6 +7,7 @@
  * - Geological Risks (Earthquake + Sinkhole + Slope) - Phase 7B
  * - Fire Risks (Wildfire) - Phase 7C
  * - Environmental Risks (Contamination + Radon) - Phase 7C
+ * - Drought Risk - Phase 7D
  * - Combined Risk Integration - Phase 7D
  *
  * @module lib/risk
@@ -89,6 +90,20 @@ export {
 } from './environmental';
 
 // ============================================
+// Drought Risk Exports (Phase 7D)
+// ============================================
+
+export {
+  // Main analyzer
+  analyzeDroughtRisk,
+  getDroughtRiskScore,
+
+  // Constants
+  DROUGHT_PRONE_STATES,
+  DROUGHT_SEVERITY_DEFINITIONS,
+} from './drought';
+
+// ============================================
 // Combined Risk Integration (Phase 7D)
 // ============================================
 
@@ -158,6 +173,12 @@ export type {
   ContaminationSite,
   RadonZone,
   EnvironmentalMitigation,
+
+  // Drought Risk Types
+  DroughtRiskAnalysis,
+  DroughtCategory,
+  WaterAvailability,
+  CropImpactLevel,
 
   // Combined Risk Types
   RiskAssessment,
@@ -256,6 +277,7 @@ export async function analyzeAllRisks(
     wildfire: wildfire,
     environmental: environmental.contamination,
     radon: environmental.radon,
+    drought: null,
   };
 
   // Calculate comprehensive assessment

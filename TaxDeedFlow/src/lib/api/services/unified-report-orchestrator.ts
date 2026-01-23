@@ -41,6 +41,8 @@ import type { ScoreBreakdown, PropertyType, ConfidenceResult, ConfidenceLabel, C
 import { getGeoapifyService } from './geoapify-service';
 import { getFCCService } from './fcc-service';
 import { getCensusService } from './census-service';
+import { getTitleService, type TitleSearchQuery } from './title-service';
+import type { TitleReport } from '@/types/title';
 
 // =============================================================================
 // Types
@@ -75,6 +77,7 @@ export interface UnifiedReportOptions {
   skipRiskAnalysis?: boolean;
   skipFinancialAnalysis?: boolean;
   skipScoring?: boolean;
+  skipTitleSearch?: boolean;
   /** Include location enrichment (amenities, broadband, demographics) */
   includeLocationData?: boolean;
 }
@@ -737,7 +740,8 @@ function generateRecommendations(
   property: PropertyData,
   riskAnalysis: AllRiskAnalyses,
   financial: Awaited<ReturnType<typeof analyzePropertyFinancials>>,
-  scoreBreakdown: ScoreBreakdown
+  scoreBreakdown: ScoreBreakdown,
+  titleReport?: TitleReport
 ): Recommendation[] {
   const recommendations: Recommendation[] = [];
 
@@ -821,17 +825,92 @@ function generateRecommendations(
     });
   }
 
-  // Title recommendation (always)
-  recommendations.push({
-    id: `rec-title-${Date.now()}`,
-    category: 'due_diligence',
-    priority: 'medium',
-    title: 'Title Search Recommended',
-    description: 'A professional title search has not been performed for this property. Order a title search to identify any liens or encumbrances before bidding.',
-    estimatedCost: 250, // Typical title search cost
-    timeframe: 'Before bidding',
-    relatedTo: 'title-status',
-  });
+  // Title recommendations
+  if (titleReport) {
+    const summary = titleReport.summary;
+
+    // If there are surviving liens
+    if (summary.survivingLiensCount > 0) {
+      recommendations.push({
+        id: `rec-title-liens-${Date.now()}`,
+        category: 'due_diligence',
+        priority: summary.survivingLiensAmount > 5000 ? 'critical' : 'high',
+        title: 'Surviving Liens Identified',
+        description: `${summary.survivingLiensCount} lien(s) totaling $${summary.survivingLiensAmount.toLocaleString()} will survive the tax sale and transfer to the buyer. These must be paid off or negotiated before purchase. Consult with a real estate attorney immediately.`,
+        estimatedCost: summary.survivingLiensAmount,
+        timeframe: 'Before bidding',
+        relatedTo: 'title-liens',
+      });
+    }
+
+    // If there are title issues
+    if (summary.issuesFound > 0) {
+      const criticalIssues = titleReport.issues.filter(i => i.severity === 'critical' || i.blocksPurchase);
+      if (criticalIssues.length > 0) {
+        recommendations.push({
+          id: `rec-title-issues-${Date.now()}`,
+          category: 'due_diligence',
+          priority: 'critical',
+          title: 'Critical Title Issues Found',
+          description: `${criticalIssues.length} critical title issue(s) must be resolved before purchase. ${criticalIssues[0]?.description} Estimated resolution cost: $${summary.estimatedClearingCost?.toLocaleString() || 'Unknown'}.`,
+          estimatedCost: summary.estimatedClearingCost || null,
+          timeframe: 'Before bidding',
+          relatedTo: 'title-issues',
+        });
+      } else {
+        recommendations.push({
+          id: `rec-title-issues-${Date.now()}`,
+          category: 'due_diligence',
+          priority: 'medium',
+          title: 'Title Issues Require Attention',
+          description: `${summary.issuesFound} title issue(s) identified. Review the title report carefully and consult with a real estate attorney to determine resolution strategy.`,
+          estimatedCost: summary.estimatedClearingCost || null,
+          timeframe: 'Before bidding',
+          relatedTo: 'title-issues',
+        });
+      }
+    }
+
+    // If title insurance not available
+    if (!summary.titleInsuranceAvailable) {
+      recommendations.push({
+        id: `rec-title-insurance-${Date.now()}`,
+        category: 'risk_mitigation',
+        priority: 'high',
+        title: 'Title Insurance Not Available',
+        description: 'Title insurance companies will not insure this property due to existing title defects. This significantly increases investment risk. Consider walking away unless you have extensive experience resolving title issues.',
+        estimatedCost: null,
+        timeframe: 'Before bidding',
+        relatedTo: 'title-insurance',
+      });
+    }
+
+    // If overall title risk is high or critical
+    if (summary.overallRisk === 'high' || summary.overallRisk === 'critical') {
+      recommendations.push({
+        id: `rec-title-risk-${Date.now()}`,
+        category: 'action',
+        priority: summary.overallRisk === 'critical' ? 'critical' : 'high',
+        title: `${summary.overallRisk === 'critical' ? 'Critical' : 'High'} Title Risk`,
+        description: `Overall title risk is ${summary.overallRisk}. ${summary.overallRisk === 'critical' ? 'DO NOT PROCEED with this purchase without extensive legal consultation.' : 'Proceed with extreme caution and seek legal counsel.'}`,
+        estimatedCost: null,
+        timeframe: 'Immediate',
+        relatedTo: 'title-risk',
+      });
+    }
+  } else {
+    // No title search performed - recommend one
+    recommendations.push({
+      id: `rec-title-${Date.now()}`,
+      category: 'due_diligence',
+      priority: 'medium',
+      title: 'Title Search Recommended',
+      description: 'A professional title search has not been performed for this property. Order a title search to identify any liens or encumbrances before bidding.',
+      estimatedCost: 250, // Typical title search cost
+      timeframe: 'Before bidding',
+      relatedTo: 'title-status',
+    });
+  }
 
   return recommendations;
 }
@@ -1031,6 +1110,7 @@ export async function generateFullReport(
     let scoreResult: ReturnType<typeof calculateInvestmentScore> | undefined;
     let locationData: LocationData | undefined;
     let marketData: MarketData | undefined;
+    let titleReport: TitleReport | undefined;
 
     // Risk Analysis
     if (!options.skipRiskAnalysis) {
@@ -1192,6 +1272,96 @@ export async function generateFullReport(
       );
     }
 
+    // Title Search
+    if (!options.skipTitleSearch && property.address) {
+      analysisPromises.push(
+        (async () => {
+          try {
+            const titleService = getTitleService();
+
+            // Ensure we have a valid address string
+            const addressStr = property.address || '';
+            if (!addressStr) {
+              sourcesFailed.push('title-search');
+              return;
+            }
+
+            // Parse address components for title search
+            const addressParts = parseAddress(addressStr);
+
+            // Build title search query
+            const titleQuery: TitleSearchQuery = {
+              address: addressStr,
+              city: addressParts.city || property.city || '',
+              state: addressParts.state || property.state || '',
+              zip: addressParts.zip || property.zip || undefined,
+              parcelId: property.parcel_id || undefined,
+              county: property.county_name || '',
+              yearsToSearch: 30, // Standard 30-year search
+            };
+
+            // Only perform search if we have minimum required data
+            if (titleQuery.address && titleQuery.city && titleQuery.state && titleQuery.county) {
+              const titleResult = await titleService.searchTitleByAddress(titleQuery);
+
+              if (titleResult.data && titleResult.data.status === 'completed') {
+                // Construct TitleReport from flattened TitleSearchResponse
+                const titleData = titleResult.data;
+
+                // Map riskScore (0.0-1.0) to RiskLevel enum
+                const riskScore = titleData.titleReport.riskScore;
+                const overallRisk: RiskLevel =
+                  riskScore >= 0.8 ? 'low' :
+                  riskScore >= 0.6 ? 'medium' :
+                  riskScore >= 0.4 ? 'high' : 'critical';
+
+                titleReport = {
+                  metadata: {
+                    reportDate: new Date(),
+                    reportId: titleData.requestId,
+                    reportType: 'preliminary' as const,
+                  },
+                  property: {
+                    legalDescription: `PROPERTY AT ${addressStr.toUpperCase()}, ${property.county_name?.toUpperCase() || ''} COUNTY`,
+                    streetAddress: addressStr,
+                    parcelId: property.parcel_id || '',
+                    county: property.county_name || '',
+                    state: property.state || '',
+                  },
+                  summary: {
+                    searchCompleted: true,
+                    searchDate: new Date(),
+                    searchProvider: 'TitleService',
+                    totalLiens: titleData.liens.length,
+                    totalLienAmount: titleData.liens.reduce((sum, lien) => sum + (lien.currentBalance || lien.originalAmount), 0),
+                    survivingLiensCount: titleData.survivingLiens.length,
+                    survivingLiensAmount: titleData.titleReport.survivingLiensTotal,
+                    issuesFound: titleData.titleIssues.length,
+                    overallRisk,
+                    titleInsuranceAvailable: titleData.titleReport.insurable,
+                    estimatedClearingCost: titleData.titleReport.estimatedClearingCost,
+                  },
+                  liens: titleData.liens,
+                  ownershipHistory: titleData.ownershipHistory,
+                  chainOfTitle: titleData.chainOfTitle,
+                  issues: titleData.titleIssues,
+                  recommendations: [titleData.titleReport.recommendation],
+                };
+                sourcesUsed.push('title-search');
+              } else {
+                sourcesFailed.push('title-search');
+              }
+            } else {
+              sourcesFailed.push('title-search');
+            }
+          } catch (error) {
+            console.error('Title search failed:', error);
+            sourcesFailed.push('title-search');
+          }
+        })()
+      );
+    }
+
     // Wait for all parallel analyses
     await Promise.allSettled(analysisPromises);
 
@@ -1343,7 +1513,7 @@ export async function generateFullReport(
     const auctionDetails = buildAuctionDetails(property);
 
     const recommendations = financialAnalysis
-      ? generateRecommendations(property, defaultRiskAnalysis, financialAnalysis, scoreBreakdown)
+      ? generateRecommendations(property, defaultRiskAnalysis, financialAnalysis, scoreBreakdown, titleReport)
       : [];
 
     // Calculate overall confidence
@@ -1435,6 +1605,7 @@ export async function generateFullReport(
       roiAnalysis,
       costAnalysis,
       auctionDetails,
+      titleReport,
       recommendations,
       metadata: {
         generatedAt: new Date(),

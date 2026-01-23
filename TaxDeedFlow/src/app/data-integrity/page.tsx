@@ -41,6 +41,22 @@ interface DataIntegrityIssue {
   fixAction?: string
 }
 
+interface ApiDataIntegrityIssue {
+  id: string
+  severity: "critical" | "warning" | "info"
+  category: string
+  title: string
+  description: string
+  affectedCount: number
+  table: string
+  field?: string
+  fixable: boolean
+  action?: string
+  agent?: string
+  status?: "open" | "acknowledged" | "resolved"
+  detectedAt?: string
+}
+
 interface PipelineStats {
   totalProperties: number
   withRegrid: number
@@ -148,7 +164,7 @@ export default function DataIntegrityPage() {
       const data = result.data
 
       // Map API issues to include status field (defaults to "open")
-      const mappedIssues: DataIntegrityIssue[] = (data.issues || []).map((issue: any) => ({
+      const mappedIssues: DataIntegrityIssue[] = (data.issues || []).map((issue: ApiDataIntegrityIssue) => ({
         ...issue,
         status: issue.status || "open",
         detectedAt: issue.detectedAt || new Date().toISOString(),

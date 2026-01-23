@@ -40,6 +40,8 @@ import {
   DEFAULT_RATE_LIMIT_CONFIG,
 } from './types';
 
+import { logger, type Logger } from '../logger';
+
 /**
  * Generates a unique request ID
  */
@@ -55,30 +57,60 @@ function approximateSize(data: unknown): number {
 }
 
 /**
- * Logger interface for API operations
+ * Default logger with API context
+ *
+ * Uses the centralized logger utility from @/lib/logger with environment-aware logging:
+ * - Development: DEBUG level (all logs visible)
+ * - Production: WARN level (warnings and errors only)
+ * - Test: ERROR level (errors only)
+ *
+ * Override log level with NEXT_PUBLIC_LOG_LEVEL environment variable.
+ *
+ * @see {@link logger} for configuration options
  */
-interface Logger {
-  debug(message: string, data?: Record<string, unknown>): void;
-  info(message: string, data?: Record<string, unknown>): void;
-  warn(message: string, data?: Record<string, unknown>): void;
-  error(message: string, data?: Record<string, unknown>): void;
-}
-
-/**
- * Default console logger implementation
- */
-const defaultLogger: Logger = {
-  debug: (message, data) => console.debug(`[API] ${message}`, data || ''),
-  info: (message, data) => console.info(`[API] ${message}`, data || ''),
-  warn: (message, data) => console.warn(`[API] ${message}`, data || ''),
-  error: (message, data) => console.error(`[API] ${message}`, data || ''),
-};
+const defaultLogger: Logger = logger.withContext('API');
 
 /**
  * Base API Service class
  *
  * Provides a comprehensive foundation for building API service clients with
  * built-in caching, retry logic, circuit breaker pattern, and rate limiting.
+ *
+ * ## Logging Configuration
+ *
+ * This service uses the centralized logger utility from `@/lib/logger` with
+ * environment-aware log levels:
+ *
+ * - **Development**: DEBUG level - all operations logged (requests, cache hits, retries)
+ * - **Production**: WARN level - only warnings and errors logged
+ * - **Test**: ERROR level - only errors logged (keeps test output clean)
+ *
+ * Override the default log level with the `NEXT_PUBLIC_LOG_LEVEL` environment variable:
+ * ```bash
+ * NEXT_PUBLIC_LOG_LEVEL=DEBUG  # Enable all logs in any environment
+ * NEXT_PUBLIC_LOG_LEVEL=INFO   # Show info, warn, error
+ * NEXT_PUBLIC_LOG_LEVEL=NONE   # Disable all logging
+ * ```
+ *
+ * ### Custom Logger Example
+ *
+ * ```typescript
+ * import { logger } from '@/lib/logger';
+ * import BaseApiService from './base-service';
+ *
+ * class ScreenshotService extends BaseApiService {
+ *   constructor() {
+ *     const customLogger = logger.withContext('Screenshot Service');
+ *     super(
+ *       { baseUrl: 'https://api.example.com' },
+ *       undefined, // cache config
+ *       undefined, // circuit breaker config
+ *       undefined, // rate limit config
+ *       customLogger // custom logger
+ *     );
+ *   }
+ * }
+ * ```
  *
  * **Important Design Note:** This implementation uses in-memory state for
  * caching, rate limiting, and circuit breaker. This is suitable for:
@@ -90,6 +122,7 @@ const defaultLogger: Logger = {
  * consider implementing Supabase-backed distributed state in a future phase.
  *
  * @see Phase 2B (future) for distributed state implementation
+ * @see {@link logger} for logger configuration details
  */
 export class BaseApiService {
   /** Service configuration */
@@ -146,7 +179,14 @@ export class BaseApiService {
    * @param cacheConfig - Optional cache configuration
    * @param circuitBreakerConfig - Optional circuit breaker configuration
    * @param rateLimitConfig - Optional rate limit configuration
-   * @param logger - Optional custom logger
+   * @param logger - Optional custom logger instance. If not provided, uses the default
+   *                 logger with 'API' context. Custom loggers can be created with specific
+   *                 contexts for better log categorization:
+   *                 ```typescript
+   *                 import { logger } from '@/lib/logger';
+   *                 const customLogger = logger.withContext('Screenshot Service');
+   *                 const service = new MyService(config, {}, {}, {}, customLogger);
+   *                 ```
    */
   constructor(
     config: Partial<ApiConfig> & { baseUrl: string },

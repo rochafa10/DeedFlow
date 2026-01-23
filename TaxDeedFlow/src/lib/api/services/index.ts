@@ -102,6 +102,23 @@ export type {
   ZillowServiceConfig,
 } from './zillow-service';
 
+// Title & Legal APIs
+// ----------------------------------------------------------
+
+// Title Service - Title search and lien identification
+export {
+  TitleService,
+  getTitleService,
+  resetTitleService,
+} from './title-service';
+
+export type {
+  TitleSearchQuery,
+  LienSearchResult,
+  BatchTitleSearchRequest,
+  BatchTitleSearchResult,
+} from './title-service';
+
 // Geographic APIs
 // ----------------------------------------------------------
 

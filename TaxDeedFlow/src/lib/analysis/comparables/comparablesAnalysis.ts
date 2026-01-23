@@ -410,8 +410,10 @@ function calculateStatistics(
     : 0;
 
   // Count comparables at each stage
+  // Use default minSimilarityScore of 50 (standard threshold)
+  const minSimilarityScore = 50;
   const passedSimilarity = arvCalculation.comparables.filter(
-    (c) => (c.similarityScore || 0) >= (arvCalculation as any).config?.minSimilarityScore || 50
+    (c) => (c.similarityScore || 0) >= minSimilarityScore
   ).length;
 
   const passedAdjustment = arvCalculation.comparables.filter(

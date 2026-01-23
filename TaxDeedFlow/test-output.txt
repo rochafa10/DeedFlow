@@ -1,0 +1,2236 @@
+
+> tax-deed-flow@0.1.0 test
+> vitest
+
+
+[7m[1m[34m DEV [39m[22m[27m [34mv1.6.1[39m [90mC:/Users/fs_ro/Documents/TAX DEED FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow[39m
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mstoreCsrfToken[2m > [22m[2mshould handle database insert failure[22m[39m
+[CSRF] Failed to store token: Insert failed
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mstoreCsrfToken[2m > [22m[2mshould handle missing Supabase configuration[22m[39m
+[CSRF] Supabase not configured, skipping token storage
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mstoreCsrfToken[2m > [22m[2mshould handle exceptions during storage[22m[39m
+[CSRF] Exception storing token: Error: Database connection error
+    at Object.<anonymous> [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:327:15[90m)[39m
+    at Object.mockCall [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/spy[24m/dist/index.js:50:17[90m)[39m
+    at Object.spy [as from] [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4mtinyspy[24m/dist/index.js:42:80[90m)[39m
+    at Module.storeCsrfToken [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\csrf.ts:70:42[90m)[39m
+    at [90mC:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:333:26
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:135:14
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:60:26
+    at runTest [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:781:17[90m)[39m
+    at runSuite [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:909:15[90m)[39m
+    at runSuite [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:909:15[90m)[39m
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateStoredCsrfToken[2m > [22m[2mshould reject token that does not exist in database[22m[39m
+[CSRF] Token not found in database
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateStoredCsrfToken[2m > [22m[2mshould reject expired token[22m[39m
+[CSRF] Token has expired
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateStoredCsrfToken[2m > [22m[2mshould delete expired token during validation[22m[39m
+[CSRF] Token has expired
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateStoredCsrfToken[2m > [22m[2mshould still return valid even if token deletion fails[22m[39m
+[CSRF] Failed to delete used token: Delete failed
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateStoredCsrfToken[2m > [22m[2mshould fallback to length validation when Supabase not configured[22m[39m
+[CSRF] Supabase not configured, skipping server-side validation
+[CSRF] Supabase not configured, skipping server-side validation
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateStoredCsrfToken[2m > [22m[2mshould handle exceptions during validation[22m[39m
+[CSRF] Exception validating token: Error: Database query error
+    at Object.<anonymous> [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:512:15[90m)[39m
+    at Object.mockCall [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/spy[24m/dist/index.js:50:17[90m)[39m
+    at Object.spy [as from] [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4mtinyspy[24m/dist/index.js:42:80[90m)[39m
+    at Module.validateStoredCsrfToken [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\csrf.ts:124:8[90m)[39m
+    at [90mC:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:518:26
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:135:14
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:60:26
+    at runTest [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:781:17[90m)[39m
+    at runSuite [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:909:15[90m)[39m
+    at runSuite [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:909:15[90m)[39m
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mcleanupExpiredCsrfTokens[2m > [22m[2mshould successfully cleanup expired tokens[22m[39m
+[CSRF] Cleaned up 5 expired tokens
+
+ [33m❯[39m src/lib/scoring/__tests__/locationScore.test.ts [2m ([22m[2m57 tests[22m [2m|[22m [31m35 failed[39m[2m)[22m[90m 57[2mms[22m[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateLocationScore[2m > [22mwith missing data[2m > [22mshould have low confidence with missing data[39m
+[31m     → expected 81 to be less than 60[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateLocationScore[2m > [22mwith missing data[2m > [22mshould have low data completeness with missing data[39m
+[31m     → expected 40.5 to be less than 30[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return max score for walk score of 90+[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return high score for walk score of 70-89[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return medium score for walk score of 50-69[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return low score for walk score of 25-49[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return minimum score for walk score < 25[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould handle null walk score with default strategy[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould have correct component ID and name[39m
+[31m     → expected undefined to be 'walk_score' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return max score for very low crime (index < 15)[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return high score for low crime (index 15-30)[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return medium score for moderate crime (index 30-50)[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return low score for high crime (index > 50)[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould handle null crime data with conservative default[39m
+[31m     → expected undefined to be 'default_conservative' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould return max score for school rating of 9-10[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould return high score for school rating of 7-8[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould return low score for school rating < 4[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould handle null school rating with neutral default[39m
+[31m     → expected undefined to be 'default_neutral' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould return max score for high amenity count (80+)[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould return medium score for moderate amenities (40-60)[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould return low score for few amenities (< 30)[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould calculate score from individual amenity counts if totalScore is null[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould return max score for transit score of 80+[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould return medium score for transit score of 40-60[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould return low score for transit score < 20[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould handle null transit score appropriately[39m
+[31m     → expected undefined to be 'default_neutral' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould consider rural properties may not need transit[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mgetLocationComponentConfig[2m > [22mshould return config for each component[39m
+[31m     → expected undefined to be 5 // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mgetLocationComponentConfig[2m > [22mshould have weights summing to 1[39m
+[31m     → expected NaN to be close to 1, received difference is NaN, but expected 0.005[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mhasCompleteLocationData[2m > [22mshould return false for property missing location data[39m
+[31m     → expected true to be false // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mhasCompleteLocationData[2m > [22mshould return false for null external data[39m
+[31m     → expected true to be false // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mgetLocationDataCompleteness[2m > [22mshould return 100% for complete data[39m
+[31m     → expected 20 to be 100 // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22medge cases[2m > [22mshould handle property with no coordinates[39m
+[31m     → expected 0 to be greater than 0[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22medge cases[2m > [22mshould handle extreme walk score values[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22medge cases[2m > [22mshould handle zero walk score[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mcleanupExpiredCsrfTokens[2m > [22m[2mshould handle cleanup RPC errors[22m[39m
+[CSRF] Failed to cleanup expired tokens: RPC failed
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mcleanupExpiredCsrfTokens[2m > [22m[2mshould return -1 when Supabase not configured[22m[39m
+[CSRF] Supabase not configured, skipping token cleanup
+
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mcleanupExpiredCsrfTokens[2m > [22m[2mshould handle exceptions during cleanup[22m[39m
+[CSRF] Exception during token cleanup: Error: Cleanup error
+    at Object.<anonymous> [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:589:15[90m)[39m
+    at Object.mockCall [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/spy[24m/dist/index.js:50:17[90m)[39m
+    at Object.spy [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4mtinyspy[24m/dist/index.js:42:80[90m)[39m
+    at Module.cleanupExpiredCsrfTokens [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\csrf.ts:188:48[90m)[39m
+    at [90mC:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:594:32
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:135:14
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:60:26
+    at runTest [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:781:17[90m)[39m
+    at runSuite [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:909:15[90m)[39m
+    at runSuite [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:909:15[90m)[39m
+
+ [33m❯[39m src/lib/scoring/__tests__/edgeCases.test.ts [2m ([22m[2m66 tests[22m [2m|[22m [31m53 failed[39m[2m)[22m[90m 81[2mms[22m[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mhandleEdgeCases[2m > [22mbasic functionality[2m > [22mshould return isEdgeCase=false for normal property[39m
+[31m     → expected true to be false // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould detect property built before 1900[39m
+[31m     → detectVeryOldProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould not flag property built after 1900[39m
+[31m     → detectVeryOldProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould handle null year_built[39m
+[31m     → detectVeryOldProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould calculate property age correctly[39m
+[31m     → detectVeryOldProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould detect property with no building[39m
+[31m     → detectNoStructure is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould not flag property with structure[39m
+[31m     → detectNoStructure is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould handle null building_sqft[39m
+[31m     → detectNoStructure is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould detect based on property type if sqft unavailable[39m
+[31m     → detectNoStructure is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighValueProperty[2m > [22mshould detect property with high total_due[39m
+[31m     → detectHighValueProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighValueProperty[2m > [22mshould not flag normal value property[39m
+[31m     → detectHighValueProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighValueProperty[2m > [22mshould use default threshold of $50,000[39m
+[31m     → detectHighValueProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectExtremelyLowValue[2m > [22mshould detect property with very low value[39m
+[31m     → detectExtremelyLowValue is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectExtremelyLowValue[2m > [22mshould not flag normal value property[39m
+[31m     → detectExtremelyLowValue is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectExtremelyLowValue[2m > [22mshould use default threshold of $500[39m
+[31m     → detectExtremelyLowValue is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectLandlocked[2m > [22mshould detect landlocked property from land_use[39m
+[31m     → detectLandlocked is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectLandlocked[2m > [22mshould not flag property with road access[39m
+[31m     → detectLandlocked is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectTitleCloud[2m > [22mshould detect IRS lien from external data[39m
+[31m     → detectTitleCloud is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould detect contamination from environmental data[39m
+[31m     → detectEnvironmentalContamination is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould not flag clean property[39m
+[31m     → detectEnvironmentalContamination is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould detect based on environmental risk score > 50[39m
+[31m     → detectEnvironmentalContamination is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould detect superfund site proximity[39m
+[31m     → detectEnvironmentalContamination is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectSliverLot[2m > [22mshould detect very small lot (< 1000 sqft)[39m
+[31m     → detectSliverLot is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectSliverLot[2m > [22mshould not flag normal sized lot[39m
+[31m     → detectSliverLot is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectSliverLot[2m > [22mshould handle lot_size_acres when sqft not available[39m
+[31m     → detectSliverLot is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectCemetery[2m > [22mshould detect cemetery from land_use[39m
+[31m     → detectCemetery is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectCemetery[2m > [22mshould detect cemetery from property name[39m
+[31m     → detectCemetery is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectCemetery[2m > [22mshould not flag residential property[39m
+[31m     → detectCemetery is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectUtilityProperty[2m > [22mshould detect utility property from land_use[39m
+[31m     → detectUtilityProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectUtilityProperty[2m > [22mshould detect power company ownership[39m
+[31m     → detectUtilityProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectUtilityProperty[2m > [22mshould not flag residential property[39m
+[31m     → detectUtilityProperty is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectDecliningMarket[2m > [22mshould detect declining market from negative YoY change[39m
+[31m     → detectDecliningMarket is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectDecliningMarket[2m > [22mshould not flag stable/growing market[39m
+[31m     → detectDecliningMarket is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectDecliningMarket[2m > [22mshould use threshold of -10% YoY decline[39m
+[31m     → detectDecliningMarket is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighCompetition[2m > [22mshould detect high competition from low days on market[39m
+[31m     → detectHighCompetition is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighCompetition[2m > [22mshould not flag normal market[39m
+[31m     → detectHighCompetition is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return critical for cemetery[39m
+[31m     → getEdgeCaseSeverity is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return critical for utility_property[39m
+[31m     → getEdgeCaseSeverity is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return high for environmental_contamination[39m
+[31m     → getEdgeCaseSeverity is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return medium for very_old_property[39m
+[31m     → getEdgeCaseSeverity is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return low for high_competition_area[39m
+[31m     → getEdgeCaseSeverity is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mshouldAutoReject[2m > [22mshould auto-reject cemetery[39m
+[31m     → expected false to be true // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mshouldAutoReject[2m > [22mshould auto-reject utility_property[39m
+[31m     → expected false to be true // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mshouldAutoReject[2m > [22mshould auto-reject sliver_lot[39m
+[31m     → expected false to be true // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould provide recommendations for very old property[39m
+[31m     → getHandlingRecommendations is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould provide recommendations for environmental contamination[39m
+[31m     → getHandlingRecommendations is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould provide recommendations for title cloud[39m
+[31m     → getHandlingRecommendations is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould return empty for auto-reject types[39m
+[31m     → getHandlingRecommendations is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mEDGE_CASE_CONFIG[2m > [22mshould have configuration for all edge case types[39m
+[31m     → Cannot read properties of undefined (reading 'very_old_property')[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mEDGE_CASE_CONFIG[2m > [22mshould have valid handling strategies[39m
+[31m     → Cannot convert undefined or null to object[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mEDGE_CASE_CONFIG[2m > [22mshould have valid severity levels[39m
+[31m     → Cannot convert undefined or null to object[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22medge cases with property types[2m > [22mshould handle commercial property differently[39m
+[31m     → expected 'title_research_required' to be 'specialized_analysis' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mwarning generation[2m > [22mshould not generate warnings for normal property[39m
+[31m     → expected true to be false // Object.is equality[39m
+[90mstderr[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateCsrf[2m > [22m[2mPOST requests with Origin header[2m > [22m[2mshould allow POST with matching Origin header[22m[39m
+[CSRF] Exception during token cleanup: Error: Cleanup error
+    at Object.<anonymous> [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:589:15[90m)[39m
+    at Object.mockCall [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/spy[24m/dist/index.js:50:17[90m)[39m
+    at Object.spy [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4mtinyspy[24m/dist/index.js:42:80[90m)[39m
+    at cleanupExpiredCsrfTokens [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\csrf.ts:188:48[90m)[39m
+    at runCleanupIfNeeded [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\csrf.ts:226:3[90m)[39m
+    at Module.validateCsrf [90m(C:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\csrf.ts:251:3[90m)[39m
+    at [90mC:\Users\fs_ro\Documents\TAX DEED FLOW\.auto-claude\worktrees\tasks\051-fix-weak-csrf-token-validation-that-accepts-any-to\TaxDeedFlow\[39msrc\lib\auth\__tests__\csrf.test.ts:633:28
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:135:14
+    at [90mfile:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:60:26
+    at runTest [90m(file:///C:/Users/fs_ro/Documents/TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:781:17[90m)[39m
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateCsrf[2m > [22m[2mPOST requests with Origin header[2m > [22m[2mshould block POST with mismatched Origin header[22m[39m
+[CSRF] Origin mismatch. Expected: http://localhost:3000, Got: http://evil.com
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateCsrf[2m > [22m[2mPOST requests with Referer header[2m > [22m[2mshould block POST with mismatched Referer header[22m[39m
+[CSRF] Referer mismatch. Expected: http://localhost:3000, Got: http://evil.com
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateCsrf[2m > [22m[2mPOST requests with Referer header[2m > [22m[2mshould block POST with invalid Referer URL format[22m[39m
+[CSRF] Invalid referer URL format
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateCsrf[2m > [22m[2mPOST requests with CSRF token[2m > [22m[2mshould block POST with invalid CSRF token[22m[39m
+[CSRF] Token not found in database
+[CSRF] Token validation failed: Invalid or expired CSRF token.
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateCsrf[2m > [22m[2mPOST requests with CSRF token[2m > [22m[2mshould block POST with expired CSRF token[22m[39m
+[CSRF] Token has expired
+[CSRF] Token validation failed: CSRF token has expired.
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mvalidateCsrf[2m > [22m[2mPOST requests with CSRF token[2m > [22m[2mshould block POST without any security headers[22m[39m
+[CSRF] No Origin, Referer, or CSRF token provided
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mCSRF token lifecycle (integration)[2m > [22m[2mshould complete full token lifecycle: generate -> store -> validate -> delete[22m[39m
+[CSRF] Token not found in database
+
+[90mstdout[2m | src/lib/auth/__tests__/csrf.test.ts[2m > [22m[2mCSRF token lifecycle (integration)[2m > [22m[2mshould prevent token reuse attack[22m[39m
+[CSRF] Token not found in database
+
+ [32m✓[39m src/lib/auth/__tests__/csrf.test.ts [2m ([22m[2m44 tests[22m[2m)[22m[90m 227[2mms[22m[39m
+ [33m❯[39m src/lib/scoring/__tests__/integration.test.ts [2m ([22m[2m44 tests[22m [2m|[22m [31m19 failed[39m[2m)[22m[90m 63[2mms[22m[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mcomplete scoring flow[2m > [22mshould complete full scoring pipeline for ideal property[39m
+[31m     → expected true to be false // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mcomplete scoring flow[2m > [22mshould complete full pipeline for minimal property[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mscore aggregation accuracy[2m > [22mshould correctly aggregate category scores[39m
+[31m     → expected 2.5 to be less than 0.01[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mscore aggregation accuracy[2m > [22mshould correctly aggregate component scores within categories[39m
+[31m     → expected 13.04 to be less than 0.01[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegional Adjustment Integration[2m > [22mshould apply Pennsylvania adjustments correctly[39m
+[31m     → expected 0 to be greater than 0[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegional Adjustment Integration[2m > [22mshould apply different adjustments for Florida[39m
+[31m     → expected [] to not deeply equal [][39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegional Adjustment Integration[2m > [22mshould apply Texas-specific adjustments[39m
+[31m     → expected false to be true // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mCalibration Pipeline[2m > [22mshould calibrate scores within acceptable range[39m
+[31m     → expected 22.5 to be greater than 30[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mCalibration Pipeline[2m > [22mshould validate score breakdown after calibration[39m
+[31m     → Cannot convert undefined or null to object[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mCalibration Pipeline[2m > [22mshould apply property type calibration[39m
+[31m     → expected 'unknown' to be 'single_family_residential' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mMissing Data Strategy Integration[2m > [22mshould apply consistent strategies across pipeline[39m
+[31m     → expected undefined not to be undefined[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mMissing Data Strategy Integration[2m > [22mshould reduce confidence when using defaults[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould process multiple properties consistently[39m
+[31m     → expected Promise{…} to have property 'length'[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould maintain property order in results[39m
+[31m     → Cannot read properties of undefined (reading 'propertyId')[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould handle mixed property types in batch[39m
+[31m     → results.map is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould handle mixed edge cases in batch[39m
+[31m     → results.filter is not a function[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mProperty Type Specific Integration[2m > [22mshould score flood zone property with risk adjustment[39m
+[31m     → expected false to be true // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mProperty Type Specific Integration[2m > [22mshould auto-reject sliver lot[39m
+[31m     → expected [ 'no_structure', …(2) ] to include 'sliver_lot'[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegression Prevention[2m > [22mshould maintain consistent scoring for benchmark property[39m
+[31m     → expected 22.5 to be greater than 60[39m
+ [33m❯[39m src/lib/scoring/__tests__/scoring.test.ts [2m ([22m[2m66 tests[22m [2m|[22m [31m17 failed[39m[2m)[22m[90m 53[2mms[22m[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mbasic functionality[2m > [22mshould calculate total score as sum of category scores[39m
+[31m     → expected 2.5 to be less than 0.01[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mproperty type detection[2m > [22mshould detect single_family_residential type[39m
+[31m     → expected 'unknown' to be 'single_family_residential' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould have high confidence for complete data[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould have low confidence for minimal data[39m
+[31m     → actual value must be number or bigint, received "undefined"[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould include confidence factors[39m
+[31m     → expected undefined not to be undefined[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould provide recommendations for low confidence[39m
+[31m     → expected undefined not to be undefined[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22medge case handling[2m > [22mshould detect edge cases for sliver lot[39m
+[31m     → expected [ 'no_structure', …(2) ] to include 'sliver_lot'[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mfallback logging[2m > [22mshould log fallbacks when data is missing[39m
+[31m     → expected undefined not to be undefined[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22moptions handling[2m > [22mshould respect skipEdgeCaseCheck option[39m
+[31m     → expected 0 to be greater than 0[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScores (batch)[2m > [22mshould score multiple properties[39m
+[31m     → expected Promise{…} to have property 'length'[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScores (batch)[2m > [22mshould handle empty property array[39m
+[31m     → expected Promise{…} to have property 'length'[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScores (batch)[2m > [22mshould maintain order of results[39m
+[31m     → Cannot read properties of undefined (reading 'propertyId')[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculateGrade[2m > [22mgrade with modifiers[2m > [22mshould return A+ for scores >= 90%[39m
+[31m     → expected 'A' to be 'A+' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculateGrade[2m > [22mgrade with modifiers[2m > [22mshould return A for scores 85-89%[39m
+[31m     → expected 'A-' to be 'A' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcomparePropertyScores[2m > [22mshould compare two property scores[39m
+[31m     → expected undefined not to be undefined[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcomparePropertyScores[2m > [22mshould correctly identify better property[39m
+[31m     → expected undefined to be 'prop-ideal-001' // Object.is equality[39m
+[31m   [33m❯[31m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcomparePropertyScores[2m > [22mshould calculate category-by-category differences[39m
+[31m     → Cannot read properties of undefined (reading 'location')[39m
+
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 124 [27m[22m⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mhandleEdgeCases[2m > [22mbasic functionality[2m > [22mshould return isEdgeCase=false for normal property
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m80:33[22m[39m
+    [90m 78| [39m      )[33m;[39m
+    [90m 79| [39m
+    [90m 80| [39m      [34mexpect[39m(result[33m.[39misEdgeCase)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m 81| [39m      [34mexpect[39m(result[33m.[39mhandling)[33m.[39m[34mtoBe[39m([32m'standard'[39m)[33m;[39m
+    [90m 82| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould detect property built before 1900
+[31m[1mTypeError[22m: detectVeryOldProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m174:20[22m[39m
+    [90m172| [39m[34mdescribe[39m([32m'detectVeryOldProperty'[39m[33m,[39m () [33m=>[39m {
+    [90m173| [39m  [34mit[39m([32m'should detect property built before 1900'[39m[33m,[39m () [33m=>[39m {
+    [90m174| [39m    [35mconst[39m result [33m=[39m [34mdetectVeryOldProperty[39m(mockVeryOldProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m175| [39m
+    [90m176| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould not flag property built after 1900
+[31m[1mTypeError[22m: detectVeryOldProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m182:20[22m[39m
+    [90m180| [39m
+    [90m181| [39m  [34mit[39m([32m'should not flag property built after 1900'[39m[33m,[39m () [33m=>[39m {
+    [90m182| [39m    [35mconst[39m result [33m=[39m [34mdetectVeryOldProperty[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m183| [39m
+    [90m184| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould handle null year_built
+[31m[1mTypeError[22m: detectVeryOldProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m189:20[22m[39m
+    [90m187| [39m  [34mit[39m([32m'should handle null year_built'[39m[33m,[39m () [33m=>[39m {
+    [90m188| [39m    [35mconst[39m propertyNoYear [33m=[39m [34mcreateMockProperty[39m({ year_built[33m:[39m [35mnull[39m })[33m;[39m
+    [90m189| [39m    [35mconst[39m result [33m=[39m [34mdetectVeryOldProperty[39m(propertyNoYear)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m190| [39m
+    [90m191| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectVeryOldProperty[2m > [22mshould calculate property age correctly
+[31m[1mTypeError[22m: detectVeryOldProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m195:20[22m[39m
+    [90m193| [39m
+    [90m194| [39m  [34mit[39m([32m'should calculate property age correctly'[39m[33m,[39m () [33m=>[39m {
+    [90m195| [39m    [35mconst[39m result [33m=[39m [34mdetectVeryOldProperty[39m(mockVeryOldProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m196| [39m    [35mconst[39m currentYear [33m=[39m [35mnew[39m [33mDate[39m()[33m.[39m[34mgetFullYear[39m()[33m;[39m
+    [90m197| [39m    [35mconst[39m expectedAge [33m=[39m currentYear [33m-[39m [34m1885[39m[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould detect property with no building
+[31m[1mTypeError[22m: detectNoStructure is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m205:20[22m[39m
+    [90m203| [39m[34mdescribe[39m([32m'detectNoStructure'[39m[33m,[39m () [33m=>[39m {
+    [90m204| [39m  [34mit[39m([32m'should detect property with no building'[39m[33m,[39m () [33m=>[39m {
+    [90m205| [39m    [35mconst[39m result [33m=[39m [34mdetectNoStructure[39m(mockVacantLandProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m206| [39m
+    [90m207| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould not flag property with structure
+[31m[1mTypeError[22m: detectNoStructure is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m212:20[22m[39m
+    [90m210| [39m
+    [90m211| [39m  [34mit[39m([32m'should not flag property with structure'[39m[33m,[39m () [33m=>[39m {
+    [90m212| [39m    [35mconst[39m result [33m=[39m [34mdetectNoStructure[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m213| [39m
+    [90m214| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould handle null building_sqft
+[31m[1mTypeError[22m: detectNoStructure is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m219:20[22m[39m
+    [90m217| [39m  [34mit[39m([32m'should handle null building_sqft'[39m[33m,[39m () [33m=>[39m {
+    [90m218| [39m    [35mconst[39m propertyNoSqFt [33m=[39m [34mcreateMockProperty[39m({ building_sqft[33m:[39m [35mnull[39m })[33m;[39m
+    [90m219| [39m    [35mconst[39m result [33m=[39m [34mdetectNoStructure[39m(propertyNoSqFt)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m220| [39m
+    [90m221| [39m    [90m// Null is ambiguous - should check other indicators[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectNoStructure[2m > [22mshould detect based on property type if sqft unavailable
+[31m[1mTypeError[22m: detectNoStructure is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m230:20[22m[39m
+    [90m228| [39m      property_type[33m:[39m [32m'vacant_land'[39m[33m,[39m
+    [90m229| [39m    })[33m;[39m
+    [90m230| [39m    [35mconst[39m result [33m=[39m [34mdetectNoStructure[39m(vacantProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m231| [39m
+    [90m232| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighValueProperty[2m > [22mshould detect property with high total_due
+[31m[1mTypeError[22m: detectHighValueProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m238:20[22m[39m
+    [90m236| [39m[34mdescribe[39m([32m'detectHighValueProperty'[39m[33m,[39m () [33m=>[39m {
+    [90m237| [39m  [34mit[39m([32m'should detect property with high total_due'[39m[33m,[39m () [33m=>[39m {
+    [90m238| [39m    [35mconst[39m result [33m=[39m [34mdetectHighValueProperty[39m(mockHighValueProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m239| [39m
+    [90m240| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighValueProperty[2m > [22mshould not flag normal value property
+[31m[1mTypeError[22m: detectHighValueProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m245:20[22m[39m
+    [90m243| [39m
+    [90m244| [39m  [34mit[39m([32m'should not flag normal value property'[39m[33m,[39m () [33m=>[39m {
+    [90m245| [39m    [35mconst[39m result [33m=[39m [34mdetectHighValueProperty[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m246| [39m
+    [90m247| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighValueProperty[2m > [22mshould use default threshold of $50,000
+[31m[1mTypeError[22m: detectHighValueProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m254:12[22m[39m
+    [90m252| [39m    [35mconst[39m justOverProperty [33m=[39m [34mcreateMockProperty[39m({ total_due[33m:[39m [34m50001[39m })[33m;[39m
+    [90m253| [39m
+    [90m254| [39m    [34mexpect[39m([34mdetectHighValueProperty[39m(justUnderProperty)[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mf[39m…
+    [90m   | [39m           [31m^[39m
+    [90m255| [39m    [34mexpect[39m([34mdetectHighValueProperty[39m(justOverProperty)[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtr[39m…
+    [90m256| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectExtremelyLowValue[2m > [22mshould detect property with very low value
+[31m[1mTypeError[22m: detectExtremelyLowValue is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m265:20[22m[39m
+    [90m263| [39m      assessed_value[33m:[39m [34m200[39m[33m,[39m
+    [90m264| [39m    })[33m;[39m
+    [90m265| [39m    [35mconst[39m result [33m=[39m [34mdetectExtremelyLowValue[39m(lowValueProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m266| [39m
+    [90m267| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectExtremelyLowValue[2m > [22mshould not flag normal value property
+[31m[1mTypeError[22m: detectExtremelyLowValue is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m272:20[22m[39m
+    [90m270| [39m
+    [90m271| [39m  [34mit[39m([32m'should not flag normal value property'[39m[33m,[39m () [33m=>[39m {
+    [90m272| [39m    [35mconst[39m result [33m=[39m [34mdetectExtremelyLowValue[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m273| [39m
+    [90m274| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectExtremelyLowValue[2m > [22mshould use default threshold of $500
+[31m[1mTypeError[22m: detectExtremelyLowValue is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m281:12[22m[39m
+    [90m279| [39m    [35mconst[39m justOver [33m=[39m [34mcreateMockProperty[39m({ total_due[33m:[39m [34m501[39m })[33m;[39m
+    [90m280| [39m
+    [90m281| [39m    [34mexpect[39m([34mdetectExtremelyLowValue[39m(justUnder)[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m           [31m^[39m
+    [90m282| [39m    [34mexpect[39m([34mdetectExtremelyLowValue[39m(justOver)[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m283| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectLandlocked[2m > [22mshould detect landlocked property from land_use
+[31m[1mTypeError[22m: detectLandlocked is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m291:20[22m[39m
+    [90m289| [39m      land_use[33m:[39m [32m'LANDLOCKED'[39m[33m,[39m
+    [90m290| [39m    })[33m;[39m
+    [90m291| [39m    [35mconst[39m result [33m=[39m [34mdetectLandlocked[39m(landlockedProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m292| [39m
+    [90m293| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectLandlocked[2m > [22mshould not flag property with road access
+[31m[1mTypeError[22m: detectLandlocked is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m298:20[22m[39m
+    [90m296| [39m
+    [90m297| [39m  [34mit[39m([32m'should not flag property with road access'[39m[33m,[39m () [33m=>[39m {
+    [90m298| [39m    [35mconst[39m result [33m=[39m [34mdetectLandlocked[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m299| [39m
+    [90m300| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectTitleCloud[2m > [22mshould detect IRS lien from external data
+[31m[1mTypeError[22m: detectTitleCloud is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m312:20[22m[39m
+    [90m310| [39m    [90m// This test depends on how title cloud data is structured[39m
+    [90m311| [39m    [90m// For now, test basic functionality[39m
+    [90m312| [39m    [35mconst[39m result [33m=[39m [34mdetectTitleCloud[39m(mockIdealProperty[33m,[39m [35mnull[39m)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m313| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m314| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould detect contamination from environmental data
+[31m[1mTypeError[22m: detectEnvironmentalContamination is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m319:20[22m[39m
+    [90m317| [39m[34mdescribe[39m([32m'detectEnvironmentalContamination'[39m[33m,[39m () [33m=>[39m {
+    [90m318| [39m  [34mit[39m([32m'should detect contamination from environmental data'[39m[33m,[39m () [33m=>[39m {
+    [90m319| [39m    [35mconst[39m result [33m=[39m [34mdetectEnvironmentalContamination[39m(
+    [90m   | [39m                   [31m^[39m
+    [90m320| [39m      mockContaminatedProperty[33m,[39m
+    [90m321| [39m      mockContaminatedExternalData
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould not flag clean property
+[31m[1mTypeError[22m: detectEnvironmentalContamination is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m329:20[22m[39m
+    [90m327| [39m
+    [90m328| [39m  [34mit[39m([32m'should not flag clean property'[39m[33m,[39m () [33m=>[39m {
+    [90m329| [39m    [35mconst[39m result [33m=[39m [34mdetectEnvironmentalContamination[39m(
+    [90m   | [39m                   [31m^[39m
+    [90m330| [39m      mockIdealProperty[33m,[39m
+    [90m331| [39m      mockIdealExternalData
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould detect based on environmental risk score > 50
+[31m[1mTypeError[22m: detectEnvironmentalContamination is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m347:20[22m[39m
+    [90m345| [39m    })[33m;[39m
+    [90m346| [39m
+    [90m347| [39m    [35mconst[39m result [33m=[39m [34mdetectEnvironmentalContamination[39m(
+    [90m   | [39m                   [31m^[39m
+    [90m348| [39m      mockIdealProperty[33m,[39m
+    [90m349| [39m      highRiskExternal
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectEnvironmentalContamination[2m > [22mshould detect superfund site proximity
+[31m[1mTypeError[22m: detectEnvironmentalContamination is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m365:20[22m[39m
+    [90m363| [39m    })[33m;[39m
+    [90m364| [39m
+    [90m365| [39m    [35mconst[39m result [33m=[39m [34mdetectEnvironmentalContamination[39m(
+    [90m   | [39m                   [31m^[39m
+    [90m366| [39m      mockIdealProperty[33m,[39m
+    [90m367| [39m      superfundExternal
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectSliverLot[2m > [22mshould detect very small lot (< 1000 sqft)
+[31m[1mTypeError[22m: detectSliverLot is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m376:20[22m[39m
+    [90m374| [39m[34mdescribe[39m([32m'detectSliverLot'[39m[33m,[39m () [33m=>[39m {
+    [90m375| [39m  [34mit[39m([32m'should detect very small lot (< 1000 sqft)'[39m[33m,[39m () [33m=>[39m {
+    [90m376| [39m    [35mconst[39m result [33m=[39m [34mdetectSliverLot[39m(mockSliverLotProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m377| [39m
+    [90m378| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectSliverLot[2m > [22mshould not flag normal sized lot
+[31m[1mTypeError[22m: detectSliverLot is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m383:20[22m[39m
+    [90m381| [39m
+    [90m382| [39m  [34mit[39m([32m'should not flag normal sized lot'[39m[33m,[39m () [33m=>[39m {
+    [90m383| [39m    [35mconst[39m result [33m=[39m [34mdetectSliverLot[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m384| [39m
+    [90m385| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectSliverLot[2m > [22mshould handle lot_size_acres when sqft not available
+[31m[1mTypeError[22m: detectSliverLot is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m394:20[22m[39m
+    [90m392| [39m    })[33m;[39m
+    [90m393| [39m
+    [90m394| [39m    [35mconst[39m result [33m=[39m [34mdetectSliverLot[39m(propertyWithAcres)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m395| [39m
+    [90m396| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectCemetery[2m > [22mshould detect cemetery from land_use
+[31m[1mTypeError[22m: detectCemetery is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m402:20[22m[39m
+    [90m400| [39m[34mdescribe[39m([32m'detectCemetery'[39m[33m,[39m () [33m=>[39m {
+    [90m401| [39m  [34mit[39m([32m'should detect cemetery from land_use'[39m[33m,[39m () [33m=>[39m {
+    [90m402| [39m    [35mconst[39m result [33m=[39m [34mdetectCemetery[39m(mockCemeteryProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m403| [39m
+    [90m404| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectCemetery[2m > [22mshould detect cemetery from property name
+[31m[1mTypeError[22m: detectCemetery is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m414:20[22m[39m
+    [90m412| [39m    })[33m;[39m
+    [90m413| [39m
+    [90m414| [39m    [35mconst[39m result [33m=[39m [34mdetectCemetery[39m(cemeteryByName)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m415| [39m
+    [90m416| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectCemetery[2m > [22mshould not flag residential property
+[31m[1mTypeError[22m: detectCemetery is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m420:20[22m[39m
+    [90m418| [39m
+    [90m419| [39m  [34mit[39m([32m'should not flag residential property'[39m[33m,[39m () [33m=>[39m {
+    [90m420| [39m    [35mconst[39m result [33m=[39m [34mdetectCemetery[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m421| [39m
+    [90m422| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectUtilityProperty[2m > [22mshould detect utility property from land_use
+[31m[1mTypeError[22m: detectUtilityProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m433:20[22m[39m
+    [90m431| [39m    })[33m;[39m
+    [90m432| [39m
+    [90m433| [39m    [35mconst[39m result [33m=[39m [34mdetectUtilityProperty[39m(utilityProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m434| [39m
+    [90m435| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectUtilityProperty[2m > [22mshould detect power company ownership
+[31m[1mTypeError[22m: detectUtilityProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m444:20[22m[39m
+    [90m442| [39m    })[33m;[39m
+    [90m443| [39m
+    [90m444| [39m    [35mconst[39m result [33m=[39m [34mdetectUtilityProperty[39m(powerCompanyProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m445| [39m
+    [90m446| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectUtilityProperty[2m > [22mshould not flag residential property
+[31m[1mTypeError[22m: detectUtilityProperty is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m450:20[22m[39m
+    [90m448| [39m
+    [90m449| [39m  [34mit[39m([32m'should not flag residential property'[39m[33m,[39m () [33m=>[39m {
+    [90m450| [39m    [35mconst[39m result [33m=[39m [34mdetectUtilityProperty[39m(mockIdealProperty)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m451| [39m
+    [90m452| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectDecliningMarket[2m > [22mshould detect declining market from negative YoY change
+[31m[1mTypeError[22m: detectDecliningMarket is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m458:20[22m[39m
+    [90m456| [39m[34mdescribe[39m([32m'detectDecliningMarket'[39m[33m,[39m () [33m=>[39m {
+    [90m457| [39m  [34mit[39m([32m'should detect declining market from negative YoY change'[39m[33m,[39m () [33m=>[39m {
+    [90m458| [39m    [35mconst[39m result [33m=[39m [34mdetectDecliningMarket[39m(
+    [90m   | [39m                   [31m^[39m
+    [90m459| [39m      edgeCaseProperties[33m.[39mdecliningMarket[33m,[39m
+    [90m460| [39m      decliningMarketExternalData
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectDecliningMarket[2m > [22mshould not flag stable/growing market
+[31m[1mTypeError[22m: detectDecliningMarket is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m468:20[22m[39m
+    [90m466| [39m
+    [90m467| [39m  [34mit[39m([32m'should not flag stable/growing market'[39m[33m,[39m () [33m=>[39m {
+    [90m468| [39m    [35mconst[39m result [33m=[39m [34mdetectDecliningMarket[39m(
+    [90m   | [39m                   [31m^[39m
+    [90m469| [39m      mockIdealProperty[33m,[39m
+    [90m470| [39m      mockIdealExternalData
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectDecliningMarket[2m > [22mshould use threshold of -10% YoY decline
+[31m[1mTypeError[22m: detectDecliningMarket is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m484:20[22m[39m
+    [90m482| [39m    })[33m;[39m
+    [90m483| [39m
+    [90m484| [39m    [35mconst[39m result [33m=[39m [34mdetectDecliningMarket[39m(mockIdealProperty[33m,[39m mildDeclin…
+    [90m   | [39m                   [31m^[39m
+    [90m485| [39m
+    [90m486| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighCompetition[2m > [22mshould detect high competition from low days on market
+[31m[1mTypeError[22m: detectHighCompetition is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m500:20[22m[39m
+    [90m498| [39m    })[33m;[39m
+    [90m499| [39m
+    [90m500| [39m    [35mconst[39m result [33m=[39m [34mdetectHighCompetition[39m(mockIdealProperty[33m,[39m hotMarket)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m501| [39m
+    [90m502| [39m    [34mexpect[39m(result[33m.[39mdetected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mdetectHighCompetition[2m > [22mshould not flag normal market
+[31m[1mTypeError[22m: detectHighCompetition is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m507:20[22m[39m
+    [90m505| [39m
+    [90m506| [39m  [34mit[39m([32m'should not flag normal market'[39m[33m,[39m () [33m=>[39m {
+    [90m507| [39m    [35mconst[39m result [33m=[39m [34mdetectHighCompetition[39m(
+    [90m   | [39m                   [31m^[39m
+    [90m508| [39m      mockIdealProperty[33m,[39m
+    [90m509| [39m      mockIdealExternalData
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return critical for cemetery
+[31m[1mTypeError[22m: getEdgeCaseSeverity is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m522:12[22m[39m
+    [90m520| [39m[34mdescribe[39m([32m'getEdgeCaseSeverity'[39m[33m,[39m () [33m=>[39m {
+    [90m521| [39m  [34mit[39m([32m'should return critical for cemetery'[39m[33m,[39m () [33m=>[39m {
+    [90m522| [39m    [34mexpect[39m([34mgetEdgeCaseSeverity[39m([32m'cemetery'[39m))[33m.[39m[34mtoBe[39m([32m'critical'[39m)[33m;[39m
+    [90m   | [39m           [31m^[39m
+    [90m523| [39m  })[33m;[39m
+    [90m524| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return critical for utility_property
+[31m[1mTypeError[22m: getEdgeCaseSeverity is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m526:12[22m[39m
+    [90m524| [39m
+    [90m525| [39m  [34mit[39m([32m'should return critical for utility_property'[39m[33m,[39m () [33m=>[39m {
+    [90m526| [39m    [34mexpect[39m([34mgetEdgeCaseSeverity[39m([32m'utility_property'[39m))[33m.[39m[34mtoBe[39m([32m'critical'[39m)[33m;[39m
+    [90m   | [39m           [31m^[39m
+    [90m527| [39m  })[33m;[39m
+    [90m528| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return high for environmental_contamination
+[31m[1mTypeError[22m: getEdgeCaseSeverity is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m530:12[22m[39m
+    [90m528| [39m
+    [90m529| [39m  [34mit[39m([32m'should return high for environmental_contamination'[39m[33m,[39m () [33m=>[39m {
+    [90m530| [39m    [34mexpect[39m([34mgetEdgeCaseSeverity[39m([32m'environmental_contamination'[39m))[33m.[39m[34mtoBe[39m([32m'h[39m…
+    [90m   | [39m           [31m^[39m
+    [90m531| [39m  })[33m;[39m
+    [90m532| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return medium for very_old_property
+[31m[1mTypeError[22m: getEdgeCaseSeverity is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m534:12[22m[39m
+    [90m532| [39m
+    [90m533| [39m  [34mit[39m([32m'should return medium for very_old_property'[39m[33m,[39m () [33m=>[39m {
+    [90m534| [39m    [34mexpect[39m([34mgetEdgeCaseSeverity[39m([32m'very_old_property'[39m))[33m.[39m[34mtoBe[39m([32m'medium'[39m)[33m;[39m
+    [90m   | [39m           [31m^[39m
+    [90m535| [39m  })[33m;[39m
+    [90m536| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetEdgeCaseSeverity[2m > [22mshould return low for high_competition_area
+[31m[1mTypeError[22m: getEdgeCaseSeverity is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m538:12[22m[39m
+    [90m536| [39m
+    [90m537| [39m  [34mit[39m([32m'should return low for high_competition_area'[39m[33m,[39m () [33m=>[39m {
+    [90m538| [39m    [34mexpect[39m([34mgetEdgeCaseSeverity[39m([32m'high_competition_area'[39m))[33m.[39m[34mtoBe[39m([32m'low'[39m)[33m;[39m
+    [90m   | [39m           [31m^[39m
+    [90m539| [39m  })[33m;[39m
+    [90m540| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mshouldAutoReject[2m > [22mshould auto-reject cemetery
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m548:42[22m[39m
+    [90m546| [39m[34mdescribe[39m([32m'shouldAutoReject'[39m[33m,[39m () [33m=>[39m {
+    [90m547| [39m  [34mit[39m([32m'should auto-reject cemetery'[39m[33m,[39m () [33m=>[39m {
+    [90m548| [39m    [34mexpect[39m([34mshouldAutoReject[39m([32m'cemetery'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                                         [31m^[39m
+    [90m549| [39m  })[33m;[39m
+    [90m550| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mshouldAutoReject[2m > [22mshould auto-reject utility_property
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m552:50[22m[39m
+    [90m550| [39m
+    [90m551| [39m  [34mit[39m([32m'should auto-reject utility_property'[39m[33m,[39m () [33m=>[39m {
+    [90m552| [39m    [34mexpect[39m([34mshouldAutoReject[39m([32m'utility_property'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                                                 [31m^[39m
+    [90m553| [39m  })[33m;[39m
+    [90m554| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mshouldAutoReject[2m > [22mshould auto-reject sliver_lot
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m564:44[22m[39m
+    [90m562| [39m
+    [90m563| [39m  [34mit[39m([32m'should auto-reject sliver_lot'[39m[33m,[39m () [33m=>[39m {
+    [90m564| [39m    [34mexpect[39m([34mshouldAutoReject[39m([32m'sliver_lot'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                                           [31m^[39m
+    [90m565| [39m  })[33m;[39m
+    [90m566| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould provide recommendations for very old property
+[31m[1mTypeError[22m: getHandlingRecommendations is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m574:29[22m[39m
+    [90m572| [39m[34mdescribe[39m([32m'getHandlingRecommendations'[39m[33m,[39m () [33m=>[39m {
+    [90m573| [39m  [34mit[39m([32m'should provide recommendations for very old property'[39m[33m,[39m () [33m=>[39m {
+    [90m574| [39m    [35mconst[39m recommendations [33m=[39m [34mgetHandlingRecommendations[39m([32m'very_old_prope[39m…
+    [90m   | [39m                            [31m^[39m
+    [90m575| [39m
+    [90m576| [39m    [34mexpect[39m(recommendations[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould provide recommendations for environmental contamination
+[31m[1mTypeError[22m: getHandlingRecommendations is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m581:29[22m[39m
+    [90m579| [39m
+    [90m580| [39m  [34mit[39m([32m'should provide recommendations for environmental contamination'[39m[33m,[39m…
+    [90m581| [39m    [35mconst[39m recommendations [33m=[39m [34mgetHandlingRecommendations[39m(
+    [90m   | [39m                            [31m^[39m
+    [90m582| [39m      [32m'environmental_contamination'[39m
+    [90m583| [39m    )[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould provide recommendations for title cloud
+[31m[1mTypeError[22m: getHandlingRecommendations is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m592:29[22m[39m
+    [90m590| [39m
+    [90m591| [39m  [34mit[39m([32m'should provide recommendations for title cloud'[39m[33m,[39m () [33m=>[39m {
+    [90m592| [39m    [35mconst[39m recommendations [33m=[39m [34mgetHandlingRecommendations[39m([32m'title_cloud'[39m)[33m;[39m
+    [90m   | [39m                            [31m^[39m
+    [90m593| [39m
+    [90m594| [39m    [34mexpect[39m(recommendations[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mgetHandlingRecommendations[2m > [22mshould return empty for auto-reject types
+[31m[1mTypeError[22m: getHandlingRecommendations is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m601:29[22m[39m
+    [90m599| [39m
+    [90m600| [39m  [34mit[39m([32m'should return empty for auto-reject types'[39m[33m,[39m () [33m=>[39m {
+    [90m601| [39m    [35mconst[39m recommendations [33m=[39m [34mgetHandlingRecommendations[39m([32m'cemetery'[39m)[33m;[39m
+    [90m   | [39m                            [31m^[39m
+    [90m602| [39m
+    [90m603| [39m    [90m// Cemetery is auto-reject, so no recommendations needed[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mEDGE_CASE_CONFIG[2m > [22mshould have configuration for all edge case types
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'very_old_property')[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m635:14[22m[39m
+    [90m633| [39m
+    [90m634| [39m    edgeCaseTypes[33m.[39m[34mforEach[39m((type) [33m=>[39m {
+    [90m635| [39m      [34mexpect[39m([33mEDGE_CASE_CONFIG[39m[type])[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   | [39m             [31m^[39m
+    [90m636| [39m      [34mexpect[39m([33mEDGE_CASE_CONFIG[39m[type][33m.[39mhandling)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m637| [39m      [34mexpect[39m([33mEDGE_CASE_CONFIG[39m[type][33m.[39mseverity)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m634:19[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mEDGE_CASE_CONFIG[2m > [22mshould have valid handling strategies
+[31m[1mTypeError[22m: Cannot convert undefined or null to object[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m654:12[22m[39m
+    [90m652| [39m    ][33m;[39m
+    [90m653| [39m
+    [90m654| [39m    [33mObject[39m[33m.[39m[34mvalues[39m([33mEDGE_CASE_CONFIG[39m)[33m.[39m[34mforEach[39m((config) [33m=>[39m {
+    [90m   | [39m           [31m^[39m
+    [90m655| [39m      [34mexpect[39m(validHandlings)[33m.[39m[34mtoContain[39m(config[33m.[39mhandling)[33m;[39m
+    [90m656| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mEDGE_CASE_CONFIG[2m > [22mshould have valid severity levels
+[31m[1mTypeError[22m: Cannot convert undefined or null to object[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m662:12[22m[39m
+    [90m660| [39m    [35mconst[39m validSeverities [33m=[39m [[32m'critical'[39m[33m,[39m [32m'high'[39m[33m,[39m [32m'medium'[39m[33m,[39m [32m'low'[39m][33m;[39m
+    [90m661| [39m
+    [90m662| [39m    [33mObject[39m[33m.[39m[34mvalues[39m([33mEDGE_CASE_CONFIG[39m)[33m.[39m[34mforEach[39m((config) [33m=>[39m {
+    [90m   | [39m           [31m^[39m
+    [90m663| [39m      [34mexpect[39m(validSeverities)[33m.[39m[34mtoContain[39m(config[33m.[39mseverity)[33m;[39m
+    [90m664| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22medge cases with property types[2m > [22mshould handle commercial property differently
+[31m[1mAssertionError[22m: expected 'title_research_required' to be 'specialized_analysis' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- specialized_analysis[39m
+[31m+ title_research_required[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m694:39[22m[39m
+    [90m692| [39m
+    [90m693| [39m    [90m// High value is expected for commercial[39m
+    [90m694| [39m    [34mexpect[39m(commercialResult[33m.[39mhandling)[33m.[39m[34mtoBe[39m([32m'specialized_analysis'[39m)[33m;[39m
+    [90m   | [39m                                      [31m^[39m
+    [90m695| [39m  })[33m;[39m
+    [90m696| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/edgeCases.test.ts[2m > [22mwarning generation[2m > [22mshould not generate warnings for normal property
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/edgeCases.test.ts:[2m722:31[22m[39m
+    [90m720| [39m
+    [90m721| [39m    [90m// Normal property may have minor warnings but shouldn't have edge[39m…
+    [90m722| [39m    [34mexpect[39m(result[33m.[39misEdgeCase)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m723| [39m  })[33m;[39m
+    [90m724| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mcomplete scoring flow[2m > [22mshould complete full scoring pipeline for ideal property
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m61:36[22m[39m
+    [90m 59| [39m        mockIdealExternalData
+    [90m 60| [39m      )[33m;[39m
+    [90m 61| [39m      [34mexpect[39m(edgeCases[33m.[39misEdgeCase)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   | [39m                                   [31m^[39m
+    [90m 62| [39m
+    [90m 63| [39m      [90m// Step 2: Calculate location score[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[54/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mcomplete scoring flow[2m > [22mshould complete full pipeline for minimal property
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m91:46[22m[39m
+    [90m 89| [39m      [34mexpect[39m(result)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m 90| [39m      [34mexpect[39m(result[33m.[39mtotalScore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m0[39m)[33m;[39m
+    [90m 91| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39moverall)[33m.[39m[34mtoBeLessThan[39m([34m60[39m)[33m;[39m
+    [90m   | [39m                                             [31m^[39m
+    [90m 92| [39m      [34mexpect[39m(result[33m.[39mwarnings[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m 93| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[55/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mscore aggregation accuracy[2m > [22mshould correctly aggregate category scores
+[31m[1mAssertionError[22m: expected 2.5 to be less than 0.01[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m119:57[22m[39m
+    [90m117| [39m        result[33m.[39mprofit[33m.[39mscore[33m;[39m
+    [90m118| [39m
+    [90m119| [39m      [34mexpect[39m([33mMath[39m[33m.[39m[34mabs[39m(result[33m.[39mtotalScore [33m-[39m manualTotal))[33m.[39m[34mtoBeLessThan[39m([34m0[39m…
+    [90m   | [39m                                                        [31m^[39m
+    [90m120| [39m    })[33m;[39m
+    [90m121| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[56/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mEnd-to-End Scoring Pipeline[2m > [22mscore aggregation accuracy[2m > [22mshould correctly aggregate component scores within categories
+[31m[1mAssertionError[22m: expected 13.04 to be less than 0.01[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m133:72[22m[39m
+    [90m131| [39m      )[33m;[39m
+    [90m132| [39m
+    [90m133| [39m      [34mexpect[39m([33mMath[39m[33m.[39m[34mabs[39m(result[33m.[39mlocation[33m.[39mscore [33m-[39m locationComponentTotal))…
+    [90m   | [39m                                                                       [31m^[39m
+    [90m134| [39m    })[33m;[39m
+    [90m135| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[57/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegional Adjustment Integration[2m > [22mshould apply Pennsylvania adjustments correctly
+[31m[1mAssertionError[22m: expected 0 to be greater than 0[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m175:45[22m[39m
+    [90m173| [39m
+    [90m174| [39m    [34mexpect[39m(result[33m.[39mregionAdjustments)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m175| [39m    [34mexpect[39m(result[33m.[39mregionAdjustments[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                                            [31m^[39m
+    [90m176| [39m    [34mexpect[39m(result[33m.[39mregionAdjustments[33m.[39m[34msome[39m((adj) [33m=>[39m adj[33m.[39m[34mincludes[39m([32m'PA'[39m)))…
+    [90m177| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[58/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegional Adjustment Integration[2m > [22mshould apply different adjustments for Florida
+[31m[1mAssertionError[22m: expected [] to not deeply equal [][39m
+
+[2mCompared values have no visual difference.[22m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m190:44[22m[39m
+    [90m188| [39m
+    [90m189| [39m    [90m// Scores may differ due to regional adjustments[39m
+    [90m190| [39m    [34mexpect[39m(paResult[33m.[39mregionAdjustments)[33m.[39mnot[33m.[39m[34mtoEqual[39m(flResult[33m.[39mregionAdju…
+    [90m   | [39m                                           [31m^[39m
+    [90m191| [39m  })[33m;[39m
+    [90m192| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[59/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegional Adjustment Integration[2m > [22mshould apply Texas-specific adjustments
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m200:72[22m[39m
+    [90m198| [39m
+    [90m199| [39m    [34mexpect[39m(result[33m.[39mregionAdjustments)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m200| [39m    [34mexpect[39m(result[33m.[39mregionAdjustments[33m.[39m[34msome[39m((adj) [33m=>[39m adj[33m.[39m[34mincludes[39m([32m'TX'[39m)))…
+    [90m   | [39m                                                                       [31m^[39m
+    [90m201| [39m  })[33m;[39m
+    [90m202| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[60/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mCalibration Pipeline[2m > [22mshould calibrate scores within acceptable range
+[31m[1mAssertionError[22m: expected 22.5 to be greater than 30[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m217:31[22m[39m
+    [90m215| [39m
+    [90m216| [39m    [90m// Calibrated score should be reasonable[39m
+    [90m217| [39m    [34mexpect[39m(result[33m.[39mtotalScore)[33m.[39m[34mtoBeGreaterThan[39m([34m30[39m)[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m218| [39m    [34mexpect[39m(result[33m.[39mtotalScore)[33m.[39m[34mtoBeLessThan[39m([34m120[39m)[33m;[39m
+    [90m219| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[61/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mCalibration Pipeline[2m > [22mshould validate score breakdown after calibration
+[31m[1mTypeError[22m: Cannot convert undefined or null to object[39m
+[36m [2m❯[22m Module.validateScoreBreakdown src/lib/scoring/edge-cases/calibration.ts:[2m530:42[22m[39m
+    [90m528| [39m
+    [90m529| [39m  [90m// Validate each category score[39m
+    [90m530| [39m  [35mfor[39m ([35mconst[39m [category[33m,[39m score] [35mof[39m [33mObject[39m[33m.[39m[34mentries[39m(categoryScores)) {
+    [90m   | [39m                                         [31m^[39m
+    [90m531| [39m    [35mif[39m (score [33m<[39m [33mSCORE_BOUNDS[39m[33m.[39mcategoryMin) {
+    [90m532| [39m      issues[33m.[39m[34mpush[39m(
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m227:24[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[62/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mCalibration Pipeline[2m > [22mshould apply property type calibration
+[31m[1mAssertionError[22m: expected 'unknown' to be 'single_family_residential' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- single_family_residential[39m
+[31m+ unknown[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m252:44[22m[39m
+    [90m250| [39m
+    [90m251| [39m    [90m// Different property types may have different calibration factors[39m
+    [90m252| [39m    [34mexpect[39m(residentialResult[33m.[39mpropertyType)[33m.[39m[34mtoBe[39m([32m'single_family_residen[39m…
+    [90m   | [39m                                           [31m^[39m
+    [90m253| [39m    [34mexpect[39m(commercialResult[33m.[39mpropertyType)[33m.[39m[34mtoBe[39m([32m'commercial'[39m)[33m;[39m
+    [90m254| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[63/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mMissing Data Strategy Integration[2m > [22mshould apply consistent strategies across pipeline
+[31m[1mAssertionError[22m: expected undefined not to be undefined[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m270:32[22m[39m
+    [90m268| [39m
+    [90m269| [39m    [90m// Fallback log should show strategies used[39m
+    [90m270| [39m    [34mexpect[39m(result[33m.[39mfallbackLog)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   | [39m                               [31m^[39m
+    [90m271| [39m    [34mexpect[39m(result[33m.[39mfallbackLog[33m![39m[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m272| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[64/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mMissing Data Strategy Integration[2m > [22mshould reduce confidence when using defaults
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m299:52[22m[39m
+    [90m297| [39m    )[33m;[39m
+    [90m298| [39m
+    [90m299| [39m    [34mexpect[39m(completeResult[33m.[39mconfidenceLevel[33m.[39moverall)[33m.[39m[34mtoBeGreaterThan[39m(
+    [90m   | [39m                                                   [31m^[39m
+    [90m300| [39m      incompleteResult[33m.[39mconfidenceLevel[33m.[39moverall
+    [90m301| [39m    )[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[65/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould process multiple properties consistently
+[31m[1mAssertionError[22m: expected Promise{…} to have property 'length'[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m365:21[22m[39m
+    [90m363| [39m    [35mconst[39m results [33m=[39m [34mcalculatePropertyScores[39m(batchTestProperties[33m,[39m batch…
+    [90m364| [39m
+    [90m365| [39m    [34mexpect[39m(results)[33m.[39m[34mtoHaveLength[39m(batchTestProperties[33m.[39mlength)[33m;[39m
+    [90m   | [39m                    [31m^[39m
+    [90m366| [39m
+    [90m367| [39m    results[33m.[39m[34mforEach[39m((result[33m,[39m index) [33m=>[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[66/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould maintain property order in results
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'propertyId')[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m378:29[22m[39m
+    [90m376| [39m
+    [90m377| [39m    batchTestProperties[33m.[39m[34mforEach[39m((property[33m,[39m index) [33m=>[39m {
+    [90m378| [39m      [34mexpect[39m(results[index][33m.[39mpropertyId)[33m.[39m[34mtoBe[39m(property[33m.[39mid)[33m;[39m
+    [90m   | [39m                            [31m^[39m
+    [90m379| [39m    })[33m;[39m
+    [90m380| [39m  })[33m;[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m377:25[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[67/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould handle mixed property types in batch
+[31m[1mTypeError[22m: results.map is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m385:35[22m[39m
+    [90m383| [39m    [35mconst[39m results [33m=[39m [34mcalculatePropertyScores[39m(batchTestProperties[33m,[39m batch…
+    [90m384| [39m
+    [90m385| [39m    [35mconst[39m propertyTypes [33m=[39m results[33m.[39m[34mmap[39m((r) [33m=>[39m r[33m.[39mpropertyType)[33m;[39m
+    [90m   | [39m                                  [31m^[39m
+    [90m386| [39m    [35mconst[39m uniqueTypes [33m=[39m [35mnew[39m [33mSet[39m(propertyTypes)[33m;[39m
+    [90m387| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[68/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mBatch Processing Integration[2m > [22mshould handle mixed edge cases in batch
+[31m[1mTypeError[22m: results.filter is not a function[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m394:37[22m[39m
+    [90m392| [39m    [35mconst[39m results [33m=[39m [34mcalculatePropertyScores[39m(batchTestProperties[33m,[39m batch…
+    [90m393| [39m
+    [90m394| [39m    [35mconst[39m edgeCaseResults [33m=[39m results[33m.[39m[34mfilter[39m((r) [33m=>[39m r[33m.[39medgeCases[33m.[39misEdgeCa…
+    [90m   | [39m                                    [31m^[39m
+    [90m395| [39m    [35mconst[39m normalResults [33m=[39m results[33m.[39m[34mfilter[39m((r) [33m=>[39m [33m![39mr[33m.[39medgeCases[33m.[39misEdgeCas…
+    [90m396| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[69/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mProperty Type Specific Integration[2m > [22mshould score flood zone property with risk adjustment
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m621:7[22m[39m
+    [90m619| [39m    [34mexpect[39m(
+    [90m620| [39m      result[33m.[39mwarnings[33m.[39m[34msome[39m((w) [33m=>[39m w[33m.[39m[34mincludes[39m([32m'flood'[39m) [33m||[39m w[33m.[39m[34mincludes[39m([32m'F[39m…
+    [90m621| [39m    )[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m      [31m^[39m
+    [90m622| [39m  })[33m;[39m
+    [90m623| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[70/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mProperty Type Specific Integration[2m > [22mshould auto-reject sliver lot
+[31m[1mAssertionError[22m: expected [ 'no_structure', …(2) ] to include 'sliver_lot'[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m647:44[22m[39m
+    [90m645| [39m
+    [90m646| [39m    [34mexpect[39m(result[33m.[39medgeCases[33m.[39misEdgeCase)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m647| [39m    [34mexpect[39m(result[33m.[39medgeCases[33m.[39medgeCaseTypes)[33m.[39m[34mtoContain[39m([32m'sliver_lot'[39m)[33m;[39m
+    [90m   | [39m                                           [31m^[39m
+    [90m648| [39m    [34mexpect[39m(result[33m.[39medgeCases[33m.[39mhandling)[33m.[39m[34mtoMatch[39m([36m/reject/i[39m)[33m;[39m
+    [90m649| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[71/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/integration.test.ts[2m > [22mRegression Prevention[2m > [22mshould maintain consistent scoring for benchmark property
+[31m[1mAssertionError[22m: expected 22.5 to be greater than 60[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m666:31[22m[39m
+    [90m664| [39m    [90m// These values should remain stable unless intentionally changed[39m
+    [90m665| [39m    [90m// Update these if scoring algorithm changes intentionally[39m
+    [90m666| [39m    [34mexpect[39m(result[33m.[39mtotalScore)[33m.[39m[34mtoBeGreaterThan[39m([34m60[39m)[33m;[39m [90m// Reasonable minim[39m…
+    [90m   | [39m                              [31m^[39m
+    [90m667| [39m    [34mexpect[39m(result[33m.[39mtotalScore)[33m.[39m[34mtoBeLessThan[39m([34m110[39m)[33m;[39m [90m// Reasonable maximum[39m
+    [90m668| [39m    [34mexpect[39m(result[33m.[39mgrade[33m.[39mgrade)[33m.[39m[34mtoMatch[39m([36m/^[A-C]$/[39m)[33m;[39m [90m// Should be decent[39m…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[72/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateLocationScore[2m > [22mwith missing data[2m > [22mshould have low confidence with missing data
+[31m[1mAssertionError[22m: expected 81 to be less than 60[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m164:33[22m[39m
+    [90m162| [39m      )[33m;[39m
+    [90m163| [39m
+    [90m164| [39m      [34mexpect[39m(result[33m.[39mconfidence)[33m.[39m[34mtoBeLessThan[39m([34m60[39m)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m165| [39m    })[33m;[39m
+    [90m166| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[73/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateLocationScore[2m > [22mwith missing data[2m > [22mshould have low data completeness with missing data
+[31m[1mAssertionError[22m: expected 40.5 to be less than 30[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m173:39[22m[39m
+    [90m171| [39m      )[33m;[39m
+    [90m172| [39m
+    [90m173| [39m      [34mexpect[39m(result[33m.[39mdataCompleteness)[33m.[39m[34mtoBeLessThan[39m([34m30[39m)[33m;[39m
+    [90m   | [39m                                      [31m^[39m
+    [90m174| [39m    })[33m;[39m
+    [90m175| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[74/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return max score for walk score of 90+
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m238:26[22m[39m
+    [90m236| [39m    [35mconst[39m result [33m=[39m [34mcalculateWalkabilityScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m237| [39m
+    [90m238| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m4.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m239| [39m  })[33m;[39m
+    [90m240| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[75/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return high score for walk score of 70-89
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m245:26[22m[39m
+    [90m243| [39m    [35mconst[39m result [33m=[39m [34mcalculateWalkabilityScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m244| [39m
+    [90m245| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m3.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m246| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m4.5[39m)[33m;[39m
+    [90m247| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[76/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return medium score for walk score of 50-69
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m253:26[22m[39m
+    [90m251| [39m    [35mconst[39m result [33m=[39m [34mcalculateWalkabilityScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m252| [39m
+    [90m253| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m2.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m254| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m3.5[39m)[33m;[39m
+    [90m255| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[77/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return low score for walk score of 25-49
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m261:26[22m[39m
+    [90m259| [39m    [35mconst[39m result [33m=[39m [34mcalculateWalkabilityScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m260| [39m
+    [90m261| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m1.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m262| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m2.5[39m)[33m;[39m
+    [90m263| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[78/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould return minimum score for walk score < 25
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m269:26[22m[39m
+    [90m267| [39m    [35mconst[39m result [33m=[39m [34mcalculateWalkabilityScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m268| [39m
+    [90m269| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m1.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m270| [39m  })[33m;[39m
+    [90m271| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[79/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould handle null walk score with default strategy
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m277:26[22m[39m
+    [90m275| [39m
+    [90m276| [39m    [34mexpect[39m(result[33m.[39mmissingDataStrategy)[33m.[39mnot[33m.[39m[34mtoBe[39m([32m'require_data'[39m)[33m;[39m
+    [90m277| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m278| [39m  })[33m;[39m
+    [90m279| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[80/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateWalkabilityScore[2m > [22mshould have correct component ID and name
+[31m[1mAssertionError[22m: expected undefined to be 'walk_score' // Object.is equality[39m
+
+[32m- Expected:[39m 
+"walk_score"
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m286:23[22m[39m
+    [90m284| [39m    )[33m;[39m
+    [90m285| [39m
+    [90m286| [39m    [34mexpect[39m(result[33m.[39mid)[33m.[39m[34mtoBe[39m([32m'walk_score'[39m)[33m;[39m
+    [90m   | [39m                      [31m^[39m
+    [90m287| [39m    [34mexpect[39m(result[33m.[39mname)[33m.[39m[34mtoBe[39m([32m'Walkability'[39m)[33m;[39m
+    [90m288| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[81/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return max score for very low crime (index < 15)
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m304:26[22m[39m
+    [90m302| [39m    [35mconst[39m result [33m=[39m [34mcalculateCrimeSafetyScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m303| [39m
+    [90m304| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m4.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m305| [39m  })[33m;[39m
+    [90m306| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[82/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return high score for low crime (index 15-30)
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m319:26[22m[39m
+    [90m317| [39m    [35mconst[39m result [33m=[39m [34mcalculateCrimeSafetyScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m318| [39m
+    [90m319| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m3.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m320| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m4.5[39m)[33m;[39m
+    [90m321| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[83/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return medium score for moderate crime (index 30-50)
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m335:26[22m[39m
+    [90m333| [39m    [35mconst[39m result [33m=[39m [34mcalculateCrimeSafetyScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m334| [39m
+    [90m335| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m2.0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m336| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m3.5[39m)[33m;[39m
+    [90m337| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[84/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould return low score for high crime (index > 50)
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m351:26[22m[39m
+    [90m349| [39m    [35mconst[39m result [33m=[39m [34mcalculateCrimeSafetyScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m350| [39m
+    [90m351| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m2.0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m352| [39m  })[33m;[39m
+    [90m353| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[85/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateCrimeSafetyScore[2m > [22mshould handle null crime data with conservative default
+[31m[1mAssertionError[22m: expected undefined to be 'default_conservative' // Object.is equality[39m
+
+[32m- Expected:[39m 
+"default_conservative"
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m358:40[22m[39m
+    [90m356| [39m    [35mconst[39m result [33m=[39m [34mcalculateCrimeSafetyScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m357| [39m
+    [90m358| [39m    [34mexpect[39m(result[33m.[39mmissingDataStrategy)[33m.[39m[34mtoBe[39m([32m'default_conservative'[39m)[33m;[39m
+    [90m   | [39m                                       [31m^[39m
+    [90m359| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m3.0[39m)[33m;[39m
+    [90m360| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[86/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould return max score for school rating of 9-10
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m376:26[22m[39m
+    [90m374| [39m    [35mconst[39m result [33m=[39m [34mcalculateSchoolQualityScore[39m(mockIdealProperty[33m,[39m exte…
+    [90m375| [39m
+    [90m376| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m4.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m377| [39m  })[33m;[39m
+    [90m378| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[87/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould return high score for school rating of 7-8
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m391:26[22m[39m
+    [90m389| [39m    [35mconst[39m result [33m=[39m [34mcalculateSchoolQualityScore[39m(mockIdealProperty[33m,[39m exte…
+    [90m390| [39m
+    [90m391| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m3.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m392| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m4.5[39m)[33m;[39m
+    [90m393| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[88/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould return low score for school rating < 4
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m407:26[22m[39m
+    [90m405| [39m    [35mconst[39m result [33m=[39m [34mcalculateSchoolQualityScore[39m(mockIdealProperty[33m,[39m exte…
+    [90m406| [39m
+    [90m407| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m2.0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m408| [39m  })[33m;[39m
+    [90m409| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[89/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateSchoolQualityScore[2m > [22mshould handle null school rating with neutral default
+[31m[1mAssertionError[22m: expected undefined to be 'default_neutral' // Object.is equality[39m
+
+[32m- Expected:[39m 
+"default_neutral"
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m414:40[22m[39m
+    [90m412| [39m    [35mconst[39m result [33m=[39m [34mcalculateSchoolQualityScore[39m(mockIdealProperty[33m,[39m exte…
+    [90m413| [39m
+    [90m414| [39m    [34mexpect[39m(result[33m.[39mmissingDataStrategy)[33m.[39m[34mtoBe[39m([32m'default_neutral'[39m)[33m;[39m
+    [90m   | [39m                                       [31m^[39m
+    [90m415| [39m    [90m// Neutral default should be around middle score[39m
+    [90m416| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m2.0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[90/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould return max score for high amenity count (80+)
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m435:26[22m[39m
+    [90m433| [39m    [35mconst[39m result [33m=[39m [34mcalculateAmenitiesScore[39m(mockIdealProperty[33m,[39m external…
+    [90m434| [39m
+    [90m435| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m4.0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m436| [39m  })[33m;[39m
+    [90m437| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[91/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould return medium score for moderate amenities (40-60)
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m451:26[22m[39m
+    [90m449| [39m    [35mconst[39m result [33m=[39m [34mcalculateAmenitiesScore[39m(mockIdealProperty[33m,[39m external…
+    [90m450| [39m
+    [90m451| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m2.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m452| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m4.0[39m)[33m;[39m
+    [90m453| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[92/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould return low score for few amenities (< 30)
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m468:26[22m[39m
+    [90m466| [39m    [35mconst[39m result [33m=[39m [34mcalculateAmenitiesScore[39m(mockIdealProperty[33m,[39m external…
+    [90m467| [39m
+    [90m468| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m2.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m469| [39m  })[33m;[39m
+    [90m470| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[93/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateAmenitiesScore[2m > [22mshould calculate score from individual amenity counts if totalScore is null
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m484:26[22m[39m
+    [90m482| [39m    [35mconst[39m result [33m=[39m [34mcalculateAmenitiesScore[39m(mockIdealProperty[33m,[39m external…
+    [90m483| [39m
+    [90m484| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m485| [39m  })[33m;[39m
+    [90m486| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[94/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould return max score for transit score of 80+
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m493:26[22m[39m
+    [90m491| [39m    [35mconst[39m result [33m=[39m [34mcalculateTransitAccessScore[39m(mockIdealProperty[33m,[39m exte…
+    [90m492| [39m
+    [90m493| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m4.0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m494| [39m  })[33m;[39m
+    [90m495| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[95/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould return medium score for transit score of 40-60
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m500:26[22m[39m
+    [90m498| [39m    [35mconst[39m result [33m=[39m [34mcalculateTransitAccessScore[39m(mockIdealProperty[33m,[39m exte…
+    [90m499| [39m
+    [90m500| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m2.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m501| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m4.0[39m)[33m;[39m
+    [90m502| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[96/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould return low score for transit score < 20
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m508:26[22m[39m
+    [90m506| [39m    [35mconst[39m result [33m=[39m [34mcalculateTransitAccessScore[39m(mockIdealProperty[33m,[39m exte…
+    [90m507| [39m
+    [90m508| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThan[39m([34m2.0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m509| [39m  })[33m;[39m
+    [90m510| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[97/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould handle null transit score appropriately
+[31m[1mAssertionError[22m: expected undefined to be 'default_neutral' // Object.is equality[39m
+
+[32m- Expected:[39m 
+"default_neutral"
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m516:40[22m[39m
+    [90m514| [39m
+    [90m515| [39m    [90m// Transit is often unavailable in rural areas, should use neutral[39m…
+    [90m516| [39m    [34mexpect[39m(result[33m.[39mmissingDataStrategy)[33m.[39m[34mtoBe[39m([32m'default_neutral'[39m)[33m;[39m
+    [90m   | [39m                                       [31m^[39m
+    [90m517| [39m  })[33m;[39m
+    [90m518| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[98/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mcalculateTransitAccessScore[2m > [22mshould consider rural properties may not need transit
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m527:26[22m[39m
+    [90m525| [39m
+    [90m526| [39m    [90m// Rural property without transit shouldn't be heavily penalized[39m
+    [90m527| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m1.5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m528| [39m  })[33m;[39m
+    [90m529| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[99/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mgetLocationComponentConfig[2m > [22mshould return config for each component
+[31m[1mAssertionError[22m: expected undefined to be 5 // Object.is equality[39m
+
+[32m- Expected:[39m 
+5
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m556:31[22m[39m
+    [90m554| [39m      [34mexpect[39m(config)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m555| [39m      [34mexpect[39m(config[33m.[39mname)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m556| [39m      [34mexpect[39m(config[33m.[39mmaxScore)[33m.[39m[34mtoBe[39m([34m5[39m)[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m557| [39m      [34mexpect[39m(config[33m.[39mweight)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m558| [39m      [34mexpect[39m(config[33m.[39mdefaultStrategy)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m552:9[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[100/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mgetLocationComponentConfig[2m > [22mshould have weights summing to 1
+[31m[1mAssertionError[22m: expected NaN to be close to 1, received difference is NaN, but expected 0.005[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m568:25[22m[39m
+    [90m566| [39m    }[33m,[39m [34m0[39m)[33m;[39m
+    [90m567| [39m
+    [90m568| [39m    [34mexpect[39m(totalWeight)[33m.[39m[34mtoBeCloseTo[39m([34m1.0[39m[33m,[39m [34m2[39m)[33m;[39m
+    [90m   | [39m                        [31m^[39m
+    [90m569| [39m  })[33m;[39m
+    [90m570| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[101/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mhasCompleteLocationData[2m > [22mshould return false for property missing location data
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m588:20[22m[39m
+    [90m586| [39m    )[33m;[39m
+    [90m587| [39m
+    [90m588| [39m    [34mexpect[39m(result)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m589| [39m  })[33m;[39m
+    [90m590| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[102/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mhasCompleteLocationData[2m > [22mshould return false for null external data
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m594:20[22m[39m
+    [90m592| [39m    [35mconst[39m result [33m=[39m [34mhasCompleteLocationData[39m(mockIdealProperty[33m,[39m [35mnull[39m)[33m;[39m
+    [90m593| [39m
+    [90m594| [39m    [34mexpect[39m(result)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m595| [39m  })[33m;[39m
+    [90m596| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[103/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22mgetLocationDataCompleteness[2m > [22mshould return 100% for complete data
+[31m[1mAssertionError[22m: expected 20 to be 100 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 100[39m
+[31m+ 20[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m605:20[22m[39m
+    [90m603| [39m    )[33m;[39m
+    [90m604| [39m
+    [90m605| [39m    [34mexpect[39m(result)[33m.[39m[34mtoBe[39m([34m100[39m)[33m;[39m
+    [90m   | [39m                   [31m^[39m
+    [90m606| [39m  })[33m;[39m
+    [90m607| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[104/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22medge cases[2m > [22mshould handle property with no coordinates
+[31m[1mAssertionError[22m: expected 0 to be greater than 0[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m727:33[22m[39m
+    [90m725| [39m    [34mexpect[39m(result)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m726| [39m    [90m// Should note that some location features couldn't be verified[39m
+    [90m727| [39m    [34mexpect[39m(result[33m.[39mnotes[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m728| [39m  })[33m;[39m
+    [90m729| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[105/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22medge cases[2m > [22mshould handle extreme walk score values
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m734:26[22m[39m
+    [90m732| [39m    [35mconst[39m result [33m=[39m [34mcalculateWalkabilityScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m733| [39m
+    [90m734| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThanOrEqual[39m([34m5[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m735| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m4.5[39m)[33m;[39m
+    [90m736| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[106/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/locationScore.test.ts[2m > [22medge cases[2m > [22mshould handle zero walk score
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/locationScore.test.ts:[2m742:26[22m[39m
+    [90m740| [39m    [35mconst[39m result [33m=[39m [34mcalculateWalkabilityScore[39m(mockIdealProperty[33m,[39m extern…
+    [90m741| [39m
+    [90m742| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m743| [39m    [34mexpect[39m(result[33m.[39mscore)[33m.[39m[34mtoBeLessThanOrEqual[39m([34m1[39m)[33m;[39m
+    [90m744| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[107/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mbasic functionality[2m > [22mshould calculate total score as sum of category scores
+[31m[1mAssertionError[22m: expected 2.5 to be less than 0.01[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m116:61[22m[39m
+    [90m114| [39m
+    [90m115| [39m      [90m// Allow small floating point differences[39m
+    [90m116| [39m      [34mexpect[39m([33mMath[39m[33m.[39m[34mabs[39m(result[33m.[39mtotalScore [33m-[39m calculatedTotal))[33m.[39m[34mtoBeLessTh[39m…
+    [90m   | [39m                                                            [31m^[39m
+    [90m117| [39m    })[33m;[39m
+    [90m118| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[108/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mproperty type detection[2m > [22mshould detect single_family_residential type
+[31m[1mAssertionError[22m: expected 'unknown' to be 'single_family_residential' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- single_family_residential[39m
+[31m+ unknown[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m145:35[22m[39m
+    [90m143| [39m      )[33m;[39m
+    [90m144| [39m
+    [90m145| [39m      [34mexpect[39m(result[33m.[39mpropertyType)[33m.[39m[34mtoBe[39m([32m'single_family_residential'[39m)[33m;[39m
+    [90m   | [39m                                  [31m^[39m
+    [90m146| [39m    })[33m;[39m
+    [90m147| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[109/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould have high confidence for complete data
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m177:46[22m[39m
+    [90m175| [39m      )[33m;[39m
+    [90m176| [39m
+    [90m177| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39moverall)[33m.[39m[34mtoBeGreaterThan[39m([34m70[39m)[33m;[39m
+    [90m   | [39m                                             [31m^[39m
+    [90m178| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39mlabel)[33m.[39m[34mtoMatch[39m([36m/High|Very High/[39m)[33m;[39m
+    [90m179| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[110/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould have low confidence for minimal data
+[31m[1mTypeError[22m: actual value must be number or bigint, received "undefined"[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m187:46[22m[39m
+    [90m185| [39m      )[33m;[39m
+    [90m186| [39m
+    [90m187| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39moverall)[33m.[39m[34mtoBeLessThan[39m([34m60[39m)[33m;[39m
+    [90m   | [39m                                             [31m^[39m
+    [90m188| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39mlabel)[33m.[39m[34mtoMatch[39m([36m/Low|Moderate/[39m)[33m;[39m
+    [90m189| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[111/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould include confidence factors
+[31m[1mAssertionError[22m: expected undefined not to be undefined[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m197:46[22m[39m
+    [90m195| [39m      )[33m;[39m
+    [90m196| [39m
+    [90m197| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39mfactors)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   | [39m                                             [31m^[39m
+    [90m198| [39m      [34mexpect[39m([33mArray[39m[33m.[39m[34misArray[39m(result[33m.[39mconfidenceLevel[33m.[39mfactors))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m199| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39mfactors[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[112/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mconfidence calculation[2m > [22mshould provide recommendations for low confidence
+[31m[1mAssertionError[22m: expected undefined not to be undefined[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m208:54[22m[39m
+    [90m206| [39m      )[33m;[39m
+    [90m207| [39m
+    [90m208| [39m      [34mexpect[39m(result[33m.[39mconfidenceLevel[33m.[39mrecommendations)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   | [39m                                                     [31m^[39m
+    [90m209| [39m      [34mexpect[39m([33mArray[39m[33m.[39m[34misArray[39m(result[33m.[39mconfidenceLevel[33m.[39mrecommendations))[33m.[39m[34mto[39m…
+    [90m210| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[113/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22medge case handling[2m > [22mshould detect edge cases for sliver lot
+[31m[1mAssertionError[22m: expected [ 'no_structure', …(2) ] to include 'sliver_lot'[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m248:46[22m[39m
+    [90m246| [39m
+    [90m247| [39m      [34mexpect[39m(result[33m.[39medgeCases[33m.[39misEdgeCase)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m248| [39m      [34mexpect[39m(result[33m.[39medgeCases[33m.[39medgeCaseTypes)[33m.[39m[34mtoContain[39m([32m'sliver_lot'[39m)[33m;[39m
+    [90m   | [39m                                             [31m^[39m
+    [90m249| [39m    })[33m;[39m
+    [90m250| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[114/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22mfallback logging[2m > [22mshould log fallbacks when data is missing
+[31m[1mAssertionError[22m: expected undefined not to be undefined[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m265:34[22m[39m
+    [90m263| [39m      })[33m;[39m
+    [90m264| [39m
+    [90m265| [39m      [34mexpect[39m(result[33m.[39mfallbackLog)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   | [39m                                 [31m^[39m
+    [90m266| [39m      [34mexpect[39m([33mArray[39m[33m.[39m[34misArray[39m(result[33m.[39mfallbackLog))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m267| [39m      [34mexpect[39m(result[33m.[39mfallbackLog[33m![39m[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[115/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScore[2m > [22moptions handling[2m > [22mshould respect skipEdgeCaseCheck option
+[31m[1mAssertionError[22m: expected 0 to be greater than 0[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m290:33[22m[39m
+    [90m288| [39m
+    [90m289| [39m      [90m// Edge case should still be detected but not auto-rejected[39m
+    [90m290| [39m      [34mexpect[39m(result[33m.[39mtotalScore)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m291| [39m    })[33m;[39m
+    [90m292| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[116/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScores (batch)[2m > [22mshould score multiple properties
+[31m[1mAssertionError[22m: expected Promise{…} to have property 'length'[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m327:21[22m[39m
+    [90m325| [39m    [35mconst[39m results [33m=[39m [34mcalculatePropertyScores[39m(properties[33m,[39m externalDataMa…
+    [90m326| [39m
+    [90m327| [39m    [34mexpect[39m(results)[33m.[39m[34mtoHaveLength[39m([34m2[39m)[33m;[39m
+    [90m   | [39m                    [31m^[39m
+    [90m328| [39m    [34mexpect[39m(results[[34m0[39m][33m.[39mpropertyId)[33m.[39m[34mtoBe[39m(mockIdealProperty[33m.[39mid)[33m;[39m
+    [90m329| [39m    [34mexpect[39m(results[[34m1[39m][33m.[39mpropertyId)[33m.[39m[34mtoBe[39m(mockMinimalProperty[33m.[39mid)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[117/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScores (batch)[2m > [22mshould handle empty property array
+[31m[1mAssertionError[22m: expected Promise{…} to have property 'length'[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m335:21[22m[39m
+    [90m333| [39m    [35mconst[39m results [33m=[39m [34mcalculatePropertyScores[39m([][33m,[39m {})[33m;[39m
+    [90m334| [39m
+    [90m335| [39m    [34mexpect[39m(results)[33m.[39m[34mtoHaveLength[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                    [31m^[39m
+    [90m336| [39m  })[33m;[39m
+    [90m337| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[118/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculatePropertyScores (batch)[2m > [22mshould maintain order of results
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'propertyId')[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m352:23[22m[39m
+    [90m350| [39m    [35mconst[39m results [33m=[39m [34mcalculatePropertyScores[39m(properties[33m,[39m externalDataMa…
+    [90m351| [39m
+    [90m352| [39m    [34mexpect[39m(results[[34m0[39m][33m.[39mpropertyId)[33m.[39m[34mtoBe[39m(mockMinimalProperty[33m.[39mid)[33m;[39m
+    [90m   | [39m                      [31m^[39m
+    [90m353| [39m    [34mexpect[39m(results[[34m1[39m][33m.[39mpropertyId)[33m.[39m[34mtoBe[39m(mockIdealProperty[33m.[39mid)[33m;[39m
+    [90m354| [39m    [34mexpect[39m(results[[34m2[39m][33m.[39mpropertyId)[33m.[39m[34mtoBe[39m(mockVacantLandProperty[33m.[39mid)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[119/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculateGrade[2m > [22mgrade with modifiers[2m > [22mshould return A+ for scores >= 90%
+[31m[1mAssertionError[22m: expected 'A' to be 'A+' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- A+[39m
+[31m+ A[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m376:40[22m[39m
+    [90m374| [39m    [34mit[39m([32m'should return A+ for scores >= 90%'[39m[33m,[39m () [33m=>[39m {
+    [90m375| [39m      [35mconst[39m result [33m=[39m [34mcalculateGrade[39m([34m112.5[39m)[33m;[39m [90m// 90%[39m
+    [90m376| [39m      [34mexpect[39m(result[33m.[39mgradeWithModifier)[33m.[39m[34mtoBe[39m([32m'A+'[39m)[33m;[39m
+    [90m   | [39m                                       [31m^[39m
+    [90m377| [39m    })[33m;[39m
+    [90m378| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[120/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcalculateGrade[2m > [22mgrade with modifiers[2m > [22mshould return A for scores 85-89%
+[31m[1mAssertionError[22m: expected 'A-' to be 'A' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- A[39m
+[31m+ A-[39m
+
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m381:40[22m[39m
+    [90m379| [39m    [34mit[39m([32m'should return A for scores 85-89%'[39m[33m,[39m () [33m=>[39m {
+    [90m380| [39m      [35mconst[39m result [33m=[39m [34mcalculateGrade[39m([34m106.25[39m)[33m;[39m [90m// 85%[39m
+    [90m381| [39m      [34mexpect[39m(result[33m.[39mgradeWithModifier)[33m.[39m[34mtoBe[39m([32m'A'[39m)[33m;[39m
+    [90m   | [39m                                       [31m^[39m
+    [90m382| [39m    })[33m;[39m
+    [90m383| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[121/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcomparePropertyScores[2m > [22mshould compare two property scores
+[31m[1mAssertionError[22m: expected undefined not to be undefined[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m468:45[22m[39m
+    [90m466| [39m    [34mexpect[39m(comparison)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m467| [39m    [34mexpect[39m(comparison[33m.[39mscoreDifference)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m468| [39m    [34mexpect[39m(comparison[33m.[39mpercentageDifference)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   | [39m                                            [31m^[39m
+    [90m469| [39m    [34mexpect[39m(comparison[33m.[39mcategoryDifferences)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m470| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[122/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcomparePropertyScores[2m > [22mshould correctly identify better property
+[31m[1mAssertionError[22m: expected undefined to be 'prop-ideal-001' // Object.is equality[39m
+
+[32m- Expected:[39m 
+"prop-ideal-001"
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m486:31[22m[39m
+    [90m484| [39m    [90m// Ideal property should score higher[39m
+    [90m485| [39m    [34mexpect[39m(comparison[33m.[39mscoreDifference)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m486| [39m    [34mexpect[39m(comparison[33m.[39mwinner)[33m.[39m[34mtoBe[39m(mockIdealProperty[33m.[39mid)[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m487| [39m  })[33m;[39m
+    [90m488| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[123/124]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/lib/scoring/__tests__/scoring.test.ts[2m > [22mcomparePropertyScores[2m > [22mshould calculate category-by-category differences
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'location')[39m
+[36m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m501:43[22m[39m
+    [90m499| [39m    [35mconst[39m comparison [33m=[39m [34mcomparePropertyScores[39m(result1[33m,[39m result2)[33m;[39m
+    [90m500| [39m
+    [90m501| [39m    [34mexpect[39m(comparison[33m.[39mcategoryDifferences[33m.[39mlocation)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   | [39m                                          [31m^[39m
+    [90m502| [39m    [34mexpect[39m(comparison[33m.[39mcategoryDifferences[33m.[39mrisk)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m503| [39m    [34mexpect[39m(comparison[33m.[39mcategoryDifferences[33m.[39mfinancial)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[124/124]⎯[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Unhandled Errors [27m[22m⎯⎯⎯⎯⎯⎯[39m
+[31m[1m
+Vitest caught 10 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.[22m[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m325:21[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/scoring.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m350:21[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/scoring.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/scoring.test.ts:[2m594:5[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/scoring.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m363:21[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/integration.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m375:21[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/integration.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m383:21[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/integration.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m392:21[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/integration.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m419:5[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/integration.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m434:5[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/integration.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+
+[31m⎯⎯⎯⎯[1m[7m Unhandled Rejection [27m[22m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'id')[39m
+[36m [2m❯[22m calculatePropertyScore src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m154:31[22m[39m
+    [90m152| [39m
+    [90m153| [39m  [90m// Ensure we have a property ID[39m
+    [90m154| [39m  [35mconst[39m propertyId [33m=[39m property[33m.[39mid [33m||[39m [32m'unknown'[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m155| [39m
+    [90m156| [39m  [90m// ============================================[39m
+[90m [2m❯[22m src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m509:5[22m[39m
+[90m [2m❯[22m Module.calculatePropertyScores src/lib/scoring/calculator/propertyScoreCalculator.ts:[2m508:30[22m[39m
+[90m [2m❯[22m src/lib/scoring/__tests__/integration.test.ts:[2m449:5[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m135:14[22m[39m
+[90m [2m❯[22m ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m60:26[22m[39m
+[90m [2m❯[22m runTest ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m781:17[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+[90m [2m❯[22m runSuite ../../../../../../TAX%20DEED%20FLOW/.auto-claude/worktrees/tasks/051-fix-weak-csrf-token-validation-that-accepts-any-to/TaxDeedFlow/node_modules/@vitest/runner/dist/index.js:[2m909:15[22m[39m
+
+[31mThis error originated in "[1msrc/lib/scoring/__tests__/integration.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+[31m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39m
+
+[2m Test Files [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[31m124 failed[39m[22m[2m | [22m[1m[32m153 passed[39m[22m[90m (277)[39m
+[2m     Errors [22m [1m[31m10 errors[39m[22m
+[2m   Start at [22m 19:38:03
+[2m   Duration [22m 3.54s[2m (transform 4.60s, setup 0ms, collect 8.48s, tests 481ms, environment 1ms, prepare 1.75s)[22m
+
+
+[1m[7m[31m FAIL [39m[27m[22m[31m Tests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m

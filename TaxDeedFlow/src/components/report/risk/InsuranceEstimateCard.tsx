@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import {
   Shield,
   Droplets,
@@ -16,9 +17,23 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { InsuranceEstimates } from "@/types/risk-analysis";
 import { SimpleChartWrapper } from "../charts/AccessibleChartWrapper";
+
+// Lazy load pie chart to reduce initial bundle size
+const LazyInsurancePieChart = dynamic(
+  () => import("./_InsurancePieChart").then((mod) => ({ default: mod.InsurancePieChart })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-center">
+        <div className="text-slate-500 dark:text-slate-400 text-sm animate-pulse">
+          Loading chart...
+        </div>
+      </div>
+    ),
+  }
+);
 
 /**
  * Props for the InsuranceEstimateCard component
@@ -238,24 +253,10 @@ export function InsuranceEstimateCard({
                   label={`Insurance breakdown: ${chartData.map(d => `${INSURANCE_CONFIG[d.name]?.label}: ${formatCurrency(d.value)}`).join(', ')}`}
                 >
                   <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={40}
-                          outerRadius={70}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {chartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <LazyInsurancePieChart
+                      chartData={chartData}
+                      CustomTooltip={CustomTooltip}
+                    />
                   </div>
 
                   {/* Legend */}

@@ -27,6 +27,20 @@ import { DateInput } from "@/components/ui/DateInput"
 import { authFetch, authPost, authPatch } from "@/lib/api/authFetch"
 
 // Types from API
+interface BatchJobError {
+  timestamp?: string
+  property?: string
+  error?: string
+  message?: string
+  details?: string
+}
+
+interface CountyApiResponse {
+  id: string
+  name: string
+  state: string
+}
+
 interface BatchJob {
   id: string
   name: string
@@ -48,7 +62,7 @@ interface BatchJob {
   totalBatches: number
   duration: string | null
   successRate: number
-  errorLog: any[] | null
+  errorLog: BatchJobError[] | null
   estimatedCompletion: string | null
 }
 
@@ -192,7 +206,7 @@ export default function BatchJobsPage() {
         if (response.ok) {
           const result = await response.json()
           setCounties(
-            (result.data || []).map((c: any) => ({
+            (result.data || []).map((c: CountyApiResponse) => ({
               id: c.id,
               name: c.name,
               state: c.state,
@@ -913,7 +927,7 @@ export default function BatchJobsPage() {
                   </h3>
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <div className="bg-slate-800 text-slate-200 text-xs p-3 font-mono max-h-64 overflow-y-auto">
-                      {selectedJob.errorLog.map((err: any, index: number) => (
+                      {selectedJob.errorLog.map((err: BatchJobError, index: number) => (
                         <div key={index} className="mb-3 last:mb-0">
                           {err.timestamp && (
                             <div className="text-slate-400">

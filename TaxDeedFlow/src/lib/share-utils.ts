@@ -15,6 +15,10 @@ import type {
   ReportShare,
   ShareListResponse,
 } from "@/types/sharing"
+import { logger } from "@/lib/logger"
+
+// Create context logger for share operations
+const shareLogger = logger.withContext('Share Utils')
 
 // ============================================
 // Configuration
@@ -58,7 +62,7 @@ function getAuthHeaders(): Record<string, string> {
       }
     } catch {
       // localStorage not available or error reading
-      console.warn("[ShareUtils] Unable to access localStorage for auth")
+      shareLogger.warn('Unable to access localStorage for auth')
     }
   }
 
@@ -203,7 +207,10 @@ export async function validateShareToken(token: string): Promise<{
       error: data.error_message || undefined,
     }
   } catch (error) {
-    console.error("[ShareUtils] Error validating share token:", error)
+    shareLogger.error('Error validating share token', {
+      error: error instanceof Error ? error.message : String(error),
+      token: token.substring(0, 8) + '...'
+    })
     return {
       isValid: false,
       error: "Unable to validate share token. Please try again.",
@@ -233,13 +240,15 @@ export async function validateShareToken(token: string): Promise<{
 export async function copyShareLinkToClipboard(shareUrl: string): Promise<boolean> {
   // Validate input
   if (!shareUrl || typeof shareUrl !== "string") {
-    console.error("[ShareUtils] Invalid share URL provided")
+    shareLogger.error('Invalid share URL provided', {
+      shareUrl: typeof shareUrl
+    })
     return false
   }
 
   // Ensure we're in a browser environment
   if (typeof window === "undefined" || typeof navigator === "undefined") {
-    console.error("[ShareUtils] Clipboard API not available in this environment")
+    shareLogger.error('Clipboard API not available in this environment')
     return false
   }
 
@@ -247,7 +256,7 @@ export async function copyShareLinkToClipboard(shareUrl: string): Promise<boolea
     // Modern Clipboard API (preferred)
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(shareUrl)
-      console.log("[ShareUtils] Share URL copied to clipboard")
+      shareLogger.debug('Share URL copied to clipboard')
       return true
     }
 
@@ -265,14 +274,16 @@ export async function copyShareLinkToClipboard(shareUrl: string): Promise<boolea
     document.body.removeChild(textArea)
 
     if (success) {
-      console.log("[ShareUtils] Share URL copied to clipboard (fallback method)")
+      shareLogger.debug('Share URL copied to clipboard (fallback method)')
       return true
     }
 
-    console.error("[ShareUtils] execCommand copy failed")
+    shareLogger.error('execCommand copy failed')
     return false
   } catch (error) {
-    console.error("[ShareUtils] Failed to copy to clipboard:", error)
+    shareLogger.error('Failed to copy to clipboard', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     return false
   }
 }
@@ -313,7 +324,10 @@ export async function deactivateShareLink(token: string): Promise<boolean> {
 
     return true
   } catch (error) {
-    console.error("[ShareUtils] Error deactivating share link:", error)
+    shareLogger.error('Error deactivating share link', {
+      error: error instanceof Error ? error.message : String(error),
+      token: token.substring(0, 8) + '...'
+    })
     throw error
   }
 }

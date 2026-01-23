@@ -2,6 +2,9 @@
 
 import { useEffect } from "react"
 import { AlertTriangle, RefreshCw, Home, WifiOff } from "lucide-react"
+import { logger } from "@/lib/logger"
+
+const pageLogger = logger.withContext('[Error Boundary]')
 
 export default function Error({
   error,
@@ -12,7 +15,7 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error("Application error:", error)
+    pageLogger.error("Application error", { error, digest: error.digest })
   }, [error])
 
   // Check if it's a network-related error

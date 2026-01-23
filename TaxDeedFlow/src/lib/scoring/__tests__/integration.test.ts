@@ -22,6 +22,7 @@ import { calibrateScore, validateScoreBreakdown } from '../edge-cases/calibratio
 import { calculateGrade } from '../grade-calculator';
 import { applyRegionalAdjustments } from '../adjustments';
 import { applyMissingDataStrategy } from '../utils/missing-data-handler';
+import type { PropertyData, ExternalData } from '@/types/scoring';
 import {
   mockIdealProperty,
   mockIdealExternalData,
@@ -359,8 +360,8 @@ describe('Grade Calculation Integration', () => {
 // ============================================
 
 describe('Batch Processing Integration', () => {
-  it('should process multiple properties consistently', () => {
-    const results = calculatePropertyScores(batchTestProperties, batchExternalDataMap);
+  it('should process multiple properties consistently', async () => {
+    const results = await calculatePropertyScores(batchTestProperties, batchExternalDataMap);
 
     expect(results).toHaveLength(batchTestProperties.length);
 
@@ -371,16 +372,16 @@ describe('Batch Processing Integration', () => {
     });
   });
 
-  it('should maintain property order in results', () => {
-    const results = calculatePropertyScores(batchTestProperties, batchExternalDataMap);
+  it('should maintain property order in results', async () => {
+    const results = await calculatePropertyScores(batchTestProperties, batchExternalDataMap);
 
     batchTestProperties.forEach((property, index) => {
       expect(results[index].propertyId).toBe(property.id);
     });
   });
 
-  it('should handle mixed property types in batch', () => {
-    const results = calculatePropertyScores(batchTestProperties, batchExternalDataMap);
+  it('should handle mixed property types in batch', async () => {
+    const results = await calculatePropertyScores(batchTestProperties, batchExternalDataMap);
 
     const propertyTypes = results.map((r) => r.propertyType);
     const uniqueTypes = new Set(propertyTypes);
@@ -388,8 +389,8 @@ describe('Batch Processing Integration', () => {
     expect(uniqueTypes.size).toBeGreaterThan(1);
   });
 
-  it('should handle mixed edge cases in batch', () => {
-    const results = calculatePropertyScores(batchTestProperties, batchExternalDataMap);
+  it('should handle mixed edge cases in batch', async () => {
+    const results = await calculatePropertyScores(batchTestProperties, batchExternalDataMap);
 
     const edgeCaseResults = results.filter((r) => r.edgeCases.isEdgeCase);
     const normalResults = results.filter((r) => !r.edgeCases.isEdgeCase);
@@ -515,12 +516,12 @@ describe('Error Handling Integration', () => {
   it('should handle null property gracefully', () => {
     // Should throw or return meaningful error
     expect(() => {
-      calculatePropertyScore(null as any, mockIdealExternalData);
+      calculatePropertyScore(null as unknown as Partial<PropertyData>, mockIdealExternalData);
     }).toThrow();
   });
 
   it('should handle undefined external data gracefully', () => {
-    const result = calculatePropertyScore(mockIdealProperty, undefined as any);
+    const result = calculatePropertyScore(mockIdealProperty, undefined as unknown as Partial<ExternalData>);
 
     expect(result).toBeDefined();
     expect(result.totalScore).toBeGreaterThanOrEqual(0);
@@ -535,12 +536,12 @@ describe('Error Handling Integration', () => {
     // Should handle gracefully (either throw specific error or use defaults)
     try {
       const result = calculatePropertyScore(
-        malformedProperty as any,
+        malformedProperty as unknown as Partial<PropertyData>,
         mockIdealExternalData
       );
       expect(result).toBeDefined();
-    } catch (error: any) {
-      expect(error.message).toContain('property');
+    } catch (error: unknown) {
+      expect((error as Error).message).toContain('property');
     }
   });
 

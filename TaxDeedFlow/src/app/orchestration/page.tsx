@@ -211,6 +211,19 @@ interface Session {
   notes: string
 }
 
+// API response types
+interface ApiSession {
+  id: string
+  startedAt: string
+  endedAt: string | null
+  status: string
+  type?: string
+  agentsUsed?: string[]
+  propertiesProcessed?: number
+  propertiesFailed?: number
+  notes?: string
+}
+
 const SESSION_STATUS_CONFIG: Record<
   SessionStatus,
   { label: string; color: string; icon: React.ReactNode }
@@ -316,7 +329,7 @@ export default function OrchestrationPage() {
       }
 
       // Transform sessions from API
-      const transformedSessions = (data.sessions || []).map((s: any) => ({
+      const transformedSessions = (data.sessions || []).map((s: ApiSession) => ({
         id: s.id,
         startedAt: s.startedAt,
         endedAt: s.endedAt,

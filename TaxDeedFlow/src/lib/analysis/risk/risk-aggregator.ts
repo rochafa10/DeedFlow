@@ -9,6 +9,8 @@
  * @date 2026-01-17
  */
 
+import { logger } from '@/lib/logger';
+
 import type {
   RiskAssessment,
   RiskWeights,
@@ -35,6 +37,9 @@ import { getNASAFIRMSService } from '@/lib/api/services/nasa-firms-service';
 import { getEPAService } from '@/lib/api/services/epa-service';
 import { getElevationService } from '@/lib/api/services/elevation-service';
 import { getNOAAService } from '@/lib/api/services/noaa-service';
+
+// Create context logger
+const riskAggregatorLogger = logger.withContext('Risk Aggregator');
 
 // ============================================
 // Types
@@ -82,6 +87,7 @@ const DEFAULT_WEIGHTS: RiskWeights = {
   environmental: 0.15,
   radon: 0.10,
   slope: 0.10,
+  drought: 0.00,
 };
 
 // State-specific weight adjustments
@@ -209,6 +215,7 @@ export async function aggregateRiskData(
     environmental,
     radon,
     slope,
+    drought: null,
     categoryScores,
     weightsUsed: weights,
     insuranceEstimates,
@@ -265,7 +272,9 @@ async function fetchFloodRisk(
       confidence: 85,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Flood risk fetch failed:', error);
+    riskAggregatorLogger.error('Flood risk fetch failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createDefaultFloodRisk();
   }
 }
@@ -307,7 +316,9 @@ async function fetchEarthquakeRisk(
       confidence: 90,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Earthquake risk fetch failed:', error);
+    riskAggregatorLogger.error('Earthquake risk fetch failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createDefaultEarthquakeRisk();
   }
 }
@@ -353,7 +364,9 @@ async function fetchWildfireRisk(
       confidence: 75,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Wildfire risk fetch failed:', error);
+    riskAggregatorLogger.error('Wildfire risk fetch failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createDefaultWildfireRisk();
   }
 }
@@ -399,7 +412,10 @@ async function fetchHurricaneRisk(
       confidence: 70,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Hurricane risk fetch failed:', error);
+    riskAggregatorLogger.error('Hurricane risk fetch failed', {
+      state,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createMinimalHurricaneRisk();
   }
 }
@@ -437,7 +453,10 @@ async function fetchSinkholeRisk(
       confidence: 60,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Sinkhole risk fetch failed:', error);
+    riskAggregatorLogger.error('Sinkhole risk fetch failed', {
+      state,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createDefaultSinkholeRisk();
   }
 }
@@ -486,7 +505,9 @@ async function fetchEnvironmentalRisk(
       confidence: 80,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Environmental risk fetch failed:', error);
+    riskAggregatorLogger.error('Environmental risk fetch failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createDefaultEnvironmentalRisk();
   }
 }
@@ -530,7 +551,11 @@ async function fetchRadonRisk(
       confidence: 85,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Radon risk fetch failed:', error);
+    riskAggregatorLogger.error('Radon risk fetch failed', {
+      state,
+      county,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createDefaultRadonRisk(state);
   }
 }
@@ -572,7 +597,9 @@ async function fetchSlopeRisk(
       confidence: 70,
     };
   } catch (error) {
-    console.error('[RiskAggregator] Slope risk fetch failed:', error);
+    riskAggregatorLogger.error('Slope risk fetch failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     return createDefaultSlopeRisk();
   }
 }
@@ -971,6 +998,7 @@ function getAdjustedWeights(state: string): RiskWeights {
     environmental: adjusted.environmental / total,
     radon: adjusted.radon / total,
     slope: adjusted.slope / total,
+    drought: (adjusted.drought ?? 0) / total,
   };
 
   return normalized;

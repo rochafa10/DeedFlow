@@ -1,0 +1,639 @@
+{
+  "name": "TDF - Property Alert Email Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        340
+      ],
+      "id": "daily-schedule-trigger",
+      "name": "Daily Schedule (7AM)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        540
+      ],
+      "id": "weekly-schedule-trigger",
+      "name": "Weekly Schedule (Mon 7AM)"
+    },
+    {
+      "parameters": {
+        "path": "property-alerts/email-digest",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        740
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "webhookId": "property-alert-email-digest"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine notification frequency based on trigger source\nconst triggerNode = $('Daily Schedule (7AM)').first() || \n                     $('Weekly Schedule (Mon 7AM)').first() || \n                     $('Webhook Trigger').first();\n\nlet frequency = 'daily';\nif ($('Weekly Schedule (Mon 7AM)').first()) {\n  frequency = 'weekly';\n}\n\n// Check for manual frequency override from webhook query params\nif ($('Webhook Trigger').first()?.json?.query?.frequency) {\n  frequency = $('Webhook Trigger').first().json.query.frequency;\n}\n\nreturn [{ json: { frequency } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        540
+      ],
+      "id": "determine-frequency",
+      "name": "Determine Frequency"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/alert_rules",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,user_id,name,notification_frequency,last_notified_at"
+            },
+            {
+              "name": "enabled",
+              "value": "eq.true"
+            },
+            {
+              "name": "notification_frequency",
+              "value": "={{ \"eq.\" + $json.frequency }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        540
+      ],
+      "id": "get-alert-rules",
+      "name": "Get Alert Rules by Frequency",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get alert rules and group by user_id\nconst rules = $input.all().map(item => item.json).flat();\n\n// Group rules by user_id\nconst userRulesMap = {};\nrules.forEach(rule => {\n  if (!userRulesMap[rule.user_id]) {\n    userRulesMap[rule.user_id] = [];\n  }\n  userRulesMap[rule.user_id].push(rule);\n});\n\n// Create output array with one item per user\nconst usersWithRules = Object.entries(userRulesMap).map(([userId, userRules]) => ({\n  user_id: userId,\n  rule_ids: userRules.map(r => r.id),\n  rule_count: userRules.length\n}));\n\nreturn usersWithRules.map(user => ({ json: user }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        540
+      ],
+      "id": "group-rules-by-user",
+      "name": "Group Rules by User"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/auth.users",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,email,raw_user_meta_data"
+            },
+            {
+              "name": "id",
+              "value": "={{ \"eq.\" + $json.user_id }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        440
+      ],
+      "id": "get-user-email",
+      "name": "Get User Email",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/get_user_property_alerts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_user_id\": $json.user_id, \"p_read_status\": false, \"p_archived\": false, \"p_limit\": 50, \"p_offset\": 0 } }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        640
+      ],
+      "id": "get-unread-alerts",
+      "name": "Get Unread Alerts",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge user email with alerts data\nconst userEmail = $('Get User Email').first().json[0];\nconst groupData = $('Group Rules by User').first().json;\nconst alerts = $input.first().json;\n\nreturn [{\n  json: {\n    user_id: groupData.user_id,\n    rule_ids: groupData.rule_ids,\n    email: userEmail?.email || null,\n    name: userEmail?.raw_user_meta_data?.name || null,\n    alerts: alerts\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        540
+      ],
+      "id": "merge-user-data",
+      "name": "Merge User Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-alerts",
+              "leftValue": "={{ $json.alerts.length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        800,
+        540
+      ],
+      "id": "has-unread-alerts",
+      "name": "Has Unread Alerts?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/properties",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,parcel,full_address,property_type,total_due,acres,total_score,county:counties(name,state)"
+            },
+            {
+              "name": "id",
+              "value": "={{ \"in.(\" + $json.alerts.map(a => a.property_id).join(',') + \")\" }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        440
+      ],
+      "id": "fetch-property-details",
+      "name": "Fetch Property Details",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get alerts and property details from previous nodes\nconst mergedData = $('Merge User Data').first().json;\nconst alerts = mergedData.alerts || [];\nconst properties = $('Fetch Property Details').first().json || [];\nconst userEmail = mergedData.email;\nconst userName = mergedData.name || (userEmail ? userEmail.split('@')[0] : 'Investor');\nconst ruleIds = mergedData.rule_ids || [];\n\n// Build property lookup map\nconst propertyMap = {};\nproperties.forEach(p => {\n  propertyMap[p.id] = p;\n});\n\n// Merge alerts with property details\nconst alertsWithDetails = alerts.map(alert => {\n  const property = propertyMap[alert.property_id] || {};\n  return {\n    ...alert,\n    property\n  };\n});\n\n// Sort by match score descending\nalertsWithDetails.sort((a, b) => b.match_score - a.match_score);\n\n// Generate email HTML\nconst emailHtml = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; margin: 0; padding: 0; }\n    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }\n    .header { background-color: #2563eb; color: #ffffff; padding: 24px; text-align: center; }\n    .header h1 { margin: 0; font-size: 24px; }\n    .content { padding: 24px; }\n    .summary { background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 16px; margin-bottom: 24px; }\n    .property-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; background-color: #ffffff; }\n    .property-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }\n    .property-score { background-color: #10b981; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; }\n    .property-score.high { background-color: #10b981; }\n    .property-score.medium { background-color: #3b82f6; }\n    .property-score.low { background-color: #6b7280; }\n    .property-title { font-size: 18px; font-weight: bold; color: #111827; margin: 0; }\n    .property-details { font-size: 14px; color: #6b7280; margin: 8px 0; }\n    .property-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }\n    .stat { background-color: #f9fafb; padding: 8px; border-radius: 4px; }\n    .stat-label { font-size: 12px; color: #6b7280; }\n    .stat-value { font-size: 16px; font-weight: bold; color: #111827; }\n    .cta-button { display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 24px 0; }\n    .footer { background-color: #f9fafb; padding: 16px 24px; text-align: center; font-size: 12px; color: #6b7280; }\n    .footer a { color: #2563eb; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🎯 New Property Alerts</h1>\n    </div>\n    <div class=\"content\">\n      <p>Hi ${userName},</p>\n      <div class=\"summary\">\n        <strong>${alertsWithDetails.length} new ${alertsWithDetails.length === 1 ? 'property matches' : 'properties match'} your investment criteria!</strong>\n      </div>\n      ${alertsWithDetails.slice(0, 10).map(alert => {\n        const p = alert.property;\n        const scoreClass = alert.match_score >= 80 ? 'high' : alert.match_score >= 60 ? 'medium' : 'low';\n        return `\n      <div class=\"property-card\">\n        <div class=\"property-header\">\n          <h2 class=\"property-title\">${p.parcel || 'Property'}</h2>\n          <span class=\"property-score ${scoreClass}\">Score: ${alert.match_score}</span>\n        </div>\n        <div class=\"property-details\">\n          📍 ${p.full_address || 'Address not available'}<br>\n          📍 ${p.county?.name || 'County'}, ${p.county?.state || 'State'}\n        </div>\n        <div class=\"property-stats\">\n          <div class=\"stat\">\n            <div class=\"stat-label\">Total Due</div>\n            <div class=\"stat-value\">$${(p.total_due || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>\n          </div>\n          <div class=\"stat\">\n            <div class=\"stat-label\">Property Type</div>\n            <div class=\"stat-value\">${p.property_type || 'Unknown'}</div>\n          </div>\n          <div class=\"stat\">\n            <div class=\"stat-label\">Acres</div>\n            <div class=\"stat-value\">${p.acres || 'N/A'}</div>\n          </div>\n          <div class=\"stat\">\n            <div class=\"stat-label\">Alert Rule</div>\n            <div class=\"stat-value\">${alert.alert_rule_name}</div>\n          </div>\n        </div>\n      </div>\n        `;\n      }).join('')}\n      ${alertsWithDetails.length > 10 ? `<p><em>+ ${alertsWithDetails.length - 10} more ${alertsWithDetails.length - 10 === 1 ? 'property' : 'properties'}...</em></p>` : ''}\n      <center>\n        <a href=\"https://taxdeedflow.com/properties/alerts/inbox\" class=\"cta-button\">View All Alerts</a>\n      </center>\n    </div>\n    <div class=\"footer\">\n      <p>You're receiving this email because you have active property alert rules.</p>\n      <p><a href=\"https://taxdeedflow.com/properties/alerts\">Manage Alert Settings</a> | <a href=\"https://taxdeedflow.com/settings/notifications\">Unsubscribe</a></p>\n      <p>&copy; 2026 Tax Deed Flow. All rights reserved.</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    userEmail,\n    userName,\n    alertCount: alertsWithDetails.length,\n    emailHtml,\n    emailSubject: `🎯 ${alertsWithDetails.length} New Property ${alertsWithDetails.length === 1 ? 'Alert' : 'Alerts'} - Tax Deed Flow`,\n    alerts: alertsWithDetails,\n    ruleIds: ruleIds\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        440
+      ],
+      "id": "generate-email-html",
+      "name": "Generate Email HTML"
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@taxdeedflow.com",
+        "toEmail": "={{ $json.userEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailHtml }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1400,
+        440
+      ],
+      "id": "send-email",
+      "name": "Send Email",
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split rule IDs into separate items for batch update\nconst ruleIds = $json.ruleIds || [];\nconst emailData = $json;\n\nreturn ruleIds.map(ruleId => ({\n  json: {\n    rule_id: ruleId,\n    emailData: emailData\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        440
+      ],
+      "id": "split-rule-ids",
+      "name": "Split Rule IDs"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oiiwlzobizftprqspbzt.supabase.co/rest/v1/rpc/update_rule_last_notified",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_rule_id\": $json.rule_id } }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        440
+      ],
+      "id": "update-last-notified",
+      "name": "Update Last Notified",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-header-auth",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all results from previous nodes\nconst frequency = $('Determine Frequency').first().json.frequency;\nconst alertRules = $('Get Alert Rules by Frequency').all().map(item => item.json).flat();\nconst emailsSent = $('Send Email').all().length || 0;\nconst uniqueUsers = new Set($('Group Rules by User').all().map(item => item.json.user_id)).size;\n\n// Build summary\nconst summary = {\n  generated_at: new Date().toISOString(),\n  workflow_type: 'property_alert_email_digest',\n  notification_frequency: frequency,\n  \n  stats: {\n    rules_checked: alertRules.length,\n    users_checked: uniqueUsers,\n    emails_sent: emailsSent,\n    total_alerts_sent: $('Send Email').all().reduce((sum, item) => sum + (item.json.alertCount || 0), 0)\n  },\n  \n  status: emailsSent > 0 ? 'emails_sent' : 'no_alerts_to_send'\n};\n\nreturn [{ json: summary }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        540
+      ],
+      "id": "build-summary",
+      "name": "Build Summary"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2200,
+        540
+      ],
+      "id": "respond-webhook",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        640
+      ],
+      "id": "no-alerts-end",
+      "name": "No Alerts to Send"
+    }
+  ],
+  "connections": {
+    "Daily Schedule (7AM)": {
+      "main": [
+        [
+          {
+            "node": "Determine Frequency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Schedule (Mon 7AM)": {
+      "main": [
+        [
+          {
+            "node": "Determine Frequency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Determine Frequency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determine Frequency": {
+      "main": [
+        [
+          {
+            "node": "Get Alert Rules by Frequency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alert Rules by Frequency": {
+      "main": [
+        [
+          {
+            "node": "Group Rules by User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group Rules by User": {
+      "main": [
+        [
+          {
+            "node": "Get User Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Unread Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Email": {
+      "main": [
+        [
+          {
+            "node": "Merge User Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unread Alerts": {
+      "main": [
+        [
+          {
+            "node": "Merge User Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge User Data": {
+      "main": [
+        [
+          {
+            "node": "Has Unread Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Unread Alerts?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Property Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Alerts to Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Property Details": {
+      "main": [
+        [
+          {
+            "node": "Generate Email HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Email HTML": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Split Rule IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Rule IDs": {
+      "main": [
+        [
+          {
+            "node": "Update Last Notified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Last Notified": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Alerts to Send": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "property-alert-email-digest",
+  "meta": {
+    "instanceId": "tdf-n8n-instance"
+  },
+  "tags": [
+    {
+      "id": "tdf-alerts",
+      "name": "TDF-Alerts"
+    },
+    {
+      "id": "tdf-email",
+      "name": "TDF-Email"
+    },
+    {
+      "id": "tdf-background-jobs",
+      "name": "TDF-Background-Jobs"
+    }
+  ],
+  "active": false,
+  "backupDate": "2026-01-23"
+}

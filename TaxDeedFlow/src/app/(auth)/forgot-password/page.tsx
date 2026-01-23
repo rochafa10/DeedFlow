@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Mail, ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
+import { logger } from "@/lib/logger"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -42,15 +43,21 @@ export default function ForgotPasswordPage() {
       const resetToken = Math.random().toString(36).substring(2, 15)
       const resetLink = `${window.location.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
 
-      console.log("[Password Reset] Reset link generated for:", email)
-      console.log("[Password Reset] Reset Link:", resetLink)
-      console.log("[Password Reset] Token:", resetToken)
+      const passwordResetLogger = logger.withContext('Password Reset')
+      passwordResetLogger.debug('Reset link generated', {
+        email,
+        resetLink,
+        resetToken
+      })
 
       // SECURITY: Always show the same success message
       // This prevents attackers from determining which emails have accounts
       setIsSubmitted(true)
     } catch (err) {
-      console.error("[Password Reset] Error:", err)
+      const passwordResetLogger = logger.withContext('Password Reset')
+      passwordResetLogger.error('Failed to process password reset', {
+        error: err instanceof Error ? err.message : String(err)
+      })
       // SECURITY: Even on error, show generic message to prevent enumeration
       setIsSubmitted(true)
     } finally {

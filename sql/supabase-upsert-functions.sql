@@ -415,3 +415,89 @@ FROM official_links
 GROUP BY county_id, url
 HAVING COUNT(*) > 1;
 */
+
+-- ============================================================================
+-- QUERY FUNCTION: Get Upcoming Deadlines
+-- Returns upcoming auction sales and registration deadlines
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_upcoming_deadlines(
+  p_days_ahead INTEGER DEFAULT 30
+) RETURNS TABLE(
+  deadline_type TEXT,
+  deadline_date TIMESTAMP,
+  days_until_deadline INTEGER,
+  county_name TEXT,
+  state_code TEXT,
+  sale_type TEXT,
+  sale_date TIMESTAMP,
+  platform TEXT,
+  deposit_required NUMERIC,
+  property_count INTEGER,
+  sale_location TEXT,
+  county_id UUID,
+  sale_id UUID
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH deadline_data AS (
+    -- Registration deadlines
+    SELECT
+      'registration_deadline'::TEXT as deadline_type,
+      us.registration_deadline as deadline_date,
+      EXTRACT(DAY FROM (us.registration_deadline - NOW()))::INTEGER as days_until,
+      c.county_name,
+      c.state_code,
+      us.sale_type,
+      us.sale_date,
+      us.platform,
+      us.deposit_required,
+      us.property_count,
+      us.sale_location,
+      us.county_id,
+      us.id as sale_id
+    FROM upcoming_sales us
+    JOIN counties c ON c.id = us.county_id
+    WHERE us.registration_deadline IS NOT NULL
+      AND us.registration_deadline > NOW()
+      AND us.registration_deadline <= NOW() + (p_days_ahead || ' days')::INTERVAL
+
+    UNION ALL
+
+    -- Sale dates
+    SELECT
+      'sale_date'::TEXT as deadline_type,
+      us.sale_date as deadline_date,
+      EXTRACT(DAY FROM (us.sale_date - NOW()))::INTEGER as days_until,
+      c.county_name,
+      c.state_code,
+      us.sale_type,
+      us.sale_date,
+      us.platform,
+      us.deposit_required,
+      us.property_count,
+      us.sale_location,
+      us.county_id,
+      us.id as sale_id
+    FROM upcoming_sales us
+    JOIN counties c ON c.id = us.county_id
+    WHERE us.sale_date > NOW()
+      AND us.sale_date <= NOW() + (p_days_ahead || ' days')::INTERVAL
+  )
+  SELECT
+    dd.deadline_type,
+    dd.deadline_date,
+    dd.days_until as days_until_deadline,
+    dd.county_name,
+    dd.state_code,
+    dd.sale_type,
+    dd.sale_date,
+    dd.platform,
+    dd.deposit_required,
+    dd.property_count,
+    dd.sale_location,
+    dd.county_id,
+    dd.sale_id
+  FROM deadline_data dd
+  ORDER BY dd.deadline_date ASC, dd.deadline_type DESC;
+END;
+$$ LANGUAGE plpgsql;

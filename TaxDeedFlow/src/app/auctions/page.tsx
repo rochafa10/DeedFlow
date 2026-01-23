@@ -24,6 +24,8 @@ import {
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
+import { CalendarExport } from "@/components/auctions/CalendarExport"
+import { NotificationSettings } from "@/components/auctions/NotificationSettings"
 
 // Types
 interface Auction {
@@ -212,7 +214,22 @@ export default function AuctionsPage() {
     return dates
   }
 
+  // Get registration deadlines for current month view
+  const getRegistrationDeadlines = () => {
+    const deadlines: Record<string, Auction[]> = {}
+    auctions.forEach((auction) => {
+      if (auction.registrationDeadline) {
+        if (!deadlines[auction.registrationDeadline]) {
+          deadlines[auction.registrationDeadline] = []
+        }
+        deadlines[auction.registrationDeadline].push(auction)
+      }
+    })
+    return deadlines
+  }
+
   const auctionDates = getAuctionDates()
+  const registrationDeadlines = getRegistrationDeadlines()
 
   // Calendar helpers
   const getDaysInMonth = (date: Date) => {
@@ -259,11 +276,22 @@ export default function AuctionsPage() {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
       const dayAuctions = auctionDates[dateStr] || []
+      const dayDeadlines = registrationDeadlines[dateStr] || []
       const hasAuctions = dayAuctions.length > 0
+      const hasDeadlines = dayDeadlines.length > 0
       const today = new Date()
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
       const isToday = dateStr === todayStr
       const isSelected = dateStr === selectedDate
+
+      // Determine most urgent deadline for background color
+      let hasUrgentDeadline = false
+      let hasWarningDeadline = false
+      dayDeadlines.forEach((auction) => {
+        const daysUntil = auction.registrationDaysUntil ?? getDaysUntil(dateStr)
+        if (daysUntil <= 3) hasUrgentDeadline = true
+        else if (daysUntil <= 7) hasWarningDeadline = true
+      })
 
       days.push(
         <div
@@ -273,7 +301,9 @@ export default function AuctionsPage() {
             "h-24 p-2 border-t border-slate-200 transition-colors",
             hasAuctions && "cursor-pointer hover:bg-blue-50",
             isSelected && "bg-blue-100",
-            isToday && "bg-amber-50"
+            isToday && "bg-amber-50",
+            hasUrgentDeadline && !isToday && "bg-red-50/50",
+            hasWarningDeadline && !hasUrgentDeadline && !isToday && "bg-amber-50/30"
           )}
         >
           <div className="flex items-center justify-between">
@@ -300,6 +330,35 @@ export default function AuctionsPage() {
               {dayAuctions.length > 2 && (
                 <div className="text-xs text-slate-500">
                   +{dayAuctions.length - 2} more
+                </div>
+              )}
+            </div>
+          )}
+          {dayDeadlines.length > 0 && (
+            <div className="mt-1 space-y-1">
+              {dayDeadlines.slice(0, 2).map((auction) => {
+                const daysUntil = auction.registrationDaysUntil ?? getDaysUntil(dateStr)
+                const isUrgent = daysUntil <= 3
+                const isWarning = daysUntil > 3 && daysUntil <= 7
+
+                return (
+                  <div
+                    key={`deadline-${auction.id}`}
+                    className={cn(
+                      "text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1",
+                      isUrgent && "bg-red-100 text-red-700 font-semibold animate-pulse",
+                      isWarning && "bg-amber-100 text-amber-700 font-medium",
+                      !isUrgent && !isWarning && "bg-slate-100 text-slate-700"
+                    )}
+                  >
+                    <Timer className="h-2.5 w-2.5 flex-shrink-0" />
+                    <span className="truncate">{auction.county}</span>
+                  </div>
+                )
+              })}
+              {dayDeadlines.length > 2 && (
+                <div className="text-xs text-slate-500">
+                  +{dayDeadlines.length - 2} deadlines
                 </div>
               )}
             </div>
@@ -397,7 +456,7 @@ export default function AuctionsPage() {
 
               {/* Legend */}
               <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
-                <div className="flex items-center gap-4 text-xs text-slate-600">
+                <div className="flex items-center gap-4 text-xs text-slate-600 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 bg-amber-500 rounded" />
                     <span>Today</span>
@@ -405,6 +464,14 @@ export default function AuctionsPage() {
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 bg-blue-100 rounded" />
                     <span>Auction</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-red-100 rounded" />
+                    <span>Deadline ≤3 days</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-amber-100 rounded" />
+                    <span>Deadline ≤7 days</span>
                   </div>
                 </div>
               </div>
@@ -471,6 +538,12 @@ export default function AuctionsPage() {
                 <div className="text-sm text-slate-500">This Month</div>
               </div>
             </div>
+
+            {/* Calendar Export */}
+            <CalendarExport className="mt-6" />
+
+            {/* Notification Settings */}
+            <NotificationSettings className="mt-6" />
           </div>
         </div>
 
@@ -509,9 +582,12 @@ export default function AuctionsPage() {
                 }
 
                 return (
-                  <div key={auction.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50">
+                  <div key={auction.id} className={cn(
+                    "px-4 py-3 flex items-center justify-between hover:bg-slate-50",
+                    status === "URGENT" && "bg-red-50/50"
+                  )}>
                     <div className="flex items-center gap-3">
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0 relative">
                         <Timer className={cn(
                           "h-5 w-5",
                           status === "CLOSED" ? "text-slate-400" :
@@ -519,6 +595,12 @@ export default function AuctionsPage() {
                           status === "SOON" ? "text-amber-500" :
                           "text-green-500"
                         )} />
+                        {status === "URGENT" && (
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                          </span>
+                        )}
                       </div>
                       <div>
                         <div className="font-medium text-slate-900">
@@ -542,21 +624,23 @@ export default function AuctionsPage() {
                         <div className={cn(
                           "text-sm font-medium",
                           daysUntilRegistration < 0 ? "text-slate-500" :
-                          daysUntilRegistration <= 3 ? "text-red-600" :
+                          daysUntilRegistration <= 3 ? "text-red-600 font-bold" :
+                          daysUntilRegistration <= 7 ? "text-amber-600 font-semibold" :
                           daysUntilRegistration <= 14 ? "text-amber-600" :
                           "text-slate-700"
                         )}>
                           {daysUntilRegistration < 0
                             ? "Closed"
                             : daysUntilRegistration === 0
-                            ? "Today"
-                            : `${daysUntilRegistration} days`}
+                            ? "Today!"
+                            : `${daysUntilRegistration} day${daysUntilRegistration === 1 ? '' : 's'}`}
                         </div>
                       </div>
                       <span className={cn(
                         "px-2 py-1 text-xs font-semibold rounded",
                         statusBg,
-                        statusColor
+                        statusColor,
+                        status === "URGENT" && "animate-pulse"
                       )}>
                         {status}
                       </span>
@@ -647,17 +731,30 @@ export default function AuctionsPage() {
                               year: "numeric",
                             })}
                           </div>
-                          <div
-                            className={cn(
-                              "text-xs",
-                              daysUntil <= 7
-                                ? "text-red-600 font-medium"
-                                : daysUntil <= 30
-                                ? "text-amber-600"
-                                : "text-slate-500"
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={cn(
+                                "text-xs",
+                                daysUntil <= 3
+                                  ? "text-red-600 font-bold"
+                                  : daysUntil <= 7
+                                  ? "text-red-600 font-semibold"
+                                  : daysUntil <= 30
+                                  ? "text-amber-600"
+                                  : "text-slate-500"
+                              )}
+                            >
+                              {daysUntil} day{daysUntil === 1 ? '' : 's'}
+                            </span>
+                            {daysUntil <= 3 && (
+                              <span className="inline-flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                              </span>
                             )}
-                          >
-                            {daysUntil} days
+                            {daysUntil > 3 && daysUntil <= 7 && (
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            )}
                           </div>
                         </div>
                       </td>
@@ -683,15 +780,37 @@ export default function AuctionsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div>
-                          <div className="text-sm text-slate-700">
-                            {auction.registrationDeadline
-                              ? new Date(auction.registrationDeadline).toLocaleDateString(
-                                  "en-US",
-                                  { month: "short", day: "numeric" }
-                                )
-                              : "TBD"}
-                          </div>
-                          <div className="text-xs text-slate-500">
+                          {auction.registrationDeadline ? (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn(
+                                  "text-sm",
+                                  auction.registrationDaysUntil !== null && auction.registrationDaysUntil <= 3
+                                    ? "text-red-600 font-bold"
+                                    : auction.registrationDaysUntil !== null && auction.registrationDaysUntil <= 7
+                                    ? "text-amber-600 font-semibold"
+                                    : "text-slate-700"
+                                )}>
+                                  {new Date(auction.registrationDeadline).toLocaleDateString(
+                                    "en-US",
+                                    { month: "short", day: "numeric" }
+                                  )}
+                                </span>
+                                {auction.registrationDaysUntil !== null && auction.registrationDaysUntil <= 3 && auction.registrationDaysUntil >= 0 && (
+                                  <span className="inline-flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                  </span>
+                                )}
+                                {auction.registrationDaysUntil !== null && auction.registrationDaysUntil > 3 && auction.registrationDaysUntil <= 7 && (
+                                  <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-sm text-slate-700">TBD</div>
+                          )}
+                          <div className="text-xs text-slate-500 mt-0.5">
                             Deposit: {auction.depositRequired || "N/A"}
                           </div>
                         </div>

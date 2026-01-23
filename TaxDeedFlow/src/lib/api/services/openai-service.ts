@@ -23,9 +23,41 @@ import { ValidationError, ApiError } from '../errors';
 export type MessageRole = 'system' | 'user' | 'assistant';
 
 /**
- * Chat message
+ * Image URL content for vision messages
+ */
+export interface ImageUrlContent {
+  type: 'image_url';
+  image_url: {
+    url: string;
+    detail?: 'auto' | 'low' | 'high';
+  };
+}
+
+/**
+ * Text content for vision messages
+ */
+export interface TextContent {
+  type: 'text';
+  text: string;
+}
+
+/**
+ * Vision message content (can be text, image, or array of both)
+ */
+export type VisionMessageContent = string | Array<TextContent | ImageUrlContent>;
+
+/**
+ * Chat message (supports both text and vision content)
  */
 export interface ChatMessage {
+  role: MessageRole;
+  content: VisionMessageContent;
+}
+
+/**
+ * Legacy text-only chat message (for backward compatibility)
+ */
+export interface TextChatMessage {
   role: MessageRole;
   content: string;
 }
@@ -107,6 +139,83 @@ export interface PropertyAnalysis {
   recommendedAction: string;
   estimatedROI?: string;
   fullAnalysis: string;
+}
+
+/**
+ * Property imagery analysis type
+ */
+export type PropertyImageryAnalysisType = 'satellite' | 'street_view' | 'combined';
+
+/**
+ * Condition flag categories for property imagery analysis
+ */
+export type ConditionFlag =
+  | 'roof_damage'
+  | 'structural_damage'
+  | 'overgrowth'
+  | 'debris'
+  | 'fire_damage'
+  | 'water_damage'
+  | 'vandalism'
+  | 'excellent_condition'
+  | 'good_condition'
+  | 'fair_condition'
+  | 'poor_condition';
+
+/**
+ * Property imagery analysis request
+ */
+export interface PropertyImageryAnalysisRequest {
+  propertyId: string;
+  imageUrls: string[];
+  analysisType: PropertyImageryAnalysisType;
+  propertyContext?: {
+    address?: string;
+    parcelId?: string;
+    propertyType?: string;
+    yearBuilt?: number;
+  };
+}
+
+/**
+ * Visible issue identified in imagery analysis
+ */
+export interface VisibleIssue {
+  category: ConditionFlag;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  confidence: number; // 0-1
+  location?: string; // e.g., "front yard", "roof", "north side"
+}
+
+/**
+ * Property imagery analysis findings (structured JSON)
+ */
+export interface PropertyImageryFindings {
+  overallCondition: 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
+  visibleIssues: VisibleIssue[];
+  positiveFeatures: string[];
+  concerns: string[];
+  roofCondition?: 'excellent' | 'good' | 'fair' | 'poor' | 'not_visible';
+  landscapingCondition?: 'well_maintained' | 'moderate' | 'overgrown' | 'not_visible';
+  structuralObservations?: string;
+  surroundingArea?: string;
+  accessibilityNotes?: string;
+}
+
+/**
+ * Property imagery analysis response
+ */
+export interface PropertyImageryAnalysisResponse {
+  propertyId: string;
+  analysisType: PropertyImageryAnalysisType;
+  aiModel: string;
+  findings: PropertyImageryFindings;
+  conditionFlags: ConditionFlag[];
+  visibleIssues: VisibleIssue[];
+  recommendation: string;
+  confidenceScore: number; // 0-1
+  analyzedAt: string; // ISO 8601 timestamp
 }
 
 /**
@@ -488,6 +597,186 @@ Provide a clear recommendation (BID or PASS) with reasoning.`;
         recommendation: isBid ? 'BID' : 'PASS',
         reasoning: content,
       },
+    };
+  }
+
+  /**
+   * Analyze property images using GPT-4o vision
+   *
+   * @param request - Property imagery analysis request
+   * @returns Promise resolving to property imagery analysis
+   */
+  public async analyzePropertyImages(
+    request: PropertyImageryAnalysisRequest
+  ): Promise<ApiResponse<PropertyImageryAnalysisResponse>> {
+    // Validate request
+    if (!request.imageUrls || request.imageUrls.length === 0) {
+      throw new ValidationError(
+        'At least one image URL is required',
+        'imageUrls',
+        'validation',
+        'imageUrls',
+        { required: 'true', minLength: '1' },
+        request.imageUrls
+      );
+    }
+
+    // Build system prompt for vision analysis
+    const systemPrompt = `You are an expert property inspector analyzing imagery for real estate investment decisions.
+Analyze the provided property images and identify:
+1. Overall condition (excellent/good/fair/poor)
+2. Visible issues (roof damage, structural damage, overgrowth, debris, etc.)
+3. Positive features (well-maintained, good landscaping, etc.)
+4. Concerns (damage, deterioration, safety issues)
+5. Specific observations about roof, landscaping, structure, and surroundings
+
+Provide your analysis in the following JSON format:
+{
+  "overallCondition": "excellent|good|fair|poor|unknown",
+  "visibleIssues": [
+    {
+      "category": "roof_damage|structural_damage|overgrowth|debris|fire_damage|water_damage|vandalism|excellent_condition|good_condition|fair_condition|poor_condition",
+      "severity": "low|medium|high|critical",
+      "description": "detailed description",
+      "confidence": 0.0-1.0,
+      "location": "specific location if visible"
+    }
+  ],
+  "positiveFeatures": ["feature1", "feature2"],
+  "concerns": ["concern1", "concern2"],
+  "roofCondition": "excellent|good|fair|poor|not_visible",
+  "landscapingCondition": "well_maintained|moderate|overgrown|not_visible",
+  "structuralObservations": "observations about structure",
+  "surroundingArea": "observations about neighborhood/area",
+  "accessibilityNotes": "notes about access, roads, etc."
+}
+
+Be thorough but realistic. Consider the image type (satellite vs street view).`;
+
+    // Build user prompt with property context
+    let userPromptText = `Analyze the following property images:\n\n`;
+
+    if (request.propertyContext) {
+      userPromptText += `Property Context:\n`;
+      if (request.propertyContext.address) {
+        userPromptText += `- Address: ${request.propertyContext.address}\n`;
+      }
+      if (request.propertyContext.parcelId) {
+        userPromptText += `- Parcel ID: ${request.propertyContext.parcelId}\n`;
+      }
+      if (request.propertyContext.propertyType) {
+        userPromptText += `- Type: ${request.propertyContext.propertyType}\n`;
+      }
+      if (request.propertyContext.yearBuilt) {
+        userPromptText += `- Year Built: ${request.propertyContext.yearBuilt}\n`;
+      }
+      userPromptText += `\n`;
+    }
+
+    userPromptText += `Analysis Type: ${request.analysisType}\n`;
+    userPromptText += `Number of Images: ${request.imageUrls.length}\n\n`;
+    userPromptText += `Please analyze the images and provide your assessment in the specified JSON format.`;
+
+    // Build vision message content with text and images
+    const visionContent: Array<TextContent | ImageUrlContent> = [
+      {
+        type: 'text',
+        text: userPromptText,
+      },
+    ];
+
+    // Add all images to the content array
+    for (const imageUrl of request.imageUrls) {
+      visionContent.push({
+        type: 'image_url',
+        image_url: {
+          url: imageUrl,
+          detail: 'high', // Use high detail for thorough property analysis
+        },
+      });
+    }
+
+    // Create chat completion with vision
+    const response = await this.createChatCompletion(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: visionContent },
+      ],
+      {
+        model: 'gpt-4o', // Use GPT-4o for vision capabilities
+        temperature: 0.3, // Lower temperature for more consistent analysis
+        maxTokens: 2000,
+      }
+    );
+
+    // Parse the JSON response
+    let findings: PropertyImageryFindings;
+    try {
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonStr = response.data.content;
+      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1];
+      }
+      findings = JSON.parse(jsonStr);
+    } catch (error) {
+      // If JSON parsing fails, create a fallback response
+      throw new ApiError(
+        `Failed to parse vision analysis response: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        500,
+        '/chat/completions',
+        response.requestId
+      );
+    }
+
+    // Extract condition flags from visible issues
+    const conditionFlags: ConditionFlag[] = findings.visibleIssues.map(
+      (issue) => issue.category
+    );
+
+    // Calculate overall confidence score
+    const confidenceScore =
+      findings.visibleIssues.length > 0
+        ? findings.visibleIssues.reduce((sum, issue) => sum + issue.confidence, 0) /
+          findings.visibleIssues.length
+        : 0.8; // Default confidence if no issues found
+
+    // Generate recommendation based on findings
+    let recommendation = '';
+    if (findings.overallCondition === 'excellent' || findings.overallCondition === 'good') {
+      recommendation = 'Property appears to be in good condition with no major visible issues.';
+    } else if (findings.overallCondition === 'fair') {
+      recommendation = 'Property shows some wear or minor issues. Further inspection recommended.';
+    } else if (findings.overallCondition === 'poor') {
+      recommendation = 'Property shows significant issues. Detailed inspection and cost assessment required.';
+    } else {
+      recommendation = 'Unable to fully assess property condition from available imagery.';
+    }
+
+    // Add critical issue warnings to recommendation
+    const criticalIssues = findings.visibleIssues.filter(
+      (issue) => issue.severity === 'critical' || issue.severity === 'high'
+    );
+    if (criticalIssues.length > 0) {
+      recommendation += ` CAUTION: ${criticalIssues.length} high-severity issue(s) identified.`;
+    }
+
+    // Build final response
+    const analysisResponse: PropertyImageryAnalysisResponse = {
+      propertyId: request.propertyId,
+      analysisType: request.analysisType,
+      aiModel: 'gpt-4o',
+      findings,
+      conditionFlags,
+      visibleIssues: findings.visibleIssues,
+      recommendation,
+      confidenceScore,
+      analyzedAt: new Date().toISOString(),
+    };
+
+    return {
+      ...response,
+      data: analysisResponse,
     };
   }
 }

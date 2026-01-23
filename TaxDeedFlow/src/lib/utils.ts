@@ -1,5 +1,9 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { logger } from "@/lib/logger"
+
+// Create context logger for utility functions
+const utilsLogger = logger.withContext('Utils')
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -18,7 +22,9 @@ export function getDateFormatPreference(): string {
     const stored = localStorage.getItem(DATE_FORMAT_KEY)
     if (stored) return stored
   } catch (err) {
-    console.error("Failed to read date format preference:", err)
+    utilsLogger.error('Failed to read date format preference', {
+      error: err instanceof Error ? err.message : String(err)
+    })
   }
   return DEFAULT_DATE_FORMAT
 }

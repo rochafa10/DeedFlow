@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server"
 import OpenAI from "openai"
+import { logger } from "@/lib/logger"
+
+// Create context-specific logger for this API route
+const chatLogger = logger.withContext("Chat API")
 
 /**
  * POST /api/chat/auction
@@ -82,9 +86,9 @@ export async function POST(request: NextRequest) {
     // Fetch PDF content from documents
     let documentContents: Array<{ title: string; content: string }> = []
     if (context.documents && context.documents.length > 0) {
-      console.log(`[Chat API] Fetching ${context.documents.length} documents...`)
+      chatLogger.info("Fetching documents", { count: context.documents.length })
       documentContents = await fetchDocumentContents(context.documents)
-      console.log(`[Chat API] Successfully fetched ${documentContents.length} documents`)
+      chatLogger.info("Successfully fetched documents", { count: documentContents.length })
     }
 
     // Build the system prompt with auction context AND document contents
@@ -129,7 +133,7 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`))
           controller.close()
         } catch (error) {
-          console.error("[Chat API] Stream error:", error)
+          chatLogger.error("Stream error", { error })
           controller.error(error)
         }
       },
@@ -143,7 +147,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("[Chat API] Error:", error)
+    chatLogger.error("Failed to process chat request", { error })
     return new Response(
       JSON.stringify({ error: "Failed to process chat request" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
@@ -165,7 +169,10 @@ async function fetchDocumentContents(
     try {
       // Check if we have pre-extracted text from n8n workflow
       if (doc.extractedText && doc.extractedText.length > 100) {
-        console.log(`[Chat API] Using pre-extracted text for: ${doc.title} (${doc.extractedText.length} chars)`)
+        chatLogger.debug("Using pre-extracted text", {
+          title: doc.title,
+          chars: doc.extractedText.length
+        })
         results.push({ title: doc.title, content: doc.extractedText })
         continue
       }
@@ -173,12 +180,12 @@ async function fetchDocumentContents(
       // Check cache second
       const cached = pdfContentCache.get(doc.url)
       if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-        console.log(`[Chat API] Using cached content for: ${doc.title}`)
+        chatLogger.debug("Using cached content", { title: doc.title })
         results.push({ title: doc.title, content: cached.content })
         continue
       }
 
-      console.log(`[Chat API] Fetching document: ${doc.title} from ${doc.url}`)
+      chatLogger.info("Fetching document", { title: doc.title, url: doc.url })
 
       // Fetch the document
       const response = await fetch(doc.url, {
@@ -190,7 +197,10 @@ async function fetchDocumentContents(
       })
 
       if (!response.ok) {
-        console.log(`[Chat API] Failed to fetch ${doc.title}: ${response.status}`)
+        chatLogger.warn("Failed to fetch document", {
+          title: doc.title,
+          status: response.status
+        })
         continue
       }
 
@@ -207,7 +217,7 @@ async function fetchDocumentContents(
         const pdfUrl = extractPDFUrlFromHTML(html, doc.url)
 
         if (pdfUrl) {
-          console.log(`[Chat API] Found PDF URL in HTML: ${pdfUrl}`)
+          chatLogger.debug("Found PDF URL in HTML", { pdfUrl })
           // Fetch the actual PDF
           try {
             const pdfResponse = await fetch(pdfUrl, {
@@ -220,10 +230,13 @@ async function fetchDocumentContents(
             if (pdfResponse.ok) {
               const buffer = await pdfResponse.arrayBuffer()
               textContent = await extractTextFromPDF(buffer)
-              console.log(`[Chat API] Extracted ${textContent.length} chars from PDF: ${doc.title}`)
+              chatLogger.debug("Extracted text from PDF", {
+                title: doc.title,
+                chars: textContent.length
+              })
             }
           } catch (pdfError) {
-            console.log(`[Chat API] Failed to fetch PDF from extracted URL: ${pdfError}`)
+            chatLogger.warn("Failed to fetch PDF from extracted URL", { error: pdfError })
           }
         }
 
@@ -252,14 +265,20 @@ async function fetchDocumentContents(
         pdfContentCache.set(doc.url, { content: textContent, fetchedAt: Date.now() })
 
         results.push({ title: doc.title, content: textContent })
-        console.log(`[Chat API] Final extracted ${textContent.length} chars from: ${doc.title}`)
+        chatLogger.info("Successfully extracted content", {
+          title: doc.title,
+          chars: textContent.length
+        })
         // Log first 500 chars of content for debugging
-        console.log(`[Chat API] Content preview: ${textContent.substring(0, 500)}...`)
+        chatLogger.debug("Content preview", {
+          title: doc.title,
+          preview: textContent.substring(0, 500)
+        })
       } else {
-        console.log(`[Chat API] No meaningful content extracted from: ${doc.title}`)
+        chatLogger.warn("No meaningful content extracted", { title: doc.title })
       }
     } catch (error) {
-      console.error(`[Chat API] Error fetching ${doc.title}:`, error)
+      chatLogger.error("Error fetching document", { title: doc.title, error })
     }
   }
 

@@ -25,6 +25,7 @@ import {
 import { PieChartIcon } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { ActiveShapeProps, TooltipProps } from "@/types/charts";
 
 // ============================================
 // Type Definitions
@@ -69,7 +70,7 @@ const COST_COLORS = {
 // Custom Active Shape for Pie
 // ============================================
 
-const renderActiveShape = (props: any) => {
+const renderActiveShape = (props: ActiveShapeProps<ChartDataItem>) => {
   const {
     cx,
     cy,
@@ -146,7 +147,7 @@ const renderActiveShape = (props: any) => {
 // Custom Tooltip
 // ============================================
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: TooltipProps<ChartDataItem>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -241,7 +242,7 @@ export function CostPieChart({
     },
   ].filter((item) => item.value > 0);
 
-  const onPieEnter = (_: any, index: number) => {
+  const onPieEnter = (_: ChartDataItem, index: number) => {
     setActiveIndex(index);
   };
 
@@ -283,7 +284,7 @@ export function CostPieChart({
             <PieChart>
               <Pie
                 activeIndex={activeIndex}
-                activeShape={renderActiveShape}
+                activeShape={renderActiveShape as unknown as typeof Sector}
                 data={chartData}
                 cx="50%"
                 cy="50%"

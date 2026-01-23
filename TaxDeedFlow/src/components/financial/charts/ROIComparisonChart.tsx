@@ -26,10 +26,18 @@ import {
 import { BarChart3, Target, TrendingUp } from "lucide-react";
 import { formatPercent } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { TooltipProps } from "@/types/charts";
 
 // ============================================
 // Type Definitions
 // ============================================
+
+interface ROIChartData {
+  name: string;
+  value: number;
+  fill: string;
+  description?: string;
+}
 
 interface ROIComparisonChartProps {
   /** Return on Investment percentage */
@@ -79,7 +87,7 @@ function getROIRating(roi: number): {
 // Custom Tooltip
 // ============================================
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: TooltipProps<ROIChartData>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (

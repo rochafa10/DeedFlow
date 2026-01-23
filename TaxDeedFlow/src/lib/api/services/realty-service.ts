@@ -7,6 +7,7 @@
  * API Documentation: https://rapidapi.com/apidojo/api/realty-in-us
  */
 
+import { logger } from '@/lib/logger';
 import { BaseApiService } from '../base-service';
 import {
   ApiConfig,
@@ -311,7 +312,9 @@ export class RealtyService extends BaseApiService {
     const apiHost = config?.apiHost || process.env.REALTY_API_HOST || 'realty-in-us.p.rapidapi.com';
 
     if (!rapidApiKey) {
-      console.warn('[RealtyService] No RAPIDAPI_KEY found. API calls will fail.');
+      logger.warn('No RAPIDAPI_KEY found. API calls will fail.', {
+        context: 'RealtyService'
+      });
     }
 
     const apiConfig: Partial<ApiConfig> & { baseUrl: string } = {

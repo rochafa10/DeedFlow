@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
+
+const apiLogger = logger.withContext("Upload Screenshot API")
 
 // Initialize Supabase client with service role key for storage operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
       ? parcel_id.replace(/\./g, "_").replace(/-/g, "_").replace(/___/g, "___") + ".jpg"
       : `${property_id}.jpg`
 
-    console.log(`[Upload Screenshot] Uploading ${fileName} for property ${property_id}`)
+    apiLogger.info("Uploading screenshot", { fileName, propertyId: property_id })
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      console.error("[Upload Screenshot] Storage error:", uploadError)
+      apiLogger.error("Storage error", { error: uploadError.message })
       return NextResponse.json(
         { success: false, error: uploadError.message },
         { status: 500 }
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     const screenshot_url = urlData.publicUrl
 
-    console.log(`[Upload Screenshot] Uploaded to: ${screenshot_url}`)
+    apiLogger.info("Uploaded successfully", { screenshotUrl: screenshot_url })
 
     // Update regrid_data with screenshot_url
     const { error: updateError } = await supabase
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
       .eq("property_id", property_id)
 
     if (updateError) {
-      console.warn("[Upload Screenshot] Failed to update regrid_data:", updateError)
+      apiLogger.warn("Failed to update regrid_data", { error: updateError.message })
       // Try to insert if update fails (no existing regrid_data record)
       const { error: insertError } = await supabase
         .from("regrid_data")
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
         })
       
       if (insertError) {
-        console.warn("[Upload Screenshot] Failed to insert regrid_data:", insertError)
+        apiLogger.warn("Failed to insert regrid_data", { error: insertError.message })
       }
     }
 
@@ -102,7 +105,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("[Upload Screenshot] Server error:", error)
+    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : "Server error" },
       { status: 500 }

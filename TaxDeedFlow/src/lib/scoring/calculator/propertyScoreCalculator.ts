@@ -497,17 +497,16 @@ function createRejectedResult(
  * @param options - Calculation options
  * @returns Array of PropertyScoreResults
  */
-export async function calculatePropertyScores(
-  properties: Array<{
-    property: Partial<PropertyData>;
-    externalData?: Partial<ExternalData> | null;
-  }>,
+export function calculatePropertyScores(
+  properties: Partial<PropertyData>[],
+  externalDataMap: Record<string, Partial<ExternalData> | null> = {},
   options: CalculationOptions = {}
-): Promise<PropertyScoreResult[]> {
+): PropertyScoreResult[] {
   // Process all properties
-  const results = properties.map(({ property, externalData }) =>
-    calculatePropertyScore(property, externalData, options)
-  );
+  const results = properties.map((property) => {
+    const externalData = externalDataMap[property.id || ''] || null;
+    return calculatePropertyScore(property, externalData, options);
+  });
 
   return results;
 }

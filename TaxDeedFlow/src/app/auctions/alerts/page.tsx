@@ -19,6 +19,9 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { logger } from "@/lib/logger"
+
+const pageLogger = logger.withContext('[Auction Alerts Page]')
 
 // Sample alerts shown when no real alerts exist in database
 const SAMPLE_ALERTS = [
@@ -146,7 +149,7 @@ export default function AuctionAlertsPage() {
         setDataSource("sample")
       }
     } catch (error) {
-      console.error('Error fetching alerts:', error)
+      pageLogger.error('Error fetching alerts', { error: error instanceof Error ? error.message : String(error) })
       // Fallback to sample data on error
       setAlerts(SAMPLE_ALERTS)
       setDataSource("sample")
@@ -234,7 +237,7 @@ export default function AuctionAlertsPage() {
           body: JSON.stringify({ alertId, acknowledge: true }),
         })
       } catch (error) {
-        console.error('Failed to acknowledge alert:', error)
+        pageLogger.error('Failed to acknowledge alert', { error: error instanceof Error ? error.message : String(error) })
         // Could revert optimistic update here if needed
       }
     }
@@ -250,7 +253,7 @@ export default function AuctionAlertsPage() {
       try {
         await fetch('/api/alerts', { method: 'PATCH' })
       } catch (error) {
-        console.error('Failed to acknowledge all alerts:', error)
+        pageLogger.error('Failed to acknowledge all alerts', { error: error instanceof Error ? error.message : String(error) })
       }
     }
   }

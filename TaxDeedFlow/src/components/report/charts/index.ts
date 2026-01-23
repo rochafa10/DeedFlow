@@ -43,3 +43,16 @@ export {
   type CostBreakdownPieProps,
   type CostBreakdownDataPoint,
 } from "./CostBreakdownPie";
+
+// Lazy-loaded Chart Components (for bundle optimization)
+export {
+  LazyCostBreakdownPie,
+  LazyCostBreakdownList,
+  LazyCostStackedBar,
+  LazyScoreBreakdownRadar,
+  LazyCompactRadar,
+  LazyCategoryComparison,
+  LazyScoreGauge,
+  LazyMiniGauge,
+  LazyScoreBar,
+} from "./LazyCharts";

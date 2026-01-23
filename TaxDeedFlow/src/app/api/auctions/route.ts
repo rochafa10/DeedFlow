@@ -120,6 +120,15 @@ export async function GET() {
       return saleDate.getMonth() === thisMonth && saleDate.getFullYear() === thisYear
     }).length
 
+    // Get notification preferences (if user has an active subscription)
+    // For now, return default preferences
+    const notificationPreferences = {
+      enabled: false, // Will be true if user has active subscription
+      notifyRegistrationDeadline: true,
+      notifyAuctionDate: true,
+      notifyDaysBefore: [3, 7], // Notify 3 and 7 days before deadlines
+    }
+
     return NextResponse.json({
       data: {
         auctions: transformedSales,
@@ -127,7 +136,8 @@ export async function GET() {
         stats: {
           totalUpcoming: transformedSales.length,
           thisMonth: auctionsThisMonth,
-        }
+        },
+        notificationPreferences,
       },
       source: "database",
     })

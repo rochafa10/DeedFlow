@@ -45,6 +45,13 @@ export * from './sections';
 export { ROICalculatorCard } from './financial/ROICalculatorCard';
 
 // ============================================
+// Layout & Container Components
+// ============================================
+export { ReportPageLayout } from './ReportPageLayout';
+export { DemoReportContainer } from './containers/DemoReportContainer';
+export { PropertyReportContainer } from './containers/PropertyReportContainer';
+
+// ============================================
 // Types Re-export
 // ============================================
 export type {

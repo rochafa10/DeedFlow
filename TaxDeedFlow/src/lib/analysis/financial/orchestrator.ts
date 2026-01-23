@@ -9,6 +9,8 @@
  * @date 2026-01-16
  */
 
+import { logger } from '@/lib/logger';
+
 import type {
   FinancialAnalysis,
   FinancialAnalysisInput,
@@ -37,6 +39,9 @@ import { calculateInvestmentMetrics, calculateROIAnalysis } from './roiCalculato
 import { calculateHoldingCosts } from './holdingCosts';
 import { compareExitStrategies } from './exitStrategies';
 import { getRealtyService, type RealtyComparable } from '@/lib/api/services/realty-service';
+
+// Create context logger
+const orchestratorLogger = logger.withContext('Financial Orchestrator');
 
 // ============================================
 // Default Configuration
@@ -204,7 +209,9 @@ async function getComparablesAnalysis(
         return buildComparablesAnalysisFromSales(realtyComps, property);
       }
     } catch (error) {
-      console.warn('[Financial Orchestrator] Failed to fetch comparables from Realty API:', error);
+      orchestratorLogger.warn('Failed to fetch comparables from Realty API', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       // Fall through to fallback methods
     }
   }
@@ -259,7 +266,10 @@ async function fetchRealtyComparables(
         return convertRealtyComparables(result.data.comparables, lat, lng);
       }
     } catch (error) {
-      console.warn('[Financial Orchestrator] Postal code search failed:', error);
+      orchestratorLogger.warn('Postal code search failed', {
+        postalCode,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -277,7 +287,11 @@ async function fetchRealtyComparables(
         return convertRealtyComparables(result.data.comparables, lat, lng);
       }
     } catch (error) {
-      console.warn('[Financial Orchestrator] Coordinate search failed:', error);
+      orchestratorLogger.warn('Coordinate search failed', {
+        lat,
+        lng,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -297,7 +311,11 @@ async function fetchRealtyComparables(
           return convertRealtyComparables(result.data.comparables, lat, lng);
         }
       } catch (error) {
-        console.warn('[Financial Orchestrator] City/state search failed:', error);
+        orchestratorLogger.warn('City/state search failed', {
+          city: cityMatch[1].trim(),
+          state,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   }

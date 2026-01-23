@@ -15,6 +15,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
+
+const apiLogger = logger.withContext('Financial Analysis API');
 
 import {
   analyzePropertyFinancials,
@@ -211,7 +214,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
 
     if (upsertError) {
-      console.error('Error storing analysis:', upsertError);
+      apiLogger.error('Error storing analysis', { error: upsertError.message });
       // Continue - don't fail the request if storage fails
     }
 
@@ -221,7 +224,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       analysis,
     });
   } catch (error) {
-    console.error('Financial analysis error:', error);
+    apiLogger.error('Financial analysis error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       {
         error: 'Analysis failed',
@@ -501,7 +504,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       analyzedAt: cachedAnalysis.analyzed_at,
     });
   } catch (error) {
-    console.error('Error retrieving analysis:', error);
+    apiLogger.error('Error retrieving analysis', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       {
         error: 'Failed to retrieve analysis',

@@ -22,6 +22,10 @@ import type {
   DataSource,
 } from '@/types/risk-analysis';
 import { getUSGSService, type SeismicHazardData, type HistoricalEarthquakeSummary } from '@/lib/api/services/usgs-service';
+import { logger } from '@/lib/logger';
+
+// Create context logger for geological analysis
+const geoLogger = logger.withContext('Geological Analyzer');
 
 // ============================================
 // Constants and Configuration
@@ -322,7 +326,11 @@ export async function analyzeEarthquakeRisk(
     };
   } catch (error) {
     // Return default low-risk analysis if API fails
-    console.error('USGS API error:', error);
+    geoLogger.error('USGS API error', {
+      error: error instanceof Error ? error.message : String(error),
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude
+    });
     return createDefaultEarthquakeRisk(coordinates);
   }
 }

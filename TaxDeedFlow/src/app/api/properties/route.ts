@@ -62,16 +62,19 @@ export async function GET() {
 /**
  * POST /api/properties
  * Create a new property - requires authentication and CSRF validation
+ *
+ * NOTE: This route serves as the TEST CASE for Supabase Auth migration (Phase 2, subtask 2-2)
+ * It uses validateApiAuth() which tries Supabase Auth first, then falls back to demo tokens.
+ * Once verified, all other API routes will follow this pattern.
  */
 export async function POST(request: NextRequest) {
   // CSRF Protection: Validate request origin
   const csrfResult = await validateCsrf(request)
   if (!csrfResult.valid) {
-    console.log("[API Properties] CSRF validation failed:", csrfResult.error)
     return csrfErrorResponse(csrfResult.error)
   }
 
-  // Validate authentication
+  // Validate authentication (uses Supabase Auth as primary method)
   const authResult = await validateApiAuth(request)
 
   if (!authResult.authenticated) {

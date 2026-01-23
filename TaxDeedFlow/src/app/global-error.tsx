@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect } from "react"
+import { logger } from "@/lib/logger"
+
+const pageLogger = logger.withContext('[Global Error Boundary]')
 
 export default function GlobalError({
   error,
@@ -10,7 +13,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error("Global error:", error)
+    pageLogger.error("Global error", { error, digest: error.digest })
   }, [error])
 
   return (

@@ -4,6 +4,7 @@ import { ReactNode, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ThemeProvider } from "next-themes"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { ProfileProvider } from "@/contexts/ProfileContext"
 import { Toaster } from "sonner"
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -29,7 +30,9 @@ export function Providers({ children }: { children: ReactNode }) {
         disableTransitionOnChange
       >
         <AuthProvider>
-          {children}
+          <ProfileProvider>
+            {children}
+          </ProfileProvider>
           <Toaster
             position="top-right"
             toastOptions={{

@@ -23,6 +23,9 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { logger } from "@/lib/logger"
+
+const pageLogger = logger.withContext('[User Settings Page]')
 
 // Mock users data
 const MOCK_USERS = [
@@ -136,7 +139,7 @@ export default function SettingsUsersPage() {
       setDeleteConfirmId(null)
       setOpenMenuId(null)
     } catch (error) {
-      console.error("Failed to delete user:", error)
+      pageLogger.error('Failed to delete user', { error: error instanceof Error ? error.message : String(error) })
     } finally {
       setIsDeleting(false)
     }
@@ -172,7 +175,7 @@ export default function SettingsUsersPage() {
       )
       setEditingUser(null)
     } catch (error) {
-      console.error("Failed to save user:", error)
+      pageLogger.error('Failed to save user', { error: error instanceof Error ? error.message : String(error) })
     } finally {
       setIsSaving(false)
     }
@@ -201,7 +204,7 @@ export default function SettingsUsersPage() {
       setShowInviteModal(false)
       setInviteForm({ name: "", email: "", role: "analyst" })
     } catch (error) {
-      console.error("Failed to invite user:", error)
+      pageLogger.error('Failed to invite user', { error: error instanceof Error ? error.message : String(error) })
     } finally {
       setIsInviting(false)
     }

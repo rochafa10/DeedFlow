@@ -7,6 +7,7 @@
  * API Documentation: https://rapidapi.com/apimaker/api/zillow-com1
  */
 
+import { logger } from '@/lib/logger';
 import { BaseApiService } from '../base-service';
 import {
   ApiConfig,
@@ -193,7 +194,9 @@ export class ZillowService extends BaseApiService {
     const apiHost = config?.apiHost || process.env.ZILLOW_API_HOST || 'us-housing-market-data1.p.rapidapi.com';
 
     if (!rapidApiKey) {
-      console.warn('[ZillowService] No RAPIDAPI_KEY found. API calls will fail.');
+      logger.warn('No RAPIDAPI_KEY found. API calls will fail.', {
+        context: 'ZillowService'
+      });
     }
 
     const apiConfig: Partial<ApiConfig> & { baseUrl: string } = {

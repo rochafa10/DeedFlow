@@ -1,25 +1,25 @@
 {
   "active": true,
-  "spec": "001-add-csv-json-export-for-property-reports",
+  "spec": "021-smart-deal-alerts",
   "state": "building",
   "subtasks": {
-    "completed": 3,
-    "total": 5,
+    "completed": 18,
+    "total": 19,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Export Utilities Implementation",
+    "current": "Integration Testing",
     "id": null,
-    "total": 5
+    "total": 1
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 1,
-    "started_at": "2026-01-22T02:18:09.829656"
+    "number": 680,
+    "started_at": "2026-01-22T19:04:23.233189"
   },
-  "last_update": "2026-01-22T02:18:09.895729"
+  "last_update": "2026-01-22T23:45:00.733802"
 }

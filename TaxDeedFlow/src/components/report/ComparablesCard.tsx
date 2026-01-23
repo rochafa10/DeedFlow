@@ -12,6 +12,9 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+
+const cardLogger = logger.withContext('Comparables Card');
 import {
   Home,
   DollarSign,
@@ -343,7 +346,9 @@ export function ComparablesCard({
 
       setData(result.data);
     } catch (err) {
-      console.error("[ComparablesCard] Error:", err);
+      cardLogger.error("Error loading comparables", {
+        error: err instanceof Error ? err.message : String(err)
+      });
       setError(err instanceof Error ? err.message : "Failed to load comparables");
     } finally {
       setIsLoading(false);

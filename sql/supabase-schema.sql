@@ -118,6 +118,33 @@ CREATE TABLE IF NOT EXISTS research_log (
     notes TEXT
 );
 
+-- Table 9: Calendar Exports (User calendar subscription tracking)
+CREATE TABLE IF NOT EXISTS calendar_exports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID, -- Reference to auth.users, NULL for anonymous/public calendars
+    subscription_token TEXT UNIQUE NOT NULL, -- Unique token for calendar feed URL
+    calendar_name TEXT, -- User-friendly name for the subscription
+    calendar_format TEXT DEFAULT 'ical', -- 'ical', 'google', 'outlook', 'webcal'
+
+    -- Filter options
+    filter_states TEXT[], -- Array of state codes to include (NULL = all states)
+    filter_counties UUID[], -- Array of county IDs to include (NULL = all counties)
+    filter_sale_types TEXT[], -- Array of sale types to include (NULL = all types)
+    days_ahead INTEGER DEFAULT 90, -- How many days in the future to include
+
+    -- Status and tracking
+    status TEXT DEFAULT 'active', -- 'active', 'inactive', 'suspended'
+    last_accessed_at TIMESTAMPTZ, -- Last time calendar was fetched
+    access_count INTEGER DEFAULT 0, -- Total number of times calendar was accessed
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- Unique constraint: one token per subscription
+    CONSTRAINT check_calendar_format CHECK (calendar_format IN ('ical', 'google', 'outlook', 'webcal')),
+    CONSTRAINT check_status CHECK (status IN ('active', 'inactive', 'suspended')),
+    CONSTRAINT check_days_ahead CHECK (days_ahead > 0 AND days_ahead <= 365)
+);
+
 -- ============================================================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================================================
@@ -129,6 +156,9 @@ CREATE INDEX idx_upcoming_sales_status ON upcoming_sales(status);
 CREATE INDEX idx_documents_type ON documents(document_type);
 CREATE INDEX idx_documents_year ON documents(year);
 CREATE INDEX idx_vendor_portals_vendor ON vendor_portals(vendor_name);
+CREATE INDEX idx_calendar_exports_token ON calendar_exports(subscription_token);
+CREATE INDEX idx_calendar_exports_user ON calendar_exports(user_id);
+CREATE INDEX idx_calendar_exports_status ON calendar_exports(status);
 
 -- ============================================================================
 -- VIEWS FOR EASY QUERYING
@@ -204,6 +234,7 @@ ALTER TABLE vendor_portals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE additional_resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE important_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE research_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_exports ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Allow public read access to all tables
 CREATE POLICY "Allow public read access" ON counties FOR SELECT USING (true);
@@ -214,6 +245,12 @@ CREATE POLICY "Allow public read access" ON vendor_portals FOR SELECT USING (tru
 CREATE POLICY "Allow public read access" ON additional_resources FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON important_notes FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON research_log FOR SELECT USING (true);
+
+-- Calendar exports policies: Users can only see their own, but can access by token
+CREATE POLICY "Users can view own calendars" ON calendar_exports FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Users can create own calendars" ON calendar_exports FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Users can update own calendars" ON calendar_exports FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own calendars" ON calendar_exports FOR DELETE USING (auth.uid() = user_id);
 
 -- Policy: Allow authenticated users to insert/update
 -- (You'll need to modify this based on your auth setup)

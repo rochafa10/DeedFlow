@@ -21,9 +21,30 @@ export {
   getEdgeCaseDefinitions,
   requiresSpecialHandling,
   getScoringBlockers,
+  getEdgeCaseSeverity,
+  getHandlingRecommendations,
+
+  // Detection functions
+  detectCemetery,
+  detectUtilityProperty,
+  detectNoStructure,
+  detectLandlocked,
+  detectNoRoadAccess,
+  detectTitleCloud,
+  detectIrsLien,
+  detectHoaSuperLien,
+  detectEnvironmentalContamination,
+  detectWetlands,
+  detectHighCompetition,
+  detectDecliningMarket,
+  detectSliverLot,
+  detectVeryOldProperty,
+  detectHighValueProperty,
+  detectExtremelyLowValue,
 
   // Constants
   DEFAULT_EDGE_CASE_CONFIG,
+  EDGE_CASE_CONFIG,
 } from './edgeCases';
 
 export type {

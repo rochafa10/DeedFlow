@@ -15,6 +15,9 @@
 import * as React from "react";
 import { Share2, Link2, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+
+const dialogLogger = logger.withContext('Share Dialog');
 import {
   Dialog,
   DialogContent,
@@ -138,7 +141,9 @@ export function ShareDialog({
         setShareData(response);
       }
     } catch (err) {
-      console.error("[ShareDialog] Failed to generate share link:", err);
+      dialogLogger.error("Failed to generate share link", {
+        error: err instanceof Error ? err.message : String(err)
+      });
       // Only update state if dialog is still open
       if (isOpen) {
         setError(

@@ -1,9 +1,9 @@
 /**
  * Authenticated fetch utility
- * Automatically adds user token to API requests for authentication
+ * Automatically adds Supabase session token to API requests for authentication
  */
 
-const USER_STORAGE_KEY = "taxdeedflow_user"
+import { supabase } from "../supabase/client"
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean
@@ -18,15 +18,15 @@ interface FetchOptions extends RequestInit {
 export async function authFetch(url: string, options: FetchOptions = {}): Promise<Response> {
   const { skipAuth, ...fetchOptions } = options
 
-  // Get user from localStorage
-  const storedUser = typeof window !== "undefined" ? localStorage.getItem(USER_STORAGE_KEY) : null
-
   // Build headers
   const headers = new Headers(fetchOptions.headers || {})
 
-  // Add auth header if user exists and auth is not skipped
-  if (!skipAuth && storedUser) {
-    headers.set("X-User-Token", storedUser)
+  // Add auth header if Supabase is configured and auth is not skipped
+  if (!skipAuth && supabase) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      headers.set("Authorization", `Bearer ${session.access_token}`)
+    }
   }
 
   // Ensure Content-Type is set for JSON requests

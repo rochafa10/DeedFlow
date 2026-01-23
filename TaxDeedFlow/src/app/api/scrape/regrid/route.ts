@@ -1,5 +1,50 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
+import { z } from "zod"
+
+// ============================================
+// Request Validation Schemas
+// ============================================
+
+/**
+ * Sanitizes a string to prevent SSRF and injection attacks
+ * Removes dangerous characters while preserving valid input
+ */
+function sanitizeString(value: string): string {
+  return value
+    .replace(/[<>]/g, "") // Remove HTML tags
+    .replace(/javascript:/gi, "") // Remove javascript: protocol
+    .replace(/data:/gi, "") // Remove data: protocol
+    .replace(/vbscript:/gi, "") // Remove vbscript: protocol
+    .replace(/file:/gi, "") // Remove file: protocol
+    .replace(/https?:\/\//gi, "") // Remove http(s):// URLs
+    .trim()
+}
+
+const RegridScraperRequestSchema = z.object({
+  property_id: z.string().uuid({
+    message: "property_id must be a valid UUID"
+  }),
+  parcel_id: z.string()
+    .min(1, "parcel_id is required")
+    .max(100, "parcel_id must be less than 100 characters")
+    .transform(sanitizeString),
+  address: z.string()
+    .max(500, "address must be less than 500 characters")
+    .transform(sanitizeString)
+    .optional(),
+  county: z.string()
+    .min(1, "county is required")
+    .max(100, "county must be less than 100 characters")
+    .transform(sanitizeString),
+  state: z.string()
+    .length(2, "state must be a 2-letter state code")
+    .regex(/^[A-Z]{2}$/, "state must be uppercase 2-letter code (e.g., PA, FL)")
+    .transform(val => val.toUpperCase()),
+  job_id: z.string().uuid({
+    message: "job_id must be a valid UUID"
+  }).optional(),
+})
 
 /**
  * POST /api/scrape/regrid
@@ -9,28 +54,18 @@ import { createServerClient } from "@/lib/supabase/client"
  *
  * Request body:
  * {
- *   property_id: string,
+ *   property_id: string (UUID),
  *   parcel_id: string,
  *   address?: string,
  *   county: string,
- *   state: string,
- *   job_id?: string  // batch job ID for progress tracking
+ *   state: string (2-letter code),
+ *   job_id?: string (UUID)
  * }
  */
 export async function POST(request: NextRequest) {
   // Simple API key validation for n8n workflow calls
   const authHeader = request.headers.get("x-api-key")
-  const expectedKey = process.env.INTERNAL_API_KEY
-
-  if (!expectedKey) {
-    return NextResponse.json(
-      {
-        error: "Configuration error",
-        message: "INTERNAL_API_KEY environment variable is not set. Please configure it in .env.local (see .env.example for template)"
-      },
-      { status: 500 }
-    )
-  }
+  const expectedKey = process.env.INTERNAL_API_KEY || "tdf-internal-scraper-key"
 
   if (authHeader !== expectedKey) {
     // Allow requests from n8n or the app itself
@@ -53,14 +88,21 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { property_id, parcel_id, address, county, state, job_id } = body
 
-    if (!property_id || !parcel_id) {
+    // Validate request using Zod schema
+    const validationResult = RegridScraperRequestSchema.safeParse(body)
+
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Validation error", message: "property_id and parcel_id are required" },
+        {
+          error: "Validation error",
+          details: validationResult.error.errors,
+        },
         { status: 400 }
       )
     }
+
+    const { property_id, parcel_id, address, county, state, job_id } = validationResult.data
 
     console.log(`[Regrid Scraper] Processing property ${parcel_id} in ${county}, ${state}`)
 

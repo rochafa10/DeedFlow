@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { aggregateRiskData, type RiskAggregationInput, type RiskAggregationOptions } from "@/lib/analysis/risk"
 import { createServerClient } from "@/lib/supabase/client"
+import { logger } from "@/lib/logger"
+
+const apiLogger = logger.withContext("Risk Analysis API")
 
 /**
  * POST /api/analysis/risk
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (regridError) {
-        console.error("[Risk API] Error fetching coordinates:", regridError)
+        apiLogger.error("Error fetching coordinates", { error: regridError.message })
         return NextResponse.json(
           { error: "Could not find coordinates for property", details: regridError.message },
           { status: 404 }
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error("[Risk API] Error:", error)
+    apiLogger.error("Error", { error: error instanceof Error ? error.message : String(error) })
 
     const message = error instanceof Error ? error.message : "Unknown error occurred"
 
@@ -253,7 +256,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error("[Risk API] GET Error:", error)
+    apiLogger.error("GET Error", { error: error instanceof Error ? error.message : String(error) })
 
     const message = error instanceof Error ? error.message : "Unknown error occurred"
 

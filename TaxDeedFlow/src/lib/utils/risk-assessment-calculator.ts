@@ -534,6 +534,7 @@ export function calculateRiskAssessment(input: RiskCalculationInput): RiskAssess
     environmental: 0.15,
     radon: 0.10,
     slope: 0.05,
+    drought: 0.0,
   };
 
   // Build category scores array
@@ -754,6 +755,8 @@ export function calculateRiskAssessment(input: RiskCalculationInput): RiskAssess
       dataSource: { name: 'Open-Elevation API', type: 'calculated', reliability: 'medium' },
       confidence: input.terrainData ? 75 : 50,
     },
+
+    drought: null,
 
     categoryScores,
     weightsUsed: weights,

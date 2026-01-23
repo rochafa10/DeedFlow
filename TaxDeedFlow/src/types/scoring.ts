@@ -580,6 +580,20 @@ export interface ExternalData {
       end: Date;
     } | null;
   } | null;
+
+  /** Road access and landlocked status data */
+  accessData: {
+    /** Whether the property appears to be landlocked */
+    landlocked: boolean;
+    /** Type of road access (public_primary, public_residential, private, track, path, none) */
+    roadAccessType: string;
+    /** Distance to nearest public road in meters */
+    distanceToPublicRoad: number;
+    /** Risk level assessment (low, moderate, high, severe) */
+    riskLevel: string | null;
+    /** Analysis notes */
+    notes: string[] | null;
+  } | null;
 }
 
 // ============================================
@@ -634,6 +648,8 @@ export interface DataAvailability {
   hasEnvironmentalData: boolean;
   /** Whether market data is available */
   hasMarketData: boolean;
+  /** Whether road access/landlocked data is available */
+  hasAccessData: boolean;
 
   // Structure data
   /** Whether building square footage is available */
@@ -698,6 +714,7 @@ export function calculateDataAvailability(
     hasAmenityData: externalData?.nearbyAmenities !== null,
     hasEnvironmentalData: externalData?.environmentalHazards !== null,
     hasMarketData: externalData?.marketData !== null,
+    hasAccessData: externalData?.accessData !== null,
 
     // Structure data
     hasBuildingSqFt: property.building_sqft !== null,
@@ -740,6 +757,7 @@ export function calculateDataAvailability(
     'hasAmenityData',
     'hasEnvironmentalData',
     'hasMarketData',
+    'hasAccessData',
     'hasBuildingSqFt',
     'hasLotSize',
     'hasYearBuilt',

@@ -12,6 +12,7 @@
  * @date 2026-01-16
  */
 
+import { logger } from '@/lib/logger';
 import { BaseApiService } from '../base-service';
 import type {
   ApiConfig,
@@ -268,7 +269,10 @@ export class NASAFIRMSService extends BaseApiService {
       };
     } catch (error) {
       // Return empty summary if API fails
-      console.error('NASA FIRMS API error:', error);
+      logger.error('NASA FIRMS API error', {
+        context: 'NASAFIRMSService',
+        error: error instanceof Error ? error.message : String(error)
+      });
       return {
         data: this.createEmptyFireSummary(),
         status: 200,

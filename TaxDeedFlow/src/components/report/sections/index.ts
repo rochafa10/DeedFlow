@@ -29,6 +29,17 @@ export {
   type LocationAnalysisProps,
 } from "./LocationAnalysis";
 
+// Section 3.5: Neighborhood Analysis
+export {
+  NeighborhoodAnalysis,
+  type CrimeData,
+  type DemographicsData,
+  type AccessData,
+  type SchoolData,
+  type AmenitiesData,
+  type NeighborhoodAnalysisProps,
+} from "./NeighborhoodAnalysis";
+
 // Section 4: Risk Assessment
 export {
   RiskAssessment,

@@ -15,6 +15,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRealtyService, ComparableSearchOptions, RealtyComparable } from '@/lib/api/services/realty-service';
+import { logger } from '@/lib/logger';
+
+const apiLogger = logger.withContext('Comparables API');
 import {
   calculateAllMarketMetrics,
   type CalculatedMarketMetrics,
@@ -59,7 +62,7 @@ async function fetchActiveListingsCount(
     const result = await realtyService.getActiveListingsCount(options);
     return result.data;
   } catch (error) {
-    console.warn('[Comparables API] Failed to fetch active listings count:', error);
+    apiLogger.warn('Failed to fetch active listings count', { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -173,7 +176,7 @@ export async function GET(request: NextRequest) {
             historicalMetrics = calculateMarketHistory(comparables);
           }
         } catch (error) {
-          console.warn('[Comparables API] Failed to fetch extended historical data:', error);
+          apiLogger.warn('Failed to fetch extended historical data', { error: error instanceof Error ? error.message : String(error) });
           // Fall back to using current comparables
           historicalMetrics = calculateMarketHistory(comparables);
         }
@@ -228,7 +231,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[Comparables API] Error:', error);
+    apiLogger.error('Error', { error: error instanceof Error ? error.message : String(error) });
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -327,7 +330,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('[Comparables API] POST Error:', error);
+    apiLogger.error('POST Error', { error: error instanceof Error ? error.message : String(error) });
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 

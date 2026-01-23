@@ -50,6 +50,7 @@ import { MarketAnalysis } from "@/components/report/sections/MarketAnalysis";
 import { Disclaimers } from "@/components/report/sections/Disclaimers";
 import { ComparablesSection } from "@/components/report/sections/ComparablesSection";
 import { PropertySummary } from "@/components/report/sections/PropertySummary";
+import { TitleResearch } from "@/components/report/sections/TitleResearch";
 import { RiskOverviewCard } from "@/components/report/risk/RiskOverviewCard";
 import { InsuranceEstimateCard } from "@/components/report/risk/InsuranceEstimateCard";
 import { FinancialDashboard } from "@/components/financial/FinancialDashboard";
@@ -67,6 +68,13 @@ import type { RiskAssessment, InsuranceEstimates } from "@/types/risk-analysis";
 import type { FinancialAnalysis, ComparableSale } from "@/lib/analysis/financial/types";
 import type { ComparableProperty, ComparablesAnalysis } from "@/components/report/sections/ComparablesSection";
 import type { MarketMetrics, MarketTrends, MarketSegment } from "@/components/report/sections/MarketAnalysis";
+import type {
+  TitleResearchSummary,
+  LienRecord,
+  OwnershipRecord,
+  TitleIssue,
+} from "@/components/report/sections/TitleResearch";
+import type { RiskLevel } from "@/types/title";
 
 // ============================================
 // Types
@@ -235,6 +243,51 @@ interface ApiReportData {
       vacancyRate: number;
       dataYear: number;
     };
+  };
+  titleReport?: {
+    summary: {
+      searchCompleted: boolean;
+      searchDate?: string;
+      searchProvider?: string;
+      totalLiens: number;
+      totalLienAmount: number;
+      survivingLiensCount: number;
+      survivingLiensAmount: number;
+      issuesFound: number;
+      overallRisk: RiskLevel;
+      titleInsuranceAvailable: boolean;
+      titleInsuranceCost?: number;
+      estimatedClearingCost?: number;
+    };
+    liens?: Array<{
+      id: string;
+      type: string;
+      holder: string;
+      originalAmount: number;
+      currentBalance?: number;
+      recordingDate: string;
+      recordingRef?: string;
+      position?: number;
+      survivesSale: boolean;
+      status: 'active' | 'satisfied' | 'released' | 'unknown';
+      notes?: string;
+    }>;
+    ownershipHistory?: Array<{
+      ownerName: string;
+      acquiredDate: string;
+      salePrice?: number;
+      documentRef?: string;
+      deedType?: string;
+    }>;
+    issues?: Array<{
+      type: string;
+      description: string;
+      severity: 'low' | 'medium' | 'high' | 'critical';
+      estimatedCost?: number;
+      resolution?: string;
+      blocksPurchase: boolean;
+    }>;
+    recommendations?: string[];
   };
   aiSummary?: string;
 }
@@ -453,6 +506,7 @@ const sampleRiskAssessment: RiskAssessment = {
     dataSource: { name: "USGS", type: "calculated", reliability: "medium" },
     confidence: 70,
   },
+  drought: null,
   categoryScores: [
     { category: "flood", rawScore: 5, weight: 0.2, weightedScore: 1, riskLevel: "minimal", dataAvailability: "full" },
     { category: "earthquake", rawScore: 5, weight: 0.1, weightedScore: 0.5, riskLevel: "minimal", dataAvailability: "full" },
@@ -472,6 +526,7 @@ const sampleRiskAssessment: RiskAssessment = {
     environmental: 0.15,
     radon: 0.1,
     slope: 0.05,
+    drought: 0.0,
   },
   insuranceEstimates: {
     floodInsurance: null,
@@ -2833,7 +2888,58 @@ export default function PropertyReportPage() {
           ]}
         />
 
-        {/* ===== SECTION 16: Legal Disclaimer ===== */}
+        {/* ===== SECTION 16: Title Research & Liens ===== */}
+        {apiData?.data?.titleReport && (
+          <TitleResearch
+            summary={{
+              searchCompleted: apiData.data.titleReport.summary.searchCompleted,
+              searchDate: apiData.data.titleReport.summary.searchDate
+                ? new Date(apiData.data.titleReport.summary.searchDate)
+                : undefined,
+              searchProvider: apiData.data.titleReport.summary.searchProvider,
+              totalLiens: apiData.data.titleReport.summary.totalLiens,
+              totalLienAmount: apiData.data.titleReport.summary.totalLienAmount,
+              survivingLiensCount: apiData.data.titleReport.summary.survivingLiensCount,
+              survivingLiensAmount: apiData.data.titleReport.summary.survivingLiensAmount,
+              issuesFound: apiData.data.titleReport.summary.issuesFound,
+              overallRisk: apiData.data.titleReport.summary.overallRisk,
+              titleInsuranceAvailable: apiData.data.titleReport.summary.titleInsuranceAvailable,
+              titleInsuranceCost: apiData.data.titleReport.summary.titleInsuranceCost,
+              estimatedClearingCost: apiData.data.titleReport.summary.estimatedClearingCost,
+            }}
+            liens={apiData.data.titleReport.liens?.map((lien) => ({
+              id: lien.id,
+              type: lien.type,
+              holder: lien.holder,
+              originalAmount: lien.originalAmount,
+              currentBalance: lien.currentBalance,
+              recordingDate: new Date(lien.recordingDate),
+              recordingRef: lien.recordingRef,
+              position: lien.position,
+              survivesSale: lien.survivesSale,
+              status: lien.status,
+              notes: lien.notes,
+            }))}
+            ownershipHistory={apiData.data.titleReport.ownershipHistory?.map((record) => ({
+              ownerName: record.ownerName,
+              acquiredDate: new Date(record.acquiredDate),
+              salePrice: record.salePrice,
+              documentRef: record.documentRef,
+              deedType: record.deedType,
+            }))}
+            issues={apiData.data.titleReport.issues?.map((issue) => ({
+              type: issue.type,
+              description: issue.description,
+              severity: issue.severity,
+              estimatedCost: issue.estimatedCost,
+              resolution: issue.resolution,
+              blocksPurchase: issue.blocksPurchase,
+            }))}
+            recommendations={apiData.data.titleReport.recommendations}
+          />
+        )}
+
+        {/* ===== SECTION 17: Legal Disclaimer ===== */}
         <Disclaimers
           reportDate={new Date()}
           reportId={reportId}

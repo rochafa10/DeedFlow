@@ -38,8 +38,11 @@ import {
   BedDouble,
   Bath,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 import type { FinancialAnalysis, ComparableSale, InvestmentRecommendation, DataQualityAssessment } from '@/lib/analysis/financial/types';
+
+const pageLogger = logger.withContext('[Financial Demo Page]');
 
 // ============================================
 // Sample Data
@@ -610,7 +613,7 @@ export default function FinancialDemoPage() {
             analysis={sampleFinancialAnalysis}
             propertyId={sampleProperty.id}
             onRecalculate={(params) => {
-              console.log('Recalculate requested with:', params);
+              pageLogger.debug('Recalculate requested', { params });
             }}
           />
         </section>

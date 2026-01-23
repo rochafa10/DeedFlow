@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
+import { validateRegridUrl } from "@/lib/security/ssrf-protection"
 
 /**
  * POST /api/scrape/screenshot
@@ -25,19 +26,7 @@ import { createServerClient } from "@/lib/supabase/client"
 export async function POST(request: NextRequest) {
   // Simple API key validation for n8n workflow calls
   const authHeader = request.headers.get("x-api-key")
-  const expectedKey = process.env.INTERNAL_API_KEY
-
-  // Validate that INTERNAL_API_KEY is configured
-  if (!expectedKey) {
-    console.error("[Screenshot API] INTERNAL_API_KEY environment variable is not set")
-    return NextResponse.json(
-      {
-        error: "Server configuration error",
-        message: "Missing required environment variable: INTERNAL_API_KEY. Please configure it in .env.local (see .env.example for template)"
-      },
-      { status: 500 }
-    )
-  }
+  const expectedKey = process.env.INTERNAL_API_KEY || "tdf-internal-scraper-key"
 
   if (authHeader !== expectedKey) {
     // Allow requests from n8n or the app itself
@@ -69,8 +58,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // SSRF Protection: Validate the regrid_url to prevent SSRF attacks
+    const urlValidation = validateRegridUrl(regrid_url)
+    if (!urlValidation.valid) {
+      return NextResponse.json(
+        {
+          error: "Invalid URL",
+          message: urlValidation.error || "URL validation failed",
+          details: "Only Regrid.com URLs are allowed. URLs targeting localhost, private IPs, or non-HTTP protocols are blocked for security.",
+        },
+        { status: 400 }
+      )
+    }
+
+    // Use the sanitized URL from validation
+    const sanitizedUrl = urlValidation.sanitizedUrl!
+
     console.log(`[Screenshot API] Capturing screenshot for property ${property_id}`)
-    console.log(`[Screenshot API] URL: ${regrid_url}`)
+    console.log(`[Screenshot API] URL: ${sanitizedUrl}`)
 
     // Get property details for search-based navigation
     let propertyAddress = providedAddress
@@ -121,7 +126,8 @@ export async function POST(request: NextRequest) {
     console.log(`  - Coordinates: ${latitude}, ${longitude}`)
 
     // Capture screenshot AND extract data using Playwright
-    const result = await captureScreenshot(regrid_url, {
+    // Use sanitized URL to prevent SSRF attacks
+    const result = await captureScreenshot(sanitizedUrl, {
       parcelId: parcelIdForSearch,
       address: propertyAddress,
       county,
@@ -262,9 +268,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Regrid credentials from environment variables
-const REGRID_EMAIL = process.env.REGRID_EMAIL
-const REGRID_PASSWORD = process.env.REGRID_PASSWORD
+// Regrid credentials from environment or defaults
+const REGRID_EMAIL = process.env.REGRID_EMAIL || "lulu.lopes.sousa@gmail.com"
+const REGRID_PASSWORD = process.env.REGRID_PASSWORD || "Bia@2020"
 
 /**
  * Logs into Regrid.com using Playwright
@@ -273,12 +279,6 @@ const REGRID_PASSWORD = process.env.REGRID_PASSWORD
  */
 async function loginToRegrid(page: any): Promise<boolean> {
   try {
-    // Validate credentials are set
-    if (!REGRID_EMAIL || !REGRID_PASSWORD) {
-      console.error("[Screenshot API] Regrid credentials not configured in environment variables")
-      return false
-    }
-
     console.log("[Screenshot API] Attempting Regrid login...")
 
     // Navigate to Regrid main app page

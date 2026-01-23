@@ -102,7 +102,17 @@ export async function PATCH(
     }
 
     // Build update object - only include fields that are provided
-    const updateData: Record<string, any> = {}
+    const updateData: {
+      status?: string
+      started_at?: string | null
+      paused_at?: string | null
+      completed_at?: string
+      processed_items?: number
+      failed_items?: number
+      current_batch?: number
+      last_error?: string | null
+      error_count?: number
+    } = {}
 
     if (body.status !== undefined) {
       updateData.status = body.status

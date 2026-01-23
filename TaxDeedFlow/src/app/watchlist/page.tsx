@@ -18,6 +18,9 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
+import { logger } from "@/lib/logger"
+
+const pageLogger = logger.withContext('[Watchlist Page]')
 
 // Watchlist item type
 export interface WatchlistItem {
@@ -99,7 +102,7 @@ export default function WatchlistPage() {
       if (!item) {
         // Item not found in user's watchlist - could be trying to access another user's item
         setAccessDenied(true)
-        console.log("[Security] Access denied: Attempted to access watchlist item that doesn't belong to user")
+        pageLogger.warn('Access denied: Attempted to access watchlist item that doesn\'t belong to user')
       }
     }
   }, [user?.id])
@@ -167,7 +170,7 @@ export default function WatchlistPage() {
 
     const itemToRemove = watchlist.find((item) => item.id === id)
     if (!itemToRemove || !validateOwnership(itemToRemove, user.id)) {
-      console.log("[Security] Attempted to remove item not owned by user")
+      pageLogger.warn('Attempted to remove item not owned by user')
       return
     }
 
@@ -182,7 +185,7 @@ export default function WatchlistPage() {
 
     const itemToUpdate = watchlist.find((item) => item.id === id)
     if (!itemToUpdate || !validateOwnership(itemToUpdate, user.id)) {
-      console.log("[Security] Attempted to update item not owned by user")
+      pageLogger.warn('Attempted to update item not owned by user')
       return
     }
 

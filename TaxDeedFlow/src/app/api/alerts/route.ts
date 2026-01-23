@@ -18,6 +18,28 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Type for auction alerts query with joined data
+interface AuctionAlertWithRelations {
+  id: string;
+  alert_type: string | null;
+  severity: string | null;
+  title: string;
+  message: string | null;
+  days_until_event: number | null;
+  acknowledged: boolean;
+  acknowledged_at: string | null;
+  created_at: string;
+  sale_id: string | null;
+  county_id: string | null;
+  counties: {
+    county_name: string;
+    state_code: string;
+  } | null;
+  upcoming_sales: {
+    sale_date: string;
+  } | null;
+}
+
 export interface AuctionAlert {
   id: string;
   type: 'critical' | 'warning' | 'info';
@@ -87,20 +109,23 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data to match frontend format
-    const alerts: AuctionAlert[] = (data || []).map((alert: any) => ({
-      id: alert.id,
-      type: mapSeverityToType(alert.severity),
-      title: alert.title,
-      message: alert.message || '',
-      date: new Date(alert.created_at).toISOString().split('T')[0],
-      auctionId: alert.sale_id,
-      county: alert.counties?.county_name || 'Unknown',
-      state: alert.counties?.state_code || 'PA',
-      auctionDate: alert.upcoming_sales?.sale_date
-        ? new Date(alert.upcoming_sales.sale_date).toISOString().split('T')[0]
-        : null,
-      acknowledged: alert.acknowledged || false,
-    }));
+    const alerts: AuctionAlert[] = (data || []).map((alert) => {
+      const typedAlert = alert as unknown as AuctionAlertWithRelations;
+      return {
+        id: typedAlert.id,
+        type: mapSeverityToType(typedAlert.severity),
+        title: typedAlert.title,
+        message: typedAlert.message || '',
+        date: new Date(typedAlert.created_at).toISOString().split('T')[0],
+        auctionId: typedAlert.sale_id,
+        county: typedAlert.counties?.county_name || 'Unknown',
+        state: typedAlert.counties?.state_code || 'PA',
+        auctionDate: typedAlert.upcoming_sales?.sale_date
+          ? new Date(typedAlert.upcoming_sales.sale_date).toISOString().split('T')[0]
+          : null,
+        acknowledged: typedAlert.acknowledged || false,
+      };
+    });
 
     return NextResponse.json({
       alerts,
@@ -203,7 +228,7 @@ export async function PATCH() {
 /**
  * Map database severity to frontend alert type
  */
-function mapSeverityToType(severity: string): 'critical' | 'warning' | 'info' {
+function mapSeverityToType(severity: string | null): 'critical' | 'warning' | 'info' {
   switch (severity?.toLowerCase()) {
     case 'critical':
       return 'critical';

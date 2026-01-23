@@ -21,3 +21,11 @@ export { CostPieChart } from "./charts/CostPieChart";
 export { ProfitWaterfallChart } from "./charts/ProfitWaterfallChart";
 export { ROIComparisonChart } from "./charts/ROIComparisonChart";
 export { ComparablesScatterPlot } from "./charts/ComparablesScatterPlot";
+
+// Lazy-loaded Chart Components (for bundle optimization)
+export {
+  LazyCostPieChart,
+  LazyProfitWaterfallChart,
+  LazyROIComparisonChart,
+  LazyComparablesScatterPlot,
+} from "./charts/LazyCharts";

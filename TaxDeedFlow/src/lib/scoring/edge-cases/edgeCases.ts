@@ -603,41 +603,55 @@ export function handleEdgeCases(
 /**
  * Detect if property is a cemetery
  */
-function detectCemetery(property: Partial<PropertyData>): boolean {
-  if (!property) return false;
+function detectCemetery(property: Partial<PropertyData>): {
+  detected: boolean;
+  type?: 'cemetery';
+} {
+  if (!property) return { detected: false };
 
   const landUse = property.land_use?.toLowerCase() || '';
   const zoning = property.zoning?.toLowerCase() || '';
   const propertyType = (property.property_type as string)?.toLowerCase() || '';
+  const ownerName = property.owner_name?.toLowerCase() || '';
 
-  return (
+  const isCemetery =
     landUse.includes('cemetery') ||
     landUse.includes('burial') ||
     landUse.includes('graveyard') ||
     zoning.includes('cemetery') ||
-    propertyType.includes('cemetery')
-  );
+    propertyType.includes('cemetery') ||
+    ownerName.includes('cemetery');
+
+  return isCemetery ? { detected: true, type: 'cemetery' } : { detected: false };
 }
 
 /**
  * Detect if property is a utility property
  */
-function detectUtilityProperty(property: Partial<PropertyData>): boolean {
-  if (!property) return false;
+function detectUtilityProperty(property: Partial<PropertyData>): {
+  detected: boolean;
+  type?: 'utility_property';
+} {
+  if (!property) return { detected: false };
 
   const landUse = property.land_use?.toLowerCase() || '';
   const zoning = property.zoning?.toLowerCase() || '';
   const propertyType = (property.property_type as string)?.toLowerCase() || '';
+  const ownerName = property.owner_name?.toLowerCase() || '';
 
-  return (
+  const isUtility =
     landUse.includes('utility') ||
     landUse.includes('power line') ||
     landUse.includes('easement') ||
     landUse.includes('substation') ||
     landUse.includes('transformer') ||
     zoning.includes('utility') ||
-    propertyType.includes('utility')
-  );
+    propertyType.includes('utility') ||
+    ownerName.includes('power company') ||
+    ownerName.includes('electric') ||
+    ownerName.includes('utility');
+
+  return isUtility ? { detected: true, type: 'utility_property' } : { detected: false };
 }
 
 /**
@@ -936,6 +950,69 @@ function detectSliverLot(
   return { isSliver: false };
 }
 
+/**
+ * Detect very old property (built before configured threshold year)
+ */
+function detectVeryOldProperty(
+  property: Partial<PropertyData>,
+  config: EdgeCaseConfig = DEFAULT_EDGE_CASE_CONFIG
+): { detected: boolean; yearBuilt?: number; age?: number } {
+  if (!property.year_built) {
+    return { detected: false };
+  }
+
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - property.year_built;
+
+  if (property.year_built < config.veryOldPropertyYear) {
+    return {
+      detected: true,
+      yearBuilt: property.year_built,
+      age: age,
+    };
+  }
+
+  return { detected: false };
+}
+
+/**
+ * Detect high value property
+ */
+function detectHighValueProperty(
+  property: Partial<PropertyData>,
+  config: EdgeCaseConfig = DEFAULT_EDGE_CASE_CONFIG
+): { detected: boolean; value?: number } {
+  const value = property.market_value || property.assessed_value || property.total_due;
+
+  if (value && value > config.highValueThreshold) {
+    return {
+      detected: true,
+      value: value,
+    };
+  }
+
+  return { detected: false };
+}
+
+/**
+ * Detect extremely low value property
+ */
+function detectExtremelyLowValue(
+  property: Partial<PropertyData>,
+  config: EdgeCaseConfig = DEFAULT_EDGE_CASE_CONFIG
+): { detected: boolean; value?: number } {
+  const value = property.total_due || property.assessed_value;
+
+  if (value && value < config.extremelyLowValueThreshold) {
+    return {
+      detected: true,
+      value: value,
+    };
+  }
+
+  return { detected: false };
+}
+
 // ============================================
 // Utility Functions
 // ============================================
@@ -1079,3 +1156,49 @@ export function getScoringBlockers(result: EdgeCaseResult): EdgeCaseType[] {
     blockingHandlings.includes(EDGE_CASE_DEFINITIONS[ec].handling)
   );
 }
+
+/**
+ * Get severity level for an edge case type
+ */
+export function getEdgeCaseSeverity(edgeCaseType: EdgeCaseType): EdgeCaseSeverity {
+  return EDGE_CASE_DEFINITIONS[edgeCaseType].severity;
+}
+
+/**
+ * Get handling recommendations for an edge case result
+ */
+export function getHandlingRecommendations(result: EdgeCaseResult): string[] {
+  if (!result.isEdgeCase || !result.edgeCaseTypes) {
+    return [];
+  }
+
+  return result.edgeCaseTypes.map((edgeCase) =>
+    EDGE_CASE_DEFINITIONS[edgeCase].recommendationTemplate
+  );
+}
+
+// ============================================
+// Export Detection Functions
+// ============================================
+
+export {
+  detectCemetery,
+  detectUtilityProperty,
+  detectNoStructure,
+  detectLandlocked,
+  detectNoRoadAccess,
+  detectTitleCloud,
+  detectIrsLien,
+  detectHoaSuperLien,
+  detectEnvironmentalContamination,
+  detectWetlands,
+  detectHighCompetition,
+  detectDecliningMarket,
+  detectSliverLot,
+  detectVeryOldProperty,
+  detectHighValueProperty,
+  detectExtremelyLowValue,
+};
+
+// Export config as EDGE_CASE_CONFIG (alias for test compatibility)
+export const EDGE_CASE_CONFIG = DEFAULT_EDGE_CASE_CONFIG;

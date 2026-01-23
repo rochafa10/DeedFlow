@@ -51,6 +51,7 @@ import type { AmenitiesSummary } from "@/lib/api/services/geoapify-service";
 // Import report components
 import { InvestmentScore } from "@/components/report/sections/InvestmentScore";
 import { LocationAnalysis } from "@/components/report/sections/LocationAnalysis";
+import { NeighborhoodAnalysis } from "@/components/report/sections/NeighborhoodAnalysis";
 import { MarketAnalysis } from "@/components/report/sections/MarketAnalysis";
 import { Disclaimers } from "@/components/report/sections/Disclaimers";
 import { ComparablesSection } from "@/components/report/sections/ComparablesSection";
@@ -555,6 +556,7 @@ const sampleRiskAssessment: RiskAssessment = {
     },
     confidence: 70,
   },
+  drought: null,
   categoryScores: [
     { category: "flood", rawScore: 5, weight: 0.2, weightedScore: 1, riskLevel: "minimal", dataAvailability: "full" },
     { category: "earthquake", rawScore: 5, weight: 0.1, weightedScore: 0.5, riskLevel: "minimal", dataAvailability: "full" },
@@ -574,6 +576,7 @@ const sampleRiskAssessment: RiskAssessment = {
     environmental: 0.15,
     radon: 0.1,
     slope: 0.05,
+    drought: 0.0,
   },
   insuranceEstimates: {
     floodInsurance: null,
@@ -3322,6 +3325,60 @@ function PropertyReportDemoPageContent() {
           googleMapsUrl={`https://maps.google.com/?q=${encodeURIComponent(activePropertyDetails.address + ' ' + activePropertyDetails.city + ' ' + activePropertyDetails.state)}`}
           dataYear={censusData?.demographics?.dataYear}
           dataSourceType={censusData?.demographics || amenitiesData ? "live" : "sample"}
+        />
+
+        {/* ===== SECTION 6.5: Neighborhood Analysis (Crime, Demographics, Access) ===== */}
+        <NeighborhoodAnalysis
+          crime={{
+            riskLevel: crimeData?.riskLevel === "moderate" ? "medium" : crimeData?.riskLevel as "low" | "medium" | "high" | "severe" | undefined,
+            violentCrimeRate: crimeData?.violentCrimeRate,
+            propertyCrimeRate: crimeData?.propertyCrimeRate,
+            trend: crimeData?.trend,
+            source: crimeData?.source,
+          }}
+          demographics={{
+            medianIncome: censusData?.demographics?.medianHouseholdIncome,
+            population: censusData?.demographics?.population,
+            medianAge: censusData?.demographics?.medianAge,
+            educationLevel: censusData?.demographics?.bachelorsDegreeOrHigherPct
+              ? `${censusData.demographics.bachelorsDegreeOrHigherPct.toFixed(1)}% Bachelor's or higher`
+              : undefined,
+            unemploymentRate: censusData?.demographics?.unemploymentRate,
+            source: "U.S. Census Bureau",
+          }}
+          access={{
+            isLandlocked: false, // Default to false, can be updated from API
+            roadAccess: "public_residential", // Default value, can be updated from API
+            accessNotes: null,
+          }}
+          schools={{
+            districtRating: locationScores.schoolRating || 7,
+            source: "GreatSchools API",
+          }}
+          amenities={{
+            nearbyAmenities: realAmenities.length > 0
+              ? realAmenities.slice(0, 5).map(a => ({
+                  name: a.name,
+                  type: a.type,
+                  distance: a.distance,
+                }))
+              : undefined,
+            groceryStoreDistance: undefined,
+            hospitalDistance: undefined,
+            shoppingDistance: undefined,
+            publicTransportAccess: amenitiesData?.counts?.public_transport
+              ? `${amenitiesData.counts.public_transport} transit stops nearby`
+              : "Limited public transit",
+          }}
+          neighborhoodScore={Math.round(overallLocationScore.score * 4)} // Convert 0-25 to 0-100
+          completenessScore={
+            (crimeData ? 0.25 : 0) +
+            (censusData?.demographics ? 0.25 : 0) +
+            (locationScores.schoolRating ? 0.25 : 0) +
+            (amenitiesData ? 0.25 : 0)
+          }
+          analysisDate={new Date().toISOString()}
+          dataSourceType={censusData?.demographics || crimeData ? "live" : "sample"}
         />
 
         {/* ===== SECTION 7: Slope & Terrain Analysis (with real API data) ===== */}

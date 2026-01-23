@@ -315,27 +315,27 @@ describe('calculatePropertyScore', () => {
 // ============================================
 
 describe('calculatePropertyScores (batch)', () => {
-  it('should score multiple properties', () => {
+  it('should score multiple properties', async () => {
     const properties = [mockIdealProperty, mockMinimalProperty];
     const externalDataMap = {
       [mockIdealProperty.id]: mockIdealExternalData,
       [mockMinimalProperty.id]: null,
     };
 
-    const results = calculatePropertyScores(properties, externalDataMap);
+    const results = await calculatePropertyScores(properties, externalDataMap);
 
     expect(results).toHaveLength(2);
     expect(results[0].propertyId).toBe(mockIdealProperty.id);
     expect(results[1].propertyId).toBe(mockMinimalProperty.id);
   });
 
-  it('should handle empty property array', () => {
-    const results = calculatePropertyScores([], {});
+  it('should handle empty property array', async () => {
+    const results = await calculatePropertyScores([], {});
 
     expect(results).toHaveLength(0);
   });
 
-  it('should maintain order of results', () => {
+  it('should maintain order of results', async () => {
     const properties = [
       mockMinimalProperty,
       mockIdealProperty,
@@ -347,7 +347,7 @@ describe('calculatePropertyScores (batch)', () => {
       [mockVacantLandProperty.id]: mockVacantLandExternalData,
     };
 
-    const results = calculatePropertyScores(properties, externalDataMap);
+    const results = await calculatePropertyScores(properties, externalDataMap);
 
     expect(results[0].propertyId).toBe(mockMinimalProperty.id);
     expect(results[1].propertyId).toBe(mockIdealProperty.id);
@@ -465,8 +465,8 @@ describe('comparePropertyScores', () => {
 
     expect(comparison).toBeDefined();
     expect(comparison.scoreDifference).toBeDefined();
-    expect(comparison.percentageDifference).toBeDefined();
-    expect(comparison.categoryDifferences).toBeDefined();
+    expect(comparison.betterProperty).toBeDefined();
+    expect(comparison.categoryComparison).toBeDefined();
   });
 
   it('should correctly identify better property', () => {
@@ -481,9 +481,9 @@ describe('comparePropertyScores', () => {
 
     const comparison = comparePropertyScores(result1, result2);
 
-    // Ideal property should score higher
+    // Ideal property should score higher (result1 is A, result2 is B)
     expect(comparison.scoreDifference).toBeGreaterThan(0);
-    expect(comparison.winner).toBe(mockIdealProperty.id);
+    expect(comparison.betterProperty).toBe('A');
   });
 
   it('should calculate category-by-category differences', () => {
@@ -498,11 +498,11 @@ describe('comparePropertyScores', () => {
 
     const comparison = comparePropertyScores(result1, result2);
 
-    expect(comparison.categoryDifferences.location).toBeDefined();
-    expect(comparison.categoryDifferences.risk).toBeDefined();
-    expect(comparison.categoryDifferences.financial).toBeDefined();
-    expect(comparison.categoryDifferences.market).toBeDefined();
-    expect(comparison.categoryDifferences.profit).toBeDefined();
+    expect(comparison.categoryComparison.location).toBeDefined();
+    expect(comparison.categoryComparison.risk).toBeDefined();
+    expect(comparison.categoryComparison.financial).toBeDefined();
+    expect(comparison.categoryComparison.market).toBeDefined();
+    expect(comparison.categoryComparison.profit).toBeDefined();
   });
 });
 

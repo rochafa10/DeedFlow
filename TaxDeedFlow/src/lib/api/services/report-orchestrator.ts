@@ -11,6 +11,7 @@
  * - Report generation with AI enhancement
  */
 
+import { logger } from '@/lib/logger';
 import { getZillowService, ZillowProperty } from './zillow-service';
 import { getRealtyService, ComparablesAnalysis } from './realty-service';
 import { getMapboxService, GeocodingResult } from './mapbox-service';
@@ -22,6 +23,9 @@ import { getNOAAService, ClimateRiskAssessment } from './noaa-service';
 import { getElevationService, ElevationAnalysis } from './elevation-service';
 import { getClimateService, ClimateSummary } from './climate-service';
 import { getOpenAIService, PropertyAnalysis } from './openai-service';
+
+// Create context logger
+const reportLogger = logger.withContext('Report Orchestrator');
 
 /**
  * Enriched property data from all sources
@@ -190,7 +194,10 @@ export class ReportOrchestrator {
         sourcesUsed.push('mapbox-geocoding');
       }
     } catch (error) {
-      console.warn('Mapbox geocoding failed:', error);
+      reportLogger.warn('Mapbox geocoding failed', {
+        address,
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('mapbox-geocoding');
     }
 
@@ -269,8 +276,11 @@ export class ReportOrchestrator {
     result.metadata.sourcesFailed = sourcesFailed;
     result.metadata.dataQuality = this.calculateDataQuality(sourcesUsed, sourcesFailed);
 
-    console.log(`Report generated in ${Date.now() - startTime}ms`);
-    console.log(`Sources used: ${sourcesUsed.length}, failed: ${sourcesFailed.length}`);
+    reportLogger.info('Report generated', {
+      durationMs: Date.now() - startTime,
+      sourcesUsed: sourcesUsed.length,
+      sourcesFailed: sourcesFailed.length
+    });
 
     return result;
   }
@@ -303,7 +313,9 @@ export class ReportOrchestrator {
       };
       sourcesUsed.push('zillow');
     } catch (error) {
-      console.warn('Zillow data fetch failed:', error);
+      reportLogger.warn('Zillow data fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('zillow');
     }
   }
@@ -343,7 +355,9 @@ export class ReportOrchestrator {
         sourcesUsed.push('realty-comparables');
       }
     } catch (error) {
-      console.warn('Comparables fetch failed:', error);
+      reportLogger.warn('Comparables fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('realty-comparables');
     }
   }
@@ -370,7 +384,9 @@ export class ReportOrchestrator {
       result.location.walkScore = amenitiesData.data.score;
       sourcesUsed.push('geoapify-amenities');
     } catch (error) {
-      console.warn('Amenities fetch failed:', error);
+      reportLogger.warn('Amenities fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('geoapify-amenities');
     }
   }
@@ -392,7 +408,9 @@ export class ReportOrchestrator {
       result.economic.crime = crimeData.data;
       sourcesUsed.push('fbi-crime');
     } catch (error) {
-      console.warn('Crime data fetch failed:', error);
+      reportLogger.warn('Crime data fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('fbi-crime');
     }
   }
@@ -414,7 +432,9 @@ export class ReportOrchestrator {
       result.economic.employment = employmentData.data;
       sourcesUsed.push('bls-employment');
     } catch (error) {
-      console.warn('Employment data fetch failed:', error);
+      reportLogger.warn('Employment data fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('bls-employment');
     }
   }
@@ -439,7 +459,9 @@ export class ReportOrchestrator {
       result.economic.broadband = broadbandData.data;
       sourcesUsed.push('fcc-broadband');
     } catch (error) {
-      console.warn('Broadband data fetch failed:', error);
+      reportLogger.warn('Broadband data fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('fcc-broadband');
     }
   }
@@ -465,7 +487,9 @@ export class ReportOrchestrator {
       result.environmental.elevation = elevationData.data;
       sourcesUsed.push('open-elevation');
     } catch (error) {
-      console.warn('Elevation data fetch failed:', error);
+      reportLogger.warn('Elevation data fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('open-elevation');
     }
   }
@@ -504,7 +528,9 @@ export class ReportOrchestrator {
         sourcesFailed.push('noaa-climate-risk');
       }
     } catch (error) {
-      console.warn('Climate data fetch failed:', error);
+      reportLogger.warn('Climate data fetch failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('climate');
     }
   }
@@ -565,7 +591,9 @@ export class ReportOrchestrator {
       result.aiAnalysis = analysis.data;
       sourcesUsed.push('openai-analysis');
     } catch (error) {
-      console.warn('AI analysis generation failed:', error);
+      reportLogger.warn('AI analysis generation failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       sourcesFailed.push('openai-analysis');
     }
   }

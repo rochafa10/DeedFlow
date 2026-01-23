@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useMemo } from "react";
 import {
   AlertTriangle,
   Shield,
@@ -196,22 +196,33 @@ export function RiskAssessment({
   className,
 }: RiskAssessmentProps) {
   // Calculate percentage
-  const percentage = Math.round((score / maxScore) * 100);
+  const percentage = useMemo(
+    () => Math.round((score / maxScore) * 100),
+    [score, maxScore]
+  );
 
   // Count risks by level
-  const riskCounts = risks.reduce(
-    (acc, risk) => {
-      acc[risk.level] = (acc[risk.level] || 0) + 1;
-      return acc;
-    },
-    {} as Record<RiskLevel, number>
+  const riskCounts = useMemo(
+    () =>
+      risks.reduce(
+        (acc, risk) => {
+          acc[risk.level] = (acc[risk.level] || 0) + 1;
+          return acc;
+        },
+        {} as Record<RiskLevel, number>
+      ),
+    [risks]
   );
 
   // Total estimated cost to mitigate all risks
-  const totalMitigationCost = risks.reduce(
-    (sum, risk) => sum + (risk.estimatedCost || 0),
-    0
-  ) + (titleRisk?.clearingCost || 0) + (environmentalRisk?.remediationCost || 0) + (conditionRisk?.estimatedRepairCost || 0);
+  const totalMitigationCost = useMemo(
+    () =>
+      risks.reduce((sum, risk) => sum + (risk.estimatedCost || 0), 0) +
+      (titleRisk?.clearingCost || 0) +
+      (environmentalRisk?.remediationCost || 0) +
+      (conditionRisk?.estimatedRepairCost || 0),
+    [risks, titleRisk, environmentalRisk, conditionRisk]
+  );
 
   return (
     <ReportSection

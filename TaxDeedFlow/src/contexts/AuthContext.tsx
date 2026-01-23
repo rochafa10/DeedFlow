@@ -2,6 +2,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react"
 import { User, AuthState, LoginCredentials } from "@/types/auth"
+import { logger } from "@/lib/logger"
+
+const authLogger = logger.withContext('Auth Context')
 
 // Session timeout configuration (in milliseconds)
 // Default: 30 minutes of inactivity
@@ -94,7 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeSinceActivity = now - lastActivityTime
 
     if (timeSinceActivity > SESSION_TIMEOUT_MS) {
-      console.log("[Auth] Session expired due to inactivity")
+      authLogger.debug("Session expired due to inactivity", {
+        timeSinceActivity,
+        timeoutMs: SESSION_TIMEOUT_MS
+      })
       return true
     }
 
@@ -106,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     localStorage.removeItem(USER_STORAGE_KEY)
     localStorage.removeItem(LAST_ACTIVITY_KEY)
-    console.log("[Auth] Session expired - user logged out")
+    authLogger.debug("Session expired - user logged out")
   }, [])
 
   // Check for existing session on mount
@@ -138,7 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error("Error checking session:", error)
+        authLogger.error("Error checking session", {
+          error: error instanceof Error ? error.message : String(error)
+        })
         localStorage.removeItem(USER_STORAGE_KEY)
         localStorage.removeItem(LAST_ACTIVITY_KEY)
       } finally {
@@ -194,19 +202,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event.key === USER_STORAGE_KEY) {
         if (event.newValue === null) {
           // User was logged out in another tab
-          console.log("[Auth] Detected logout in another tab")
+          authLogger.debug("Detected logout in another tab")
           setUser(null)
         } else if (event.newValue) {
           // User was logged in from another tab
           try {
             const parsedUser = JSON.parse(event.newValue)
-            console.log("[Auth] Detected login in another tab")
+            authLogger.debug("Detected login in another tab")
             setUser({
               ...parsedUser,
               createdAt: new Date(parsedUser.createdAt),
             })
           } catch (error) {
-            console.error("[Auth] Error parsing user from storage event:", error)
+            authLogger.error("Error parsing user from storage event", {
+              error: error instanceof Error ? error.message : String(error)
+            })
           }
         }
       }
@@ -258,15 +268,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userToLogin)
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userToLogin))
         updateLastActivity()
-        console.log("[Auth] Login successful for:", credentials.email)
+        authLogger.info("Login successful", { email: credentials.email })
         return { success: true }
       }
 
       // Invalid credentials - show error
-      console.log("[Auth] Login failed for:", credentials.email)
+      authLogger.warn("Login failed", { email: credentials.email })
       return { success: false, error: "Invalid email or password. Please use the demo credentials." }
     } catch (error) {
-      console.error("[Auth] Login error:", error)
+      authLogger.error("Login error", {
+        error: error instanceof Error ? error.message : String(error)
+      })
       return { success: false, error: "An error occurred during login" }
     } finally {
       setIsLoading(false)
@@ -282,9 +294,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLastActivity(null)
       localStorage.removeItem(USER_STORAGE_KEY)
       localStorage.removeItem(LAST_ACTIVITY_KEY)
-      console.log("[Auth] Logout successful")
+      authLogger.info("Logout successful")
     } catch (error) {
-      console.error("[Auth] Logout error:", error)
+      authLogger.error("Logout error", {
+        error: error instanceof Error ? error.message : String(error)
+      })
     } finally {
       setIsLoading(false)
     }

@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
+import type { AuctionAlert, Document, OfficialLink } from "@/types/database"
+
+/**
+ * Property data returned from Supabase query
+ */
+interface PropertyQueryResult {
+  id: string
+  parcel_id?: string
+  property_address?: string
+  owner_name?: string
+  total_due?: number
+  sale_type?: string
+  sale_date?: string
+  has_regrid_data: boolean
+  visual_validation_status?: string
+  auction_status?: string
+}
 
 /**
  * GET /api/auctions/[saleId]
@@ -159,9 +176,9 @@ export async function GET(
 
     // Calculate property stats
     const totalProperties = properties.length
-    const approvedProperties = properties.filter((p: any) => p.visual_validation_status === "APPROVED").length
-    const cautionProperties = properties.filter((p: any) => p.visual_validation_status === "CAUTION").length
-    const totalTaxDue = properties.reduce((sum: number, p: any) => sum + (Number(p.total_due) || 0), 0)
+    const approvedProperties = properties.filter((p: PropertyQueryResult) => p.visual_validation_status === "APPROVED").length
+    const cautionProperties = properties.filter((p: PropertyQueryResult) => p.visual_validation_status === "CAUTION").length
+    const totalTaxDue = properties.reduce((sum: number, p: PropertyQueryResult) => sum + (Number(p.total_due) || 0), 0)
 
     // Determine urgency
     let urgency = "scheduled"
@@ -233,7 +250,7 @@ export async function GET(
       },
 
       // Sample properties (first 20)
-      properties: properties.slice(0, 20).map((p: any) => ({
+      properties: properties.slice(0, 20).map((p: PropertyQueryResult) => ({
         id: p.id,
         parcelId: p.parcel_id,
         address: p.property_address || "N/A",
@@ -244,7 +261,7 @@ export async function GET(
       })),
 
       // Alerts
-      alerts: alerts.map((a: any) => ({
+      alerts: alerts.map((a: AuctionAlert) => ({
         id: a.id,
         type: a.alert_type,
         severity: a.severity,
@@ -256,28 +273,28 @@ export async function GET(
       })),
 
       // Documents (including extracted text for AI chat)
-      documents: documents.map((d: any) => ({
+      documents: documents.map((d: Document) => ({
         id: d.id,
         type: d.document_type,
         title: d.title,
-        url: d.url,
+        url: d.file_url,
         format: d.file_format,
-        propertyCount: d.property_count,
-        publicationDate: d.publication_date,
-        extractedText: d.extracted_text || null,
-        textExtractedAt: d.text_extracted_at || null,
-        year: d.year || null,
+        propertyCount: d.properties_extracted,
+        publicationDate: d.created_at,
+        extractedText: null,
+        textExtractedAt: null,
+        year: null,
       })),
 
       // Contact info from official links
       contacts: officialLinks
-        .filter((l: any) => l.phone || l.email)
-        .map((l: any) => ({
+        .filter((l: OfficialLink) => l.contact_phone || l.contact_email)
+        .map((l: OfficialLink) => ({
           id: l.id,
           type: l.link_type,
           title: l.title,
-          phone: l.phone,
-          email: l.email,
+          phone: l.contact_phone,
+          email: l.contact_email,
           url: l.url,
         })),
     }

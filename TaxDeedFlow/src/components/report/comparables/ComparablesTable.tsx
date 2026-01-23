@@ -1,18 +1,21 @@
 "use client";
 
 /**
- * Comparables Table Component
+ * Comparables Table Component (Virtualized)
  *
  * Displays a detailed table of comparable sales with similarity scores,
  * price adjustments, and adjusted prices. Supports sorting, filtering,
  * and expandable row details.
+ *
+ * Uses @tanstack/react-table for table management and @tanstack/react-virtual
+ * for row virtualization to efficiently handle large datasets.
  *
  * @component
  * @author Claude Code Agent
  * @date 2026-01-16
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown,
@@ -27,6 +30,18 @@ import {
   Filter,
   Building2,
 } from "lucide-react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getExpandedRowModel,
+  createColumnHelper,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type ExpandedState,
+} from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type {
   AnalyzedComparable,
   PriceAdjustment,
@@ -49,14 +64,6 @@ interface ComparablesTableProps {
   /** Maximum rows to display (0 = all) */
   maxRows?: number;
 }
-
-type SortField =
-  | "similarity"
-  | "distance"
-  | "salePrice"
-  | "adjustedPrice"
-  | "saleDate";
-type SortDirection = "asc" | "desc";
 
 // ============================================
 // Helper Functions
@@ -100,55 +107,6 @@ function getAdjustmentColor(percent: number): string {
 // ============================================
 // Sub-Components
 // ============================================
-
-/**
- * Table header cell with sorting capability
- */
-function SortableHeader({
-  label,
-  field,
-  currentSort,
-  direction,
-  onSort,
-  align = "left",
-}: {
-  label: string;
-  field: SortField;
-  currentSort: SortField;
-  direction: SortDirection;
-  onSort: (field: SortField) => void;
-  align?: "left" | "right" | "center";
-}) {
-  const isActive = currentSort === field;
-  const alignClass =
-    align === "right"
-      ? "justify-end"
-      : align === "center"
-        ? "justify-center"
-        : "justify-start";
-
-  return (
-    <th
-      className="px-4 py-3 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors"
-      onClick={() => onSort(field)}
-    >
-      <div className={cn("flex items-center gap-1", alignClass)}>
-        <span>{label}</span>
-        <ArrowUpDown
-          className={cn(
-            "h-4 w-4",
-            isActive ? "text-blue-600" : "text-slate-400"
-          )}
-        />
-        {isActive && (
-          <span className="sr-only">
-            Sorted {direction === "asc" ? "ascending" : "descending"}
-          </span>
-        )}
-      </div>
-    </th>
-  );
-}
 
 /**
  * Expandable adjustment details panel
@@ -273,87 +231,113 @@ function AdjustmentDetails({
   );
 }
 
-/**
- * Single comparable row
- */
-function ComparableRow({
-  comparable,
-  isExpanded,
-  onToggle,
-  onSelect,
-}: {
-  comparable: AnalyzedComparable;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onSelect?: () => void;
-}) {
-  const similarityScore = comparable.similarityScore || 0;
-  const netAdjustmentPercent =
-    comparable.adjustmentResult?.totalAdjustmentPercent || 0;
+// ============================================
+// Column Definitions
+// ============================================
 
-  return (
-    <>
-      <tr
-        className={cn(
-          "border-b border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer",
-          !comparable.includedInARV && "opacity-60 bg-slate-50"
+const columnHelper = createColumnHelper<AnalyzedComparable>();
+
+const columns: ColumnDef<AnalyzedComparable, any>[] = [
+  // Status indicator
+  columnHelper.display({
+    id: "status",
+    header: "",
+    cell: ({ row }) => (
+      <div className="px-4 py-3">
+        {row.original.includedInARV ? (
+          <CheckCircle2 className="h-5 w-5 text-green-500" />
+        ) : (
+          <XCircle className="h-5 w-5 text-slate-400" />
         )}
-        onClick={onToggle}
-      >
-        {/* Status indicator */}
-        <td className="px-4 py-3">
-          {comparable.includedInARV ? (
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-          ) : (
-            <XCircle className="h-5 w-5 text-slate-400" />
-          )}
-        </td>
+      </div>
+    ),
+    size: 48,
+  }),
 
-        {/* Address */}
-        <td className="px-4 py-3">
-          <div className="flex items-start gap-2">
-            <Building2 className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]">
-                {comparable.address || "Address unavailable"}
-              </p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                <MapPin className="h-3 w-3" />
-                {comparable.distanceMiles?.toFixed(2)} mi
-              </p>
-            </div>
+  // Address
+  columnHelper.accessor("address", {
+    id: "address",
+    header: "Property",
+    cell: ({ row }) => (
+      <div className="px-4 py-3">
+        <div className="flex items-start gap-2">
+          <Building2 className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]">
+              {row.original.address || "Address unavailable"}
+            </p>
+            <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+              <MapPin className="h-3 w-3" />
+              {row.original.distanceMiles?.toFixed(2)} mi
+            </p>
           </div>
-        </td>
+        </div>
+      </div>
+    ),
+  }),
 
-        {/* Sale Date */}
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-1.5 text-sm text-slate-700">
-            <Calendar className="h-4 w-4 text-slate-400" />
-            {formatDate(comparable.saleDate)}
-          </div>
-        </td>
+  // Sale Date
+  columnHelper.accessor("saleDate", {
+    id: "saleDate",
+    header: "Sale Date",
+    cell: ({ getValue }) => (
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-1.5 text-sm text-slate-700">
+          <Calendar className="h-4 w-4 text-slate-400" />
+          {formatDate(getValue())}
+        </div>
+      </div>
+    ),
+    sortingFn: (rowA, rowB) => {
+      const dateA = new Date(rowA.original.saleDate).getTime();
+      const dateB = new Date(rowB.original.saleDate).getTime();
+      return dateA - dateB;
+    },
+  }),
 
-        {/* Similarity Score */}
-        <td className="px-4 py-3 text-center">
+  // Similarity Score
+  columnHelper.accessor("similarityScore", {
+    id: "similarity",
+    header: "Similarity",
+    cell: ({ getValue }) => {
+      const score = getValue() || 0;
+      return (
+        <div className="px-4 py-3 text-center">
           <span
             className={cn(
               "inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium",
-              getSimilarityColor(similarityScore)
+              getSimilarityColor(score)
             )}
           >
-            {similarityScore.toFixed(0)}%
+            {score.toFixed(0)}%
           </span>
-        </td>
+        </div>
+      );
+    },
+  }),
 
-        {/* Sale Price */}
-        <td className="px-4 py-3 text-right">
-          <span className="text-sm font-medium text-slate-900">
-            {formatCurrency(comparable.salePrice)}
-          </span>
-        </td>
+  // Sale Price
+  columnHelper.accessor("salePrice", {
+    id: "salePrice",
+    header: "Sale Price",
+    cell: ({ getValue }) => (
+      <div className="px-4 py-3 text-right">
+        <span className="text-sm font-medium text-slate-900">
+          {formatCurrency(getValue())}
+        </span>
+      </div>
+    ),
+  }),
 
-        {/* Net Adjustment */}
-        <td className="px-4 py-3 text-right">
+  // Net Adjustment
+  columnHelper.display({
+    id: "adjustment",
+    header: "Adjustment",
+    cell: ({ row }) => {
+      const netAdjustmentPercent =
+        row.original.adjustmentResult?.totalAdjustmentPercent || 0;
+      return (
+        <div className="px-4 py-3 text-right">
           <span
             className={cn(
               "text-sm font-medium",
@@ -362,36 +346,43 @@ function ComparableRow({
           >
             {formatPercent(netAdjustmentPercent)}
           </span>
-        </td>
+        </div>
+      );
+    },
+  }),
 
-        {/* Adjusted Price */}
-        <td className="px-4 py-3 text-right">
+  // Adjusted Price
+  columnHelper.accessor(
+    (row) => row.adjustmentResult?.adjustedPrice || 0,
+    {
+      id: "adjustedPrice",
+      header: "Adjusted",
+      cell: ({ getValue }) => (
+        <div className="px-4 py-3 text-right">
           <span className="text-sm font-bold text-slate-900">
-            {formatCurrency(comparable.adjustmentResult?.adjustedPrice || 0)}
+            {formatCurrency(getValue())}
           </span>
-        </td>
+        </div>
+      ),
+    }
+  ),
 
-        {/* Expand indicator */}
-        <td className="px-4 py-3 text-right">
-          {isExpanded ? (
-            <ChevronUp className="h-5 w-5 text-slate-400" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-slate-400" />
-          )}
-        </td>
-      </tr>
-
-      {/* Expanded details */}
-      {isExpanded && comparable.adjustmentResult && (
-        <tr>
-          <td colSpan={8} className="p-0">
-            <AdjustmentDetails adjustmentResult={comparable.adjustmentResult} />
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
+  // Expand indicator
+  columnHelper.display({
+    id: "expand",
+    header: "",
+    cell: ({ row }) => (
+      <div className="px-4 py-3 text-right">
+        {row.getIsExpanded() ? (
+          <ChevronUp className="h-5 w-5 text-slate-400" />
+        ) : (
+          <ChevronDown className="h-5 w-5 text-slate-400" />
+        )}
+      </div>
+    ),
+    size: 48,
+  }),
+];
 
 // ============================================
 // Main Component
@@ -404,34 +395,14 @@ export function ComparablesTable({
   onSelectComparable,
   maxRows = 0,
 }: ComparablesTableProps) {
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  const [sortField, setSortField] = useState<SortField>("similarity");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "similarity", desc: true },
+  ]);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
   const [filterIncluded, setFilterIncluded] = useState<boolean>(false);
 
-  // Toggle row expansion
-  const toggleRow = (index: number) => {
-    const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index);
-    } else {
-      newExpanded.add(index);
-    }
-    setExpandedRows(newExpanded);
-  };
-
-  // Handle sort
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("desc");
-    }
-  };
-
-  // Process and sort comparables
-  const processedComparables = useMemo(() => {
+  // Filter and limit data
+  const filteredData = useMemo(() => {
     let result = [...comparables];
 
     // Filter
@@ -439,49 +410,49 @@ export function ComparablesTable({
       result = result.filter((c) => c.includedInARV);
     }
 
-    // Sort
-    result.sort((a, b) => {
-      let aValue: number;
-      let bValue: number;
-
-      switch (sortField) {
-        case "similarity":
-          aValue = a.similarityScore || 0;
-          bValue = b.similarityScore || 0;
-          break;
-        case "distance":
-          aValue = a.distanceMiles || 999;
-          bValue = b.distanceMiles || 999;
-          break;
-        case "salePrice":
-          aValue = a.salePrice;
-          bValue = b.salePrice;
-          break;
-        case "adjustedPrice":
-          aValue = a.adjustmentResult?.adjustedPrice || 0;
-          bValue = b.adjustmentResult?.adjustedPrice || 0;
-          break;
-        case "saleDate":
-          aValue = new Date(a.saleDate).getTime();
-          bValue = new Date(b.saleDate).getTime();
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortDirection === "asc") {
-        return aValue - bValue;
-      }
-      return bValue - aValue;
-    });
-
     // Limit rows
     if (maxRows > 0 && result.length > maxRows) {
       result = result.slice(0, maxRows);
     }
 
     return result;
-  }, [comparables, showExcluded, filterIncluded, sortField, sortDirection, maxRows]);
+  }, [comparables, showExcluded, filterIncluded, maxRows]);
+
+  // Table instance
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: {
+      sorting,
+      expanded,
+    },
+    onSortingChange: setSorting,
+    onExpandedChange: setExpanded,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getRowCanExpand: () => true,
+  });
+
+  // Virtualization
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const { rows } = table.getRowModel();
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 60, // Estimated row height
+    overscan: 5,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start || 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - (virtualRows[virtualRows.length - 1]?.end || 0)
+      : 0;
 
   // Count included vs excluded
   const includedCount = comparables.filter((c) => c.includedInARV).length;
@@ -526,69 +497,120 @@ export function ComparablesTable({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div
+        ref={tableContainerRef}
+        className="overflow-auto max-h-[600px]"
+        style={{ contain: "strict" }}
+      >
         <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="w-12 px-4 py-3"></th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
-                Property
-              </th>
-              <SortableHeader
-                label="Sale Date"
-                field="saleDate"
-                currentSort={sortField}
-                direction={sortDirection}
-                onSort={handleSort}
-              />
-              <SortableHeader
-                label="Similarity"
-                field="similarity"
-                currentSort={sortField}
-                direction={sortDirection}
-                onSort={handleSort}
-                align="center"
-              />
-              <SortableHeader
-                label="Sale Price"
-                field="salePrice"
-                currentSort={sortField}
-                direction={sortDirection}
-                onSort={handleSort}
-                align="right"
-              />
-              <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">
-                Adjustment
-              </th>
-              <SortableHeader
-                label="Adjusted"
-                field="adjustedPrice"
-                currentSort={sortField}
-                direction={sortDirection}
-                onSort={handleSort}
-                align="right"
-              />
-              <th className="w-12 px-4 py-3"></th>
-            </tr>
+          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  const sortDirection = header.column.getIsSorted();
+
+                  return (
+                    <th
+                      key={header.id}
+                      className={cn(
+                        "px-4 py-3 text-sm font-semibold text-slate-700",
+                        canSort && "cursor-pointer hover:bg-slate-100 transition-colors"
+                      )}
+                      onClick={header.column.getToggleSortingHandler()}
+                      style={{
+                        width: header.column.getSize(),
+                      }}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={cn(
+                            "flex items-center gap-1",
+                            header.id === "salePrice" ||
+                              header.id === "adjustment" ||
+                              header.id === "adjustedPrice"
+                              ? "justify-end"
+                              : header.id === "similarity"
+                                ? "justify-center"
+                                : "justify-start"
+                          )}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {canSort && (
+                            <ArrowUpDown
+                              className={cn(
+                                "h-4 w-4",
+                                sortDirection
+                                  ? "text-blue-600"
+                                  : "text-slate-400"
+                              )}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
           </thead>
           <tbody>
-            {processedComparables.map((comparable, index) => (
-              <ComparableRow
-                key={index}
-                comparable={comparable}
-                isExpanded={expandedRows.has(index)}
-                onToggle={() => toggleRow(index)}
-                onSelect={
-                  onSelectComparable
-                    ? () => onSelectComparable(comparable)
-                    : undefined
-                }
-              />
-            ))}
+            {paddingTop > 0 && (
+              <tr>
+                <td style={{ height: `${paddingTop}px` }} />
+              </tr>
+            )}
+            {virtualRows.map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              const isExpanded = row.getIsExpanded();
+
+              return (
+                <>
+                  <tr
+                    key={row.id}
+                    data-index={virtualRow.index}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
+                    className={cn(
+                      "border-b border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer",
+                      !row.original.includedInARV && "opacity-60 bg-slate-50"
+                    )}
+                    onClick={() => row.toggleExpanded()}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Expanded details */}
+                  {isExpanded && row.original.adjustmentResult && (
+                    <tr key={`${row.id}-expanded`}>
+                      <td colSpan={columns.length} className="p-0">
+                        <AdjustmentDetails
+                          adjustmentResult={row.original.adjustmentResult}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+            {paddingBottom > 0 && (
+              <tr>
+                <td style={{ height: `${paddingBottom}px` }} />
+              </tr>
+            )}
           </tbody>
         </table>
 
-        {processedComparables.length === 0 && (
+        {filteredData.length === 0 && (
           <div className="px-6 py-12 text-center">
             <Home className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-500">No comparables available</p>

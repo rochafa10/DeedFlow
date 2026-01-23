@@ -162,6 +162,14 @@ export interface InvestmentScoreOptions {
   applyRegionalAdjustments?: boolean;
   /** Minimum confidence threshold to include component */
   minConfidenceThreshold?: number;
+  /** Custom category weights from investment profile (0-100 scale, must sum to 100) */
+  customCategoryWeights?: {
+    location: number;
+    risk: number;
+    financial: number;
+    market: number;
+    profit: number;
+  };
 }
 
 /**
@@ -1492,6 +1500,31 @@ export function calculateInvestmentScore(
   const financialScore = calculateFinancialScore(input, mergedOptions);
   const marketScore = calculateMarketScore(input, mergedOptions);
   const profitScore = calculateProfitScore(input, mergedOptions);
+
+  // Apply custom weights if provided
+  if (mergedOptions.customCategoryWeights) {
+    const weights = mergedOptions.customCategoryWeights;
+    // Convert weights from 0-100 scale to 0-25 scale (proportionally)
+    // Default is 25 points per category, custom weights redistribute based on percentages
+    locationScore.maxScore = Math.round((weights.location / 100) * MAX_TOTAL_SCORE * 10) / 10;
+    riskScore.maxScore = Math.round((weights.risk / 100) * MAX_TOTAL_SCORE * 10) / 10;
+    financialScore.maxScore = Math.round((weights.financial / 100) * MAX_TOTAL_SCORE * 10) / 10;
+    marketScore.maxScore = Math.round((weights.market / 100) * MAX_TOTAL_SCORE * 10) / 10;
+    profitScore.maxScore = Math.round((weights.profit / 100) * MAX_TOTAL_SCORE * 10) / 10;
+
+    // Adjust scores proportionally to new max scores
+    const adjustScore = (score: CategoryScore, weight: number) => {
+      const newMaxScore = (weight / 100) * MAX_TOTAL_SCORE;
+      const percentage = score.score / MAX_CATEGORY_SCORE; // Current percentage of default max
+      score.score = Math.round(percentage * newMaxScore * 10) / 10;
+    };
+
+    adjustScore(locationScore, weights.location);
+    adjustScore(riskScore, weights.risk);
+    adjustScore(financialScore, weights.financial);
+    adjustScore(marketScore, weights.market);
+    adjustScore(profitScore, weights.profit);
+  }
 
   const categories: CategoryScore[] = [
     locationScore,

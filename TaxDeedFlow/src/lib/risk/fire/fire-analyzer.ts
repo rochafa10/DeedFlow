@@ -20,6 +20,10 @@ import {
   type ActiveFireSummary,
   type WildfireHazardPotential,
 } from '@/lib/api/services/nasa-firms-service';
+import { logger } from '@/lib/logger';
+
+// Create context logger for fire analysis
+const fireLogger = logger.withContext('Fire Analyzer');
 
 // ============================================
 // Constants and Configuration
@@ -470,7 +474,12 @@ export async function analyzeWildfireRisk(
     };
   } catch (error) {
     // Return default analysis if API fails
-    console.error('Fire risk analysis error:', error);
+    fireLogger.error('Fire risk analysis error', {
+      error: error instanceof Error ? error.message : String(error),
+      stateCode,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude
+    });
     return createDefaultWildfireRisk(stateCode);
   }
 }

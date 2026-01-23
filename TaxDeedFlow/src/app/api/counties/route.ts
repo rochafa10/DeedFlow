@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
+import { logger } from "@/lib/logger"
+
+const apiLogger = logger.withContext("Counties API")
 
 /**
  * GET /api/counties
@@ -30,7 +33,7 @@ export async function GET() {
       .order("county_name", { ascending: true })
 
     if (countiesError) {
-      console.error("[API Counties] Database error:", countiesError)
+      apiLogger.error("Database error", { error: countiesError.message })
       return NextResponse.json(
         { error: "Database error", message: countiesError.message },
         { status: 500 }
@@ -43,7 +46,7 @@ export async function GET() {
       .select("county_id")
 
     if (propCountError) {
-      console.error("[API Counties] Property count error:", propCountError)
+      apiLogger.error("Property count error", { error: propCountError.message })
     }
 
     // Get upcoming sales per county
@@ -58,7 +61,7 @@ export async function GET() {
       .order("sale_date", { ascending: true })
 
     if (salesError) {
-      console.error("[API Counties] Sales error:", salesError)
+      apiLogger.error("Sales error", { error: salesError.message })
     }
 
     // Get documents count per county
@@ -67,7 +70,7 @@ export async function GET() {
       .select("county_id")
 
     if (docsError) {
-      console.error("[API Counties] Documents error:", docsError)
+      apiLogger.error("Documents error", { error: docsError.message })
     }
 
     // Get regrid and validation counts per county for progress calculation
@@ -76,7 +79,7 @@ export async function GET() {
       .select("county_id, has_regrid_data, visual_validation_status")
 
     if (progressError) {
-      console.error("[API Counties] Progress error:", progressError)
+      apiLogger.error("Progress error", { error: progressError.message })
     }
 
     // Count properties per county
@@ -175,7 +178,7 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    console.error("[API Counties] Server error:", error)
+    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

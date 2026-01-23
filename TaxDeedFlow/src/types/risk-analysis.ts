@@ -3,7 +3,7 @@
  *
  * This file contains all TypeScript interfaces and types for the Property Risk
  * Analysis system, covering water risks (flood and hurricane), geological risks,
- * fire risks, and environmental risks.
+ * fire risks, environmental risks, and drought risks.
  *
  * @module types/risk-analysis
  * @author Claude Code Agent
@@ -656,6 +656,99 @@ export interface EnvironmentalRiskResult {
 }
 
 // ============================================
+// Drought Risk Types
+// ============================================
+
+/**
+ * U.S. Drought Monitor drought severity classification
+ * D0: Abnormally Dry
+ * D1: Moderate Drought
+ * D2: Severe Drought
+ * D3: Extreme Drought
+ * D4: Exceptional Drought
+ */
+export type DroughtCategory = 'none' | 'D0' | 'D1' | 'D2' | 'D3' | 'D4';
+
+/**
+ * Water availability classification
+ */
+export type WaterAvailability = 'abundant' | 'adequate' | 'limited' | 'scarce' | 'critical';
+
+/**
+ * Agricultural impact severity for crop/land viability
+ */
+export type CropImpactLevel = 'none' | 'minimal' | 'moderate' | 'severe' | 'critical';
+
+/**
+ * Drought-specific mitigation option
+ */
+export interface DroughtMitigation extends MitigationOption {
+  riskType: 'drought';
+  /** Water conservation improvement achieved */
+  waterConservationGain?: string;
+}
+
+/**
+ * Drought risk analysis result
+ *
+ * Uses U.S. Drought Monitor data and NOAA climate indicators to assess
+ * drought conditions affecting property values and land viability.
+ */
+export interface DroughtRiskAnalysis {
+  /** Drought risk classification */
+  riskLevel: RiskLevel;
+  /** Current U.S. Drought Monitor category (D0-D4 or none) */
+  droughtCategory: DroughtCategory;
+  /** Description of the drought category */
+  droughtDescription: string;
+  /** Percentile ranking of current conditions (0-100, lower = drier) */
+  percentileRanking: number | null;
+
+  // Historical Data
+  /** Historical drought information for the area */
+  historicalDrought: {
+    /** Number of drought events in last 10 years */
+    count: number;
+    /** Percentage of time in drought conditions (last 10 years) */
+    percentageInDrought: number | null;
+    /** Worst drought category experienced (last 20 years) */
+    worstCategory: DroughtCategory | null;
+    /** Date of most severe drought (last 20 years) */
+    worstDroughtDate: Date | null;
+  } | null;
+
+  // Water and Land Impact
+  /** Water availability classification */
+  waterAvailability: WaterAvailability;
+  /** Current water restrictions in effect */
+  waterRestrictions: string[];
+  /** Agricultural/crop impact assessment */
+  cropImpact: CropImpactLevel;
+  /** Impact on land value and viability */
+  landImpactDescription: string;
+
+  // Climate Context
+  /** Average annual precipitation in inches (normal) */
+  avgAnnualPrecipitation: number | null;
+  /** Recent precipitation deficit percentage */
+  precipitationDeficit: number | null;
+  /** Seasonal drought peak period */
+  seasonalPeak: string | null;
+
+  // Recommendations
+  /** Mitigation recommendations */
+  mitigationRecommendations: string[];
+  /** Water conservation strategies */
+  conservationStrategies: string[];
+
+  // Metadata
+  /** Data source information */
+  dataSource: DataSource;
+  /** Confidence level (0-100) */
+  confidence: number;
+}
+
+// ============================================
 // Combined Risk Integration Types (Phase 7D)
 // ============================================
 
@@ -671,6 +764,7 @@ export interface RiskWeights {
   environmental: number;
   radon: number;
   slope: number;
+  drought: number;
 }
 
 /**
@@ -685,6 +779,7 @@ export interface RiskInput {
   environmental: EnvironmentalContaminationAnalysis | null;
   radon: RadonRiskAnalysis | null;
   slope: SlopeRiskAnalysis | null;
+  drought: DroughtRiskAnalysis | null;
 }
 
 /**
@@ -770,6 +865,7 @@ export interface RiskAssessment {
   environmental: EnvironmentalContaminationAnalysis | null;
   radon: RadonRiskAnalysis | null;
   slope: SlopeRiskAnalysis | null;
+  drought: DroughtRiskAnalysis | null;
 
   /** Individual category scores */
   categoryScores: RiskCategoryScore[];

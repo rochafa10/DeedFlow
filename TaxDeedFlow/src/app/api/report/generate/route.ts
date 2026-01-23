@@ -11,6 +11,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
+
+const apiLogger = logger.withContext('Report Generation API');
 
 // Service imports
 import { getGeoapifyService } from '@/lib/api/services/geoapify-service';
@@ -230,7 +233,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: reportData,
     });
   } catch (error) {
-    console.error('Report generation error:', error);
+    apiLogger.error('Report generation error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate report' },
       { status: 500 }

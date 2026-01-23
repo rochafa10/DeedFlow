@@ -15,6 +15,9 @@ import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/
 import { validateCsrf, csrfErrorResponse } from "@/lib/auth/csrf"
 import { createServerClient } from "@/lib/supabase/client"
 import type { CreateShareRequest, ShareLinkResponse } from "@/types/sharing"
+import { logger } from "@/lib/logger"
+
+const apiLogger = logger.withContext("Shares API")
 
 // Default expiration in days if not specified
 const DEFAULT_EXPIRATION_DAYS = 30
@@ -133,7 +136,7 @@ export async function POST(request: NextRequest) {
   // CSRF Protection: Validate request origin
   const csrfResult = await validateCsrf(request)
   if (!csrfResult.valid) {
-    console.log("[API Shares] CSRF validation failed:", csrfResult.error)
+    apiLogger.debug("CSRF validation failed", { error: csrfResult.error })
     return csrfErrorResponse(csrfResult.error)
   }
 
@@ -197,7 +200,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (reportError || !reportExists) {
-      console.error("[API Shares] Report not found:", report_id)
+      apiLogger.error("Report not found", { reportId: report_id })
       return NextResponse.json(
         {
           error: "Not found",
@@ -217,7 +220,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error("[API Shares] Database error creating share:", error)
+      apiLogger.error("Database error creating share", { error: error.message })
       return NextResponse.json(
         {
           error: "Database error",
@@ -236,7 +239,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!shareRecord || !shareRecord.share_token) {
-      console.error("[API Shares] Invalid response from create_report_share")
+      apiLogger.error("Invalid response from create_report_share")
       return NextResponse.json(
         {
           error: "Server error",
@@ -253,11 +256,11 @@ export async function POST(request: NextRequest) {
       share_id: shareRecord.id,
     }
 
-    console.log("[API Shares] Share created successfully:", {
-      share_id: response.share_id,
-      report_id,
-      expires_at: response.expires_at,
-      created_by: authResult.user?.email,
+    apiLogger.info("Share created successfully", {
+      shareId: response.share_id,
+      reportId: report_id,
+      expiresAt: response.expires_at,
+      createdBy: authResult.user?.email,
     })
 
     return NextResponse.json({
@@ -266,7 +269,7 @@ export async function POST(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    console.error("[API Shares] Server error:", error)
+    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       {
         error: "Server error",
@@ -333,7 +336,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
-      console.error("[API Shares] Database error listing shares:", error)
+      apiLogger.error("Database error listing shares", { error: error.message })
       return NextResponse.json(
         {
           error: "Database error",
@@ -350,7 +353,7 @@ export async function GET(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    console.error("[API Shares] Server error:", error)
+    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       {
         error: "Server error",

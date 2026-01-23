@@ -26,6 +26,9 @@ import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
 import { AuctionRulesViewer } from "@/components/auctions/AuctionRulesViewer"
 import { AuctionChat } from "@/components/auctions/AuctionChat"
+import { logger } from "@/lib/logger"
+
+const pageLogger = logger.withContext('[Auction Detail Page]')
 
 // Type definitions for API response
 interface AuctionData {
@@ -155,7 +158,7 @@ export default function AuctionDetailPage() {
         const result = await response.json()
         setAuction(result.data)
       } catch (err) {
-        console.error("Error fetching auction:", err)
+        pageLogger.error("Error fetching auction", { error: err })
         setError("Failed to load auction data")
         toast.error("Failed to load auction data")
       } finally {

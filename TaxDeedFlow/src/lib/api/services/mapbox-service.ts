@@ -7,6 +7,7 @@
  * API Documentation: https://docs.mapbox.com/api/
  */
 
+import { logger } from '@/lib/logger';
 import { BaseApiService } from '../base-service';
 import {
   ApiConfig,
@@ -154,7 +155,9 @@ export class MapboxService extends BaseApiService {
     const accessToken = config?.accessToken || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
     if (!accessToken) {
-      console.warn('[MapboxService] No MAPBOX_ACCESS_TOKEN found. API calls will fail.');
+      logger.warn('No MAPBOX_ACCESS_TOKEN found. API calls will fail.', {
+        context: 'MapboxService'
+      });
     }
 
     const apiConfig: Partial<ApiConfig> & { baseUrl: string } = {
