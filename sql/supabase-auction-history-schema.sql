@@ -404,3 +404,324 @@ BEGIN
   FROM stats, prop_type;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- VIEWS FOR ANALYTICS AND REPORTING
+-- ============================================================================
+
+-- View: County Auction Analytics
+-- Comprehensive analytics per county with key metrics
+CREATE OR REPLACE VIEW vw_auction_analytics AS
+SELECT
+    c.id as county_id,
+    c.county_name,
+    c.state_code,
+    c.state_name,
+
+    -- Count metrics
+    COUNT(ar.id) as total_auctions,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'sold') as total_sold,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'unsold') as total_unsold,
+
+    -- Sale rate
+    ROUND(
+        (COUNT(*) FILTER (WHERE ar.sale_status = 'sold')::NUMERIC /
+         NULLIF(COUNT(ar.id), 0) * 100), 2
+    ) as sale_rate_pct,
+
+    -- Price metrics (sold properties only)
+    ROUND(AVG(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_sale_price,
+    ROUND(MIN(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as min_sale_price,
+    ROUND(MAX(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as max_sale_price,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ar.final_sale_price)
+          FILTER (WHERE ar.sale_status = 'sold'), 2) as median_sale_price,
+
+    -- Bid ratio metrics
+    ROUND(AVG(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_bid_ratio,
+    ROUND(MIN(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as min_bid_ratio,
+    ROUND(MAX(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as max_bid_ratio,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ar.bid_ratio)
+          FILTER (WHERE ar.sale_status = 'sold'), 4) as median_bid_ratio,
+
+    -- Recovery ratio (vs tax debt)
+    ROUND(AVG(ar.recovery_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_recovery_ratio,
+
+    -- Market ratio (vs assessed value)
+    ROUND(AVG(ar.market_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_market_ratio,
+
+    -- Total volume
+    ROUND(SUM(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as total_sales_volume,
+
+    -- Competition metrics
+    ROUND(AVG(ar.number_of_bids) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bids_per_property,
+    ROUND(AVG(ar.number_of_bidders) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bidders_per_property,
+
+    -- Date range
+    MIN(ar.sale_date) as earliest_sale,
+    MAX(ar.sale_date) as latest_sale,
+
+    -- Most common property type
+    (
+        SELECT ar2.property_type
+        FROM auction_results ar2
+        WHERE ar2.county_id = c.id AND ar2.property_type IS NOT NULL
+        GROUP BY ar2.property_type
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+    ) as most_common_property_type,
+
+    -- Most common platform
+    (
+        SELECT ar2.platform
+        FROM auction_results ar2
+        WHERE ar2.county_id = c.id AND ar2.platform IS NOT NULL
+        GROUP BY ar2.platform
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+    ) as most_common_platform
+
+FROM counties c
+LEFT JOIN auction_results ar ON c.id = ar.county_id
+GROUP BY c.id, c.county_name, c.state_code, c.state_name
+HAVING COUNT(ar.id) > 0;
+
+-- View: County Auction Trends (Monthly)
+-- Track auction performance trends over time
+CREATE OR REPLACE VIEW vw_county_auction_trends AS
+SELECT
+    c.county_name,
+    c.state_code,
+    DATE_TRUNC('month', ar.sale_date) as sale_month,
+
+    -- Count metrics
+    COUNT(*) as auctions_count,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'sold') as sold_count,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'unsold') as unsold_count,
+
+    -- Sale rate
+    ROUND(
+        (COUNT(*) FILTER (WHERE ar.sale_status = 'sold')::NUMERIC /
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) as sale_rate_pct,
+
+    -- Price metrics
+    ROUND(AVG(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_sale_price,
+    ROUND(SUM(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as total_volume,
+
+    -- Bid metrics
+    ROUND(AVG(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_bid_ratio,
+    ROUND(AVG(ar.recovery_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_recovery_ratio,
+    ROUND(AVG(ar.market_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_market_ratio,
+
+    -- Competition
+    ROUND(AVG(ar.number_of_bids) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bids,
+    ROUND(AVG(ar.number_of_bidders) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bidders
+
+FROM counties c
+JOIN auction_results ar ON c.id = ar.county_id
+GROUP BY c.county_name, c.state_code, DATE_TRUNC('month', ar.sale_date)
+ORDER BY c.county_name, sale_month DESC;
+
+-- View: Bid Ratio Analysis
+-- Detailed bid ratio analysis by various dimensions
+CREATE OR REPLACE VIEW vw_bid_ratio_analysis AS
+SELECT
+    c.county_name,
+    c.state_code,
+    ar.sale_type,
+    ar.property_type,
+    ar.platform,
+
+    -- Count
+    COUNT(*) as sales_count,
+
+    -- Bid ratio statistics
+    ROUND(AVG(ar.bid_ratio), 4) as avg_bid_ratio,
+    ROUND(MIN(ar.bid_ratio), 4) as min_bid_ratio,
+    ROUND(MAX(ar.bid_ratio), 4) as max_bid_ratio,
+    ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ar.bid_ratio), 4) as p25_bid_ratio,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ar.bid_ratio), 4) as median_bid_ratio,
+    ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ar.bid_ratio), 4) as p75_bid_ratio,
+    ROUND(STDDEV(ar.bid_ratio), 4) as stddev_bid_ratio,
+
+    -- Price context
+    ROUND(AVG(ar.opening_bid), 2) as avg_opening_bid,
+    ROUND(AVG(ar.final_sale_price), 2) as avg_final_price,
+
+    -- Competition
+    ROUND(AVG(ar.number_of_bids), 2) as avg_bids,
+    ROUND(AVG(ar.number_of_bidders), 2) as avg_bidders,
+
+    -- Date range
+    MIN(ar.sale_date) as earliest_sale,
+    MAX(ar.sale_date) as latest_sale
+
+FROM counties c
+JOIN auction_results ar ON c.id = ar.county_id
+WHERE ar.sale_status = 'sold'
+  AND ar.bid_ratio IS NOT NULL
+GROUP BY c.county_name, c.state_code, ar.sale_type, ar.property_type, ar.platform
+HAVING COUNT(*) >= 3  -- Only include groups with at least 3 sales
+ORDER BY c.county_name, sales_count DESC;
+
+-- View: Property Type Performance
+-- Analytics by property type across all counties
+CREATE OR REPLACE VIEW vw_property_type_performance AS
+SELECT
+    ar.property_type,
+    ar.land_use,
+
+    -- Geographic coverage
+    COUNT(DISTINCT ar.county_id) as counties_count,
+    COUNT(DISTINCT c.state_code) as states_count,
+
+    -- Sales metrics
+    COUNT(*) as total_sales,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'sold') as sold_count,
+    ROUND(
+        (COUNT(*) FILTER (WHERE ar.sale_status = 'sold')::NUMERIC /
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) as sale_rate_pct,
+
+    -- Price metrics
+    ROUND(AVG(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_sale_price,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ar.final_sale_price)
+          FILTER (WHERE ar.sale_status = 'sold'), 2) as median_sale_price,
+    ROUND(SUM(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as total_volume,
+
+    -- Ratio metrics
+    ROUND(AVG(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_bid_ratio,
+    ROUND(AVG(ar.recovery_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_recovery_ratio,
+    ROUND(AVG(ar.market_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_market_ratio,
+
+    -- Competition
+    ROUND(AVG(ar.number_of_bids) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bids,
+    ROUND(AVG(ar.number_of_bidders) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bidders,
+
+    -- Property characteristics
+    ROUND(AVG(ar.lot_size_sqft), 0) as avg_lot_size_sqft,
+    ROUND(AVG(ar.building_sqft), 0) as avg_building_sqft,
+    ROUND(AVG(ar.year_built), 0) as avg_year_built
+
+FROM auction_results ar
+JOIN counties c ON ar.county_id = c.id
+WHERE ar.property_type IS NOT NULL
+GROUP BY ar.property_type, ar.land_use
+HAVING COUNT(*) >= 5  -- At least 5 properties
+ORDER BY total_sales DESC;
+
+-- View: Platform Performance Analysis
+-- Compare auction platforms across counties
+CREATE OR REPLACE VIEW vw_platform_performance AS
+SELECT
+    ar.platform,
+
+    -- Geographic coverage
+    COUNT(DISTINCT ar.county_id) as counties_served,
+    COUNT(DISTINCT c.state_code) as states_served,
+
+    -- Sales metrics
+    COUNT(*) as total_auctions,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'sold') as sold_count,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'unsold') as unsold_count,
+    ROUND(
+        (COUNT(*) FILTER (WHERE ar.sale_status = 'sold')::NUMERIC /
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) as sale_rate_pct,
+
+    -- Price metrics
+    ROUND(AVG(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_sale_price,
+    ROUND(SUM(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as total_volume,
+
+    -- Ratio metrics
+    ROUND(AVG(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_bid_ratio,
+    ROUND(AVG(ar.recovery_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_recovery_ratio,
+    ROUND(AVG(ar.market_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_market_ratio,
+
+    -- Competition metrics
+    ROUND(AVG(ar.number_of_bids) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bids,
+    ROUND(AVG(ar.number_of_bidders) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bidders,
+
+    -- Date range
+    MIN(ar.sale_date) as earliest_sale,
+    MAX(ar.sale_date) as latest_sale,
+
+    -- Top performing county
+    (
+        SELECT c2.county_name || ', ' || c2.state_code
+        FROM auction_results ar2
+        JOIN counties c2 ON ar2.county_id = c2.id
+        WHERE ar2.platform = ar.platform AND ar2.sale_status = 'sold'
+        GROUP BY c2.county_name, c2.state_code
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+    ) as top_county
+
+FROM auction_results ar
+JOIN counties c ON ar.county_id = c.id
+WHERE ar.platform IS NOT NULL
+GROUP BY ar.platform
+HAVING COUNT(*) >= 5  -- At least 5 auctions
+ORDER BY total_auctions DESC;
+
+-- View: Sale Type Comparison
+-- Compare different sale types (upset, judicial, repository, etc.)
+CREATE OR REPLACE VIEW vw_sale_type_comparison AS
+SELECT
+    c.state_code,
+    ar.sale_type,
+
+    -- Count metrics
+    COUNT(DISTINCT ar.county_id) as counties_count,
+    COUNT(*) as total_auctions,
+    COUNT(*) FILTER (WHERE ar.sale_status = 'sold') as sold_count,
+    ROUND(
+        (COUNT(*) FILTER (WHERE ar.sale_status = 'sold')::NUMERIC /
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) as sale_rate_pct,
+
+    -- Price metrics
+    ROUND(AVG(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_sale_price,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ar.final_sale_price)
+          FILTER (WHERE ar.sale_status = 'sold'), 2) as median_sale_price,
+
+    -- Ratio metrics
+    ROUND(AVG(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_bid_ratio,
+    ROUND(AVG(ar.recovery_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as avg_recovery_ratio,
+
+    -- Competition
+    ROUND(AVG(ar.number_of_bids) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bids,
+    ROUND(AVG(ar.number_of_bidders) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_bidders,
+
+    -- Volume
+    ROUND(SUM(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as total_volume
+
+FROM auction_results ar
+JOIN counties c ON ar.county_id = c.id
+GROUP BY c.state_code, ar.sale_type
+HAVING COUNT(*) >= 3
+ORDER BY c.state_code, total_auctions DESC;
+
+-- View: Recent Auction Activity (Last 90 Days)
+-- Quick view of recent auction results
+CREATE OR REPLACE VIEW vw_recent_auction_activity AS
+SELECT
+    c.county_name,
+    c.state_code,
+    ar.sale_date,
+    ar.sale_type,
+    ar.sale_status,
+    ar.platform,
+    ar.parcel_id,
+    ar.property_address,
+    ar.property_type,
+    ar.opening_bid,
+    ar.final_sale_price,
+    ar.bid_ratio,
+    ar.number_of_bids,
+    ar.number_of_bidders,
+    ar.source
+FROM auction_results ar
+JOIN counties c ON ar.county_id = c.id
+WHERE ar.sale_date >= NOW() - INTERVAL '90 days'
+ORDER BY ar.sale_date DESC, c.county_name;
