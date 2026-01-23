@@ -6,7 +6,7 @@ A comprehensive troubleshooting reference for all external API integrations in t
 
 ## System Overview
 
-The Tax Deed Flow system integrates with **17 external APIs** to provide comprehensive property analysis:
+The Tax Deed Flow system integrates with **18 external APIs** to provide comprehensive property analysis:
 
 ### **Core Risk Assessment APIs (9)**
 1. **FEMA Flood API** - Flood zone determination and risk assessment
@@ -19,15 +19,16 @@ The Tax Deed Flow system integrates with **17 external APIs** to provide compreh
 8. **Climate API** (OpenWeather) - Long-term climate patterns
 9. **FCC Broadband API** - Internet infrastructure and connectivity
 
-### **Property & Economic Data APIs (8)**
+### **Property & Economic Data APIs (9)**
 10. **Census Bureau API** - Demographics, population, and economic statistics
 11. **BLS API** (Bureau of Labor Statistics) - Employment and unemployment data
 12. **Zillow API** (RapidAPI) - Market values and Zestimates
 13. **Realtor.com API** (RapidAPI) - Property listings and comparables
 14. **Geoapify API** - Geocoding, places (POIs), and amenities analysis
 15. **Mapbox API** - Geocoding, mapping, and routing services
-16. **OpenStreetMap/Nominatim API** - Free geocoding and reverse geocoding
-17. **OpenAI API** - AI-powered property analysis and report generation
+16. **Google Maps API** - Static maps, satellite imagery, and street view photos
+17. **OpenStreetMap/Nominatim API** - Free geocoding and reverse geocoding
+18. **OpenAI API** - AI-powered property analysis and report generation
 
 ---
 
@@ -145,7 +146,7 @@ WHERE service_name = 'fema';
 5. If failed → Circuit reopens (wait longer)
 
 **Prevention:**
-- Check API health regularly: `GET /api/health`
+- Check API health regularly: `GET /api/health/apis`
 - Monitor external API status pages
 - Have fallback data sources ready
 
@@ -166,11 +167,11 @@ The API didn't respond within the configured timeout period (usually 30 seconds)
 
 **Check API Health:**
 ```bash
-# Health check endpoint
-curl https://your-app.com/api/health
+# Health check endpoint (all APIs)
+curl https://your-app.com/api/health/apis
 
-# Deep health check (tests actual API calls)
-curl https://your-app.com/api/health?deep=true
+# Single service health check (e.g., test FEMA specifically)
+curl "https://your-app.com/api/health/apis?service=fema"
 ```
 
 **Common Causes:**
@@ -297,36 +298,46 @@ Google Maps: https://status.cloud.google.com/
 **Check System Health:**
 ```bash
 # Basic health check
-curl -I https://your-app.com/api/health
+curl -I https://your-app.com/api/health/apis
 
 # Detailed health check
-curl https://your-app.com/api/health | jq '.'
+curl https://your-app.com/api/health/apis | jq '.'
 
 # Example response:
 {
-  "overall": "degraded",
   "timestamp": "2026-01-23T10:30:00Z",
-  "services": [
+  "testLocation": {
+    "latitude": 40.5186,
+    "longitude": -78.3947,
+    "address": "1234 Main St, Altoona, PA 16601",
+    "state": "PA"
+  },
+  "summary": {
+    "total": 17,
+    "ok": 14,
+    "error": 2,
+    "skipped": 1,
+    "avgLatency": 1234
+  },
+  "results": [
     {
-      "service": "fema",
-      "status": "healthy",
-      "circuitBreaker": "closed",
-      "rateLimitRemaining": 45
+      "service": "FEMA Flood",
+      "status": "ok",
+      "latency": 847,
+      "data": { "zone": "X" }
     },
     {
-      "service": "usgs",
-      "status": "unhealthy",
-      "circuitBreaker": "open",
-      "rateLimitRemaining": 0,
-      "lastError": "Last failure: 2026-01-23T10:25:00Z"
+      "service": "USGS Earthquake",
+      "status": "error",
+      "latency": 8542,
+      "error": "Request timed out after 30000ms"
+    },
+    {
+      "service": "Zillow (RapidAPI)",
+      "status": "skipped",
+      "error": "No RapidAPI key configured"
     }
-  ],
-  "summary": {
-    "total": 9,
-    "healthy": 7,
-    "degraded": 1,
-    "unhealthy": 1
-  }
+  ]
 }
 ```
 
@@ -1015,7 +1026,68 @@ curl https://api.openai.com/v1/chat/completions \
 
 ---
 
+### Google Maps API
+
+**Common Issues:**
+
+**1. API key required**
+```
+Error: 401 Unauthorized
+Message: "API key not provided or invalid"
+```
+- **Cause:** NEXT_PUBLIC_GOOGLE_MAPS_API_KEY not set in environment
+- **Fix:** Get API key at https://console.cloud.google.com/apis/credentials
+
+**2. Billing not enabled**
+```
+Error: 403 Forbidden
+Message: "This API project is not authorized to use this API"
+```
+- **Cause:** Google Maps Platform billing not enabled in Google Cloud Console
+- **Fix:** Enable billing at https://console.cloud.google.com/billing
+
+**3. Rate limit exceeded**
+```
+Error: 429 Too Many Requests
+Message: "You have exceeded your daily request quota"
+```
+- **Cause:** Free tier limit exceeded (28,000 map loads/month)
+- **Fix:** Upgrade billing plan or reduce requests
+
+**4. No street view available**
+```
+Response: { status: "ZERO_RESULTS" }
+```
+- **Cause:** No street view imagery available at property location
+- **Fix:** Not an error, use aerial imagery instead
+
+**Health Check:**
+```bash
+# Test Google Maps API
+curl "http://localhost:3000/api/health/apis?service=googlemaps"
+```
+
+**Rate Limits:**
+- Free tier: 28,000 map loads/month
+- Static Maps API: $2 per 1,000 requests after free tier
+- Street View API: $7 per 1,000 requests after free tier
+- Cache duration: N/A (client-side caching recommended)
+
+**API Endpoints Used:**
+- **Static Maps API**: Terrain and satellite imagery for property overview
+- **Street View API**: Street-level property photos when available
+- Both require: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+
+**Components Using Google Maps:**
+- `GoogleMapStatic.tsx` - Static map images
+- `GoogleStreetViewStatic.tsx` - Street view images
+- `FEMAFloodMap.tsx` - Flood zone overlays
+
+---
+
 ### OSM (OpenStreetMap) / Nominatim API
+
+**Note:** ⚠️ OSM/Nominatim is not currently tested in the `/api/health/apis` endpoint. To verify OSM functionality, use the service directly in your application or test manually.
 
 **Common Issues:**
 
@@ -1070,89 +1142,110 @@ curl -H "User-Agent: PropertyAnalysis/1.0" \
 
 ### Basic Health Check
 
-**Endpoint:** `GET /api/health`
+**Endpoint:** `GET /api/health/apis`
 
 **Usage:**
 ```bash
-curl https://your-app.com/api/health
+curl https://your-app.com/api/health/apis
 ```
 
 **Response:**
 ```json
 {
-  "overall": "healthy",
   "timestamp": "2026-01-23T10:30:00Z",
-  "services": [
+  "testLocation": {
+    "latitude": 40.5186,
+    "longitude": -78.3947,
+    "address": "1234 Main St, Altoona, PA 16601",
+    "state": "PA"
+  },
+  "summary": {
+    "total": 17,
+    "ok": 15,
+    "error": 1,
+    "skipped": 1,
+    "avgLatency": 1456
+  },
+  "results": [
     {
-      "service": "fema",
-      "status": "healthy",
-      "circuitBreaker": "closed",
-      "rateLimitRemaining": 45
+      "service": "FEMA Flood",
+      "status": "ok",
+      "latency": 847,
+      "data": { "zone": "X" }
     },
     {
-      "service": "census",
-      "status": "degraded",
-      "circuitBreaker": "half-open",
-      "rateLimitRemaining": 12,
-      "lastError": "Last failure: 2026-01-23T10:25:00Z"
+      "service": "Census",
+      "status": "error",
+      "latency": 8542,
+      "error": "Request timed out after 30000ms"
+    },
+    {
+      "service": "Zillow (RapidAPI)",
+      "status": "skipped",
+      "error": "No RapidAPI key configured"
     }
-  ],
-  "summary": {
-    "total": 9,
-    "healthy": 8,
-    "degraded": 1,
-    "unhealthy": 0
-  }
+  ]
 }
 ```
 
 **Status Codes:**
-- `200 OK` - System healthy or degraded
-- `503 Service Unavailable` - System unhealthy (4+ APIs down)
+- `200 OK` - All tests completed (check `summary` for success/error counts)
+- `500 Internal Server Error` - Health check endpoint failed
 
 ---
 
-### Deep Health Check
+### Single Service Health Check
 
-**Endpoint:** `GET /api/health?deep=true`
+**Endpoint:** `GET /api/health/apis?service=<service_name>`
 
 **Usage:**
 ```bash
-curl "https://your-app.com/api/health?deep=true"
+# Test a specific service (e.g., FEMA)
+curl "https://your-app.com/api/health/apis?service=fema"
+
+# Test another service (e.g., Census)
+curl "https://your-app.com/api/health/apis?service=census"
 ```
 
 **What It Does:**
-Makes actual API calls to external services (uses test coordinates: NYC)
+Makes actual API calls to the specified external service (uses test coordinates)
 
 **Response:**
 ```json
 {
-  "overall": "healthy",
-  "services": [
+  "timestamp": "2026-01-23T10:30:00Z",
+  "testLocation": {
+    "latitude": 40.5186,
+    "longitude": -78.3947,
+    "address": "1234 Main St, Altoona, PA 16601",
+    "state": "PA"
+  },
+  "summary": {
+    "total": 1,
+    "ok": 1,
+    "error": 0,
+    "skipped": 0,
+    "avgLatency": 847
+  },
+  "results": [
     {
-      "service": "fema",
-      "status": "healthy",
-      "responseTimeMs": 847
-    },
-    {
-      "service": "usgs",
-      "status": "healthy",
-      "responseTimeMs": 1203
-    },
-    {
-      "service": "census",
-      "status": "degraded",
-      "responseTimeMs": 8542,
-      "error": "Timeout warning"
+      "service": "FEMA Flood",
+      "status": "ok",
+      "latency": 847,
+      "data": {
+        "zone": "X",
+        "floodway": false,
+        "riskLevel": "Minimal"
+      }
     }
   ]
 }
 ```
 
 **When to Use:**
-- Before processing large batches
-- After deploying changes
-- When investigating performance issues
+- Test a specific API that's been problematic
+- Before processing properties that rely on a specific service
+- When investigating performance issues with one service
 
 ---
 
@@ -1171,7 +1264,7 @@ Makes actual API calls to external services (uses test coordinates: NYC)
    → Visit API provider's status page
 
 4. Check health endpoint
-   → GET /api/health
+   → GET /api/health/apis
 
 5. Check circuit breaker status
    → Query api_circuit_breakers table
@@ -1192,7 +1285,7 @@ Makes actual API calls to external services (uses test coordinates: NYC)
 
 ```
 1. Check overall system health
-   → GET /api/health
+   → GET /api/health/apis
 
 2. Check network connectivity
    → Can you reach external sites?
@@ -1230,7 +1323,7 @@ Scenario: Report shows 65% confidence
    → Check report metadata or logs
 
 3. Check if APIs recovered
-   → GET /api/health
+   → GET /api/health/apis
 
 4. If recovered: Re-generate report
    → Delete cached data, trigger new report
@@ -1363,19 +1456,19 @@ SELECT cleanup_expired_cache();
 
 # Basic health check
 echo "=== Basic Health Check ==="
-curl -s https://your-app.com/api/health | jq '.overall, .summary'
+curl -s https://your-app.com/api/health/apis | jq '.summary'
 
-# Check for unhealthy services
-echo "\n=== Unhealthy Services ==="
-curl -s https://your-app.com/api/health | jq '.services[] | select(.status == "unhealthy")'
+# Check for error services
+echo "\n=== Error Services ==="
+curl -s https://your-app.com/api/health/apis | jq '.results[] | select(.status == "error")'
 
-# Check rate limits
-echo "\n=== Rate Limits ==="
-curl -s https://your-app.com/api/health | jq '.services[] | {service: .service, remaining: .rateLimitRemaining}'
+# Check latency
+echo "\n=== Service Latency ==="
+curl -s https://your-app.com/api/health/apis | jq '.results[] | {service: .service, latency: .latency}'
 
-# Deep health check (once per day)
-echo "\n=== Deep Health Check ==="
-curl -s "https://your-app.com/api/health?deep=true" | jq '.overall, .services[].responseTimeMs'
+# Test specific service (once per day)
+echo "\n=== Test FEMA Service ==="
+curl -s "https://your-app.com/api/health/apis?service=fema" | jq '.'
 ```
 
 ### Alert Thresholds
@@ -1491,7 +1584,7 @@ Subscribe to status updates:
 **Check in this order:**
 
 1. **This troubleshooting guide** (you are here)
-2. **System health endpoint** (`/api/health`)
+2. **System health endpoint** (`/api/health/apis`)
 3. **Application logs** (check for ERROR level messages)
 4. **API provider documentation** (link in each API section)
 5. **API provider status page** (check for outages)
