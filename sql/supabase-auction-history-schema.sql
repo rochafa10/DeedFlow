@@ -725,3 +725,424 @@ FROM auction_results ar
 JOIN counties c ON ar.county_id = c.id
 WHERE ar.sale_date >= NOW() - INTERVAL '90 days'
 ORDER BY ar.sale_date DESC, c.county_name;
+
+-- ============================================================================
+-- ADVANCED ANALYTICS: PRICE PREDICTIONS
+-- ============================================================================
+
+-- ============================================================================
+-- HELPER FUNCTION: Get Price Prediction
+-- Predicts likely sale price for a property based on historical data
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_price_prediction(
+  p_county_id UUID,
+  p_property_type TEXT,
+  p_opening_bid NUMERIC,
+  p_assessed_value NUMERIC DEFAULT NULL,
+  p_lot_size_sqft INTEGER DEFAULT NULL,
+  p_building_sqft INTEGER DEFAULT NULL,
+  p_months_back INTEGER DEFAULT 12
+) RETURNS TABLE (
+  predicted_price NUMERIC,
+  prediction_low NUMERIC,
+  prediction_high NUMERIC,
+  confidence_score NUMERIC,
+  comparable_sales_count INTEGER,
+  avg_bid_ratio NUMERIC,
+  median_bid_ratio NUMERIC,
+  stddev_bid_ratio NUMERIC
+) AS $$
+DECLARE
+  v_avg_ratio NUMERIC;
+  v_median_ratio NUMERIC;
+  v_stddev_ratio NUMERIC;
+  v_count INTEGER;
+  v_predicted NUMERIC;
+  v_confidence NUMERIC;
+BEGIN
+  -- Get bid ratio statistics from comparable sales
+  SELECT
+    AVG(ar.bid_ratio),
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ar.bid_ratio),
+    STDDEV(ar.bid_ratio),
+    COUNT(*)
+  INTO v_avg_ratio, v_median_ratio, v_stddev_ratio, v_count
+  FROM auction_results ar
+  WHERE
+    ar.county_id = p_county_id
+    AND ar.sale_status = 'sold'
+    AND ar.property_type = p_property_type
+    AND ar.sale_date >= NOW() - (p_months_back || ' months')::INTERVAL
+    AND ar.bid_ratio IS NOT NULL
+    AND ar.final_sale_price IS NOT NULL;
+
+  -- Default to 1.0 if no data
+  v_avg_ratio := COALESCE(v_avg_ratio, 1.0);
+  v_median_ratio := COALESCE(v_median_ratio, 1.0);
+  v_stddev_ratio := COALESCE(v_stddev_ratio, 0.2);
+  v_count := COALESCE(v_count, 0);
+
+  -- Calculate predicted price (use median for robustness)
+  v_predicted := p_opening_bid * v_median_ratio;
+
+  -- Calculate confidence score (0.0 to 1.0)
+  -- Based on: sample size, data consistency (low stddev = high confidence)
+  v_confidence := CASE
+    WHEN v_count >= 20 AND v_stddev_ratio < 0.3 THEN 0.95
+    WHEN v_count >= 15 AND v_stddev_ratio < 0.4 THEN 0.85
+    WHEN v_count >= 10 AND v_stddev_ratio < 0.5 THEN 0.75
+    WHEN v_count >= 5 AND v_stddev_ratio < 0.6 THEN 0.65
+    WHEN v_count >= 3 THEN 0.50
+    ELSE 0.30
+  END;
+
+  -- Return prediction range (using 1 standard deviation)
+  RETURN QUERY
+  SELECT
+    ROUND(v_predicted, 2) as pred_price,
+    ROUND(p_opening_bid * GREATEST(v_median_ratio - v_stddev_ratio, 0.5), 2) as pred_low,
+    ROUND(p_opening_bid * (v_median_ratio + v_stddev_ratio), 2) as pred_high,
+    ROUND(v_confidence, 2) as conf_score,
+    v_count as comp_count,
+    ROUND(v_avg_ratio, 4) as avg_ratio,
+    ROUND(v_median_ratio, 4) as med_ratio,
+    ROUND(v_stddev_ratio, 4) as std_ratio;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- HELPER FUNCTION: Calculate Prediction Confidence
+-- Determines confidence level for price predictions
+-- ============================================================================
+CREATE OR REPLACE FUNCTION calculate_prediction_confidence(
+  p_county_id UUID,
+  p_property_type TEXT,
+  p_months_back INTEGER DEFAULT 12
+) RETURNS TABLE (
+  comparable_count INTEGER,
+  data_quality_avg NUMERIC,
+  bid_ratio_stddev NUMERIC,
+  confidence_score NUMERIC,
+  confidence_level TEXT
+) AS $$
+DECLARE
+  v_count INTEGER;
+  v_quality NUMERIC;
+  v_stddev NUMERIC;
+  v_confidence NUMERIC;
+  v_level TEXT;
+BEGIN
+  -- Gather statistics
+  SELECT
+    COUNT(*),
+    AVG(ar.data_quality),
+    STDDEV(ar.bid_ratio)
+  INTO v_count, v_quality, v_stddev
+  FROM auction_results ar
+  WHERE
+    ar.county_id = p_county_id
+    AND ar.sale_status = 'sold'
+    AND ar.property_type = p_property_type
+    AND ar.sale_date >= NOW() - (p_months_back || ' months')::INTERVAL
+    AND ar.bid_ratio IS NOT NULL;
+
+  v_count := COALESCE(v_count, 0);
+  v_quality := COALESCE(v_quality, 0.5);
+  v_stddev := COALESCE(v_stddev, 0.5);
+
+  -- Calculate confidence score
+  -- Factors: sample size (40%), data quality (30%), consistency (30%)
+  v_confidence := (
+    (LEAST(v_count::NUMERIC / 20.0, 1.0) * 0.4) +  -- Sample size factor
+    (v_quality * 0.3) +                             -- Data quality factor
+    ((1.0 - LEAST(v_stddev / 1.0, 1.0)) * 0.3)     -- Consistency factor
+  );
+
+  -- Determine confidence level
+  v_level := CASE
+    WHEN v_confidence >= 0.85 THEN 'very_high'
+    WHEN v_confidence >= 0.70 THEN 'high'
+    WHEN v_confidence >= 0.55 THEN 'medium'
+    WHEN v_confidence >= 0.40 THEN 'low'
+    ELSE 'very_low'
+  END;
+
+  RETURN QUERY
+  SELECT
+    v_count,
+    ROUND(v_quality, 2),
+    ROUND(v_stddev, 4),
+    ROUND(v_confidence, 2),
+    v_level;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- ADVANCED ANALYTICS: TREND ANALYSIS
+-- ============================================================================
+
+-- ============================================================================
+-- HELPER FUNCTION: Get County Trends
+-- Calculates month-over-month trends and growth rates
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_county_trends(
+  p_county_id UUID,
+  p_months_back INTEGER DEFAULT 12
+) RETURNS TABLE (
+  month_date DATE,
+  auctions_count INTEGER,
+  sold_count INTEGER,
+  sale_rate_pct NUMERIC,
+  avg_sale_price NUMERIC,
+  total_volume NUMERIC,
+  avg_bid_ratio NUMERIC,
+  month_over_month_price_change_pct NUMERIC,
+  month_over_month_volume_change_pct NUMERIC
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH monthly_data AS (
+    SELECT
+      DATE_TRUNC('month', ar.sale_date)::DATE as month,
+      COUNT(*) as auction_count,
+      COUNT(*) FILTER (WHERE ar.sale_status = 'sold') as sold,
+      ROUND(
+        (COUNT(*) FILTER (WHERE ar.sale_status = 'sold')::NUMERIC /
+         NULLIF(COUNT(*), 0) * 100), 2
+      ) as sale_rate,
+      ROUND(AVG(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as avg_price,
+      ROUND(SUM(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'), 2) as volume,
+      ROUND(AVG(ar.bid_ratio) FILTER (WHERE ar.sale_status = 'sold'), 4) as bid_ratio
+    FROM auction_results ar
+    WHERE
+      ar.county_id = p_county_id
+      AND ar.sale_date >= NOW() - (p_months_back || ' months')::INTERVAL
+    GROUP BY DATE_TRUNC('month', ar.sale_date)
+  ),
+  trends AS (
+    SELECT
+      month,
+      auction_count::INTEGER,
+      sold::INTEGER,
+      sale_rate,
+      avg_price,
+      volume,
+      bid_ratio,
+      LAG(avg_price) OVER (ORDER BY month) as prev_avg_price,
+      LAG(volume) OVER (ORDER BY month) as prev_volume
+    FROM monthly_data
+  )
+  SELECT
+    trends.month,
+    trends.auction_count,
+    trends.sold,
+    trends.sale_rate,
+    trends.avg_price,
+    trends.volume,
+    trends.bid_ratio,
+    CASE
+      WHEN trends.prev_avg_price IS NOT NULL AND trends.prev_avg_price > 0
+      THEN ROUND(((trends.avg_price - trends.prev_avg_price) / trends.prev_avg_price * 100), 2)
+      ELSE NULL
+    END as price_change,
+    CASE
+      WHEN trends.prev_volume IS NOT NULL AND trends.prev_volume > 0
+      THEN ROUND(((trends.volume - trends.prev_volume) / trends.prev_volume * 100), 2)
+      ELSE NULL
+    END as volume_change
+  FROM trends
+  ORDER BY trends.month DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- HELPER FUNCTION: Get Seasonal Patterns
+-- Identifies seasonal trends in auction performance
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_seasonal_patterns(
+  p_county_id UUID DEFAULT NULL,
+  p_state_code TEXT DEFAULT NULL,
+  p_years_back INTEGER DEFAULT 3
+) RETURNS TABLE (
+  month_number INTEGER,
+  month_name TEXT,
+  avg_auctions_count NUMERIC,
+  avg_sold_count NUMERIC,
+  avg_sale_rate_pct NUMERIC,
+  avg_sale_price NUMERIC,
+  avg_bid_ratio NUMERIC,
+  total_data_points INTEGER
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    EXTRACT(MONTH FROM ar.sale_date)::INTEGER as month_num,
+    TO_CHAR(ar.sale_date, 'Month') as month,
+    ROUND(AVG(auction_count), 1) as avg_auctions,
+    ROUND(AVG(sold_count), 1) as avg_sold,
+    ROUND(AVG(sale_rate), 2) as avg_rate,
+    ROUND(AVG(avg_price), 2) as avg_price_seasonal,
+    ROUND(AVG(bid_ratio), 4) as avg_ratio_seasonal,
+    SUM(auction_count)::INTEGER as data_points
+  FROM (
+    SELECT
+      DATE_TRUNC('month', ar2.sale_date) as sale_date,
+      COUNT(*) as auction_count,
+      COUNT(*) FILTER (WHERE ar2.sale_status = 'sold') as sold_count,
+      (COUNT(*) FILTER (WHERE ar2.sale_status = 'sold')::NUMERIC /
+       NULLIF(COUNT(*), 0) * 100) as sale_rate,
+      AVG(ar2.final_sale_price) FILTER (WHERE ar2.sale_status = 'sold') as avg_price,
+      AVG(ar2.bid_ratio) FILTER (WHERE ar2.sale_status = 'sold') as bid_ratio
+    FROM auction_results ar2
+    JOIN counties c ON ar2.county_id = c.id
+    WHERE
+      ar2.sale_date >= NOW() - (p_years_back || ' years')::INTERVAL
+      AND (p_county_id IS NULL OR ar2.county_id = p_county_id)
+      AND (p_state_code IS NULL OR c.state_code = p_state_code)
+    GROUP BY DATE_TRUNC('month', ar2.sale_date)
+  ) ar
+  GROUP BY EXTRACT(MONTH FROM ar.sale_date), TO_CHAR(ar.sale_date, 'Month')
+  ORDER BY month_num;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- HELPER FUNCTION: Get Market Velocity
+-- Calculates how quickly properties sell (time on market proxy)
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_market_velocity(
+  p_county_id UUID,
+  p_property_type TEXT DEFAULT NULL,
+  p_months_back INTEGER DEFAULT 6
+) RETURNS TABLE (
+  avg_days_to_sell NUMERIC,
+  sale_through_rate NUMERIC,
+  avg_bidders_per_property NUMERIC,
+  competition_level TEXT,
+  market_heat_score NUMERIC
+) AS $$
+DECLARE
+  v_sale_rate NUMERIC;
+  v_avg_bidders NUMERIC;
+  v_comp_level TEXT;
+  v_heat_score NUMERIC;
+BEGIN
+  -- Calculate sale metrics
+  SELECT
+    (COUNT(*) FILTER (WHERE ar.sale_status = 'sold')::NUMERIC /
+     NULLIF(COUNT(*), 0)),
+    AVG(ar.number_of_bidders) FILTER (WHERE ar.sale_status = 'sold')
+  INTO v_sale_rate, v_avg_bidders
+  FROM auction_results ar
+  WHERE
+    ar.county_id = p_county_id
+    AND ar.sale_date >= NOW() - (p_months_back || ' months')::INTERVAL
+    AND (p_property_type IS NULL OR ar.property_type = p_property_type);
+
+  v_sale_rate := COALESCE(v_sale_rate, 0);
+  v_avg_bidders := COALESCE(v_avg_bidders, 0);
+
+  -- Determine competition level
+  v_comp_level := CASE
+    WHEN v_avg_bidders >= 10 THEN 'very_high'
+    WHEN v_avg_bidders >= 7 THEN 'high'
+    WHEN v_avg_bidders >= 4 THEN 'medium'
+    WHEN v_avg_bidders >= 2 THEN 'low'
+    ELSE 'very_low'
+  END;
+
+  -- Calculate market heat score (0-100)
+  -- Based on: sale rate (50%), avg bidders (30%), bid ratio trend (20%)
+  v_heat_score := (
+    (v_sale_rate * 50) +
+    (LEAST(v_avg_bidders / 15.0, 1.0) * 30) +
+    20  -- Base score
+  );
+
+  RETURN QUERY
+  SELECT
+    NULL::NUMERIC as days_to_sell,  -- Not tracked in current schema
+    ROUND(v_sale_rate * 100, 2) as sale_through,
+    ROUND(v_avg_bidders, 1) as avg_bidders,
+    v_comp_level as comp_level,
+    ROUND(v_heat_score, 0) as heat_score;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- HELPER FUNCTION: Get ROI Potential
+-- Estimates return on investment potential for a property type/area
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_roi_potential(
+  p_county_id UUID,
+  p_property_type TEXT,
+  p_months_back INTEGER DEFAULT 12
+) RETURNS TABLE (
+  avg_acquisition_cost NUMERIC,
+  avg_market_value NUMERIC,
+  avg_immediate_equity_pct NUMERIC,
+  avg_roi_vs_assessment NUMERIC,
+  risk_level TEXT,
+  investment_score NUMERIC
+) AS $$
+DECLARE
+  v_avg_cost NUMERIC;
+  v_avg_value NUMERIC;
+  v_equity_pct NUMERIC;
+  v_roi NUMERIC;
+  v_risk TEXT;
+  v_score NUMERIC;
+  v_stddev_ratio NUMERIC;
+BEGIN
+  -- Calculate averages
+  SELECT
+    AVG(ar.final_sale_price) FILTER (WHERE ar.sale_status = 'sold'),
+    AVG(ar.assessed_value) FILTER (WHERE ar.sale_status = 'sold'),
+    AVG(ar.market_ratio) FILTER (WHERE ar.sale_status = 'sold'),
+    STDDEV(ar.market_ratio) FILTER (WHERE ar.sale_status = 'sold')
+  INTO v_avg_cost, v_avg_value, v_equity_pct, v_stddev_ratio
+  FROM auction_results ar
+  WHERE
+    ar.county_id = p_county_id
+    AND ar.property_type = p_property_type
+    AND ar.sale_date >= NOW() - (p_months_back || ' months')::INTERVAL;
+
+  v_avg_cost := COALESCE(v_avg_cost, 0);
+  v_avg_value := COALESCE(v_avg_value, 0);
+  v_equity_pct := COALESCE(v_equity_pct, 0);
+  v_stddev_ratio := COALESCE(v_stddev_ratio, 0.3);
+
+  -- Calculate ROI (if buying at avg price vs assessed value)
+  IF v_avg_cost > 0 THEN
+    v_roi := ((v_avg_value - v_avg_cost) / v_avg_cost) * 100;
+  ELSE
+    v_roi := 0;
+  END IF;
+
+  -- Immediate equity percentage (buying below market)
+  v_equity_pct := (1.0 - v_equity_pct) * 100;
+
+  -- Assess risk level based on volatility
+  v_risk := CASE
+    WHEN v_stddev_ratio > 0.5 THEN 'high'
+    WHEN v_stddev_ratio > 0.3 THEN 'medium'
+    ELSE 'low'
+  END;
+
+  -- Investment score (0-100)
+  v_score := LEAST(
+    (GREATEST(v_equity_pct, 0) * 0.6) +  -- Immediate equity weight
+    (LEAST(v_roi / 2.0, 50) * 0.4),       -- ROI potential weight
+    100
+  );
+
+  RETURN QUERY
+  SELECT
+    ROUND(v_avg_cost, 2),
+    ROUND(v_avg_value, 2),
+    ROUND(GREATEST(v_equity_pct, 0), 2),
+    ROUND(v_roi, 2),
+    v_risk,
+    ROUND(v_score, 0);
+END;
+$$ LANGUAGE plpgsql;
