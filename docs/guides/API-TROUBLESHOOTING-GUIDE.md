@@ -8,26 +8,26 @@ A comprehensive troubleshooting reference for all external API integrations in t
 
 The Tax Deed Flow system integrates with **17 external APIs** to provide comprehensive property analysis:
 
-### **Core APIs (9)**
-1. **FEMA Flood API** - Flood zone determination
-2. **USGS Earthquake API** - Seismic risk assessment
-3. **NASA FIRMS** - Wildfire risk data
-4. **Census Bureau** - Demographics and statistics
-5. **Open-Elevation** - Elevation data
-6. **OpenWeather** - Climate and weather patterns
-7. **Realtor.com API** (RapidAPI) - Property listings and comparables
-8. **Zillow API** (RapidAPI) - Market values and Zestimates
-9. **Google Maps/Places** - Location data and imagery
+### **Core Risk Assessment APIs (9)**
+1. **FEMA Flood API** - Flood zone determination and risk assessment
+2. **USGS Earthquake API** - Seismic risk and earthquake history
+3. **NASA FIRMS** - Wildfire detection and risk data
+4. **EPA API** - Environmental hazards (Superfund, brownfield, UST, TRI, RCRA sites)
+5. **NOAA Weather API** - Weather forecasts, climate data, and severe weather alerts
+6. **FBI Crime API** - Crime statistics and safety scores by state
+7. **Elevation API** (Open-Elevation) - Elevation data for flood assessment
+8. **Climate API** (OpenWeather) - Long-term climate patterns
+9. **FCC Broadband API** - Internet infrastructure and connectivity
 
-### **Supporting APIs (8)**
-10. **Supabase** - Database and storage
-11. **Perplexity AI** - Enhanced research and citations
-12. **Brave Search** - Free web search
-13. **Browserless** - Scalable browser automation
-14. **Firecrawl** - Web scraping
-15. **PACER** - Federal court records (IRS liens)
-16. **Regrid** - Property data enrichment
-17. **Playwright** - Browser automation
+### **Property & Economic Data APIs (8)**
+10. **Census Bureau API** - Demographics, population, and economic statistics
+11. **BLS API** (Bureau of Labor Statistics) - Employment and unemployment data
+12. **Zillow API** (RapidAPI) - Market values and Zestimates
+13. **Realtor.com API** (RapidAPI) - Property listings and comparables
+14. **Geoapify API** - Geocoding, places (POIs), and amenities analysis
+15. **Mapbox API** - Geocoding, mapping, and routing services
+16. **OpenStreetMap/Nominatim API** - Free geocoding and reverse geocoding
+17. **OpenAI API** - AI-powered property analysis and report generation
 
 ---
 
@@ -446,49 +446,7 @@ curl "https://api.census.gov/data/2022/acs/acs5?get=B01003_001E&for=county:*&key
 
 ---
 
-### Google Maps API
-
-**Common Issues:**
-
-**1. Over query limit**
-```
-Error: OVER_QUERY_LIMIT
-Status: 429
-```
-- **Cause:** Exceeded daily quota (free tier: 25,000 requests/day)
-- **Fix:** Upgrade to paid tier or reduce requests
-
-**2. Invalid API key**
-```
-Error: REQUEST_DENIED
-Message: "The provided API key is invalid"
-```
-- **Fix:** Enable Maps JavaScript API in Google Cloud Console
-
-**3. Zero results**
-```
-Response: { results: [], status: "ZERO_RESULTS" }
-```
-- **Cause:** Address not found or too vague
-- **Fix:** Try with lat/lng coordinates instead
-
-**Health Check:**
-```bash
-# Test Geocoding API
-curl "https://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway&key=YOUR_KEY"
-
-# Test Static Map API
-curl "https://maps.googleapis.com/maps/api/staticmap?center=40.7128,-74.0060&zoom=18&size=600x400&key=YOUR_KEY" --output test.png
-```
-
-**Rate Limits:**
-- Geocoding: 50 requests/second
-- Static Maps: $7 per 1,000 images
-- Cache duration: 30 days
-
----
-
-### Zillow/Realtor.com (RapidAPI)
+### Zillow API (RapidAPI)
 
 **Common Issues:**
 
@@ -497,16 +455,71 @@ curl "https://maps.googleapis.com/maps/api/staticmap?center=40.7128,-74.0060&zoo
 Error: 403 Forbidden
 Message: "You are not subscribed to this API"
 ```
-- **Fix:** Subscribe at https://rapidapi.com/ ($99/month)
+- **Fix:** Subscribe at https://rapidapi.com/apimaker/api/zillow-com1
 
 **2. Property not found**
 ```
 Response: { data: null, error: "Property not found" }
 ```
-- **Cause:** Property not listed or address mismatch
-- **Fix:** Try alternate address formats or skip market data
+- **Cause:** Property not in Zillow database or address mismatch
+- **Fix:** Try alternate address formats or use property ID (ZPID)
 
 **3. Rate limit (RapidAPI)**
+```
+Error: 429 Too Many Requests
+Message: "Rate limit exceeded"
+```
+- **Fix:** Upgrade RapidAPI tier or reduce requests
+
+**4. Invalid Zestimate**
+```
+Response: { zestimate: null }
+```
+- **Cause:** Zillow doesn't provide Zestimates for all properties
+- **Fix:** Not an error, use alternative valuation methods
+
+**Health Check:**
+```bash
+# Test Zillow API (via RapidAPI)
+curl -X GET "https://zillow-com1.p.rapidapi.com/property?zpid=2080998890" \
+  -H "X-RapidAPI-Key: YOUR_KEY" \
+  -H "X-RapidAPI-Host: zillow-com1.p.rapidapi.com"
+```
+
+**Rate Limits:**
+- Depends on RapidAPI subscription tier
+- Basic: 100 requests/month
+- Pro: 1,000 requests/month
+- Cache duration: 7 days
+
+---
+
+### Realtor.com API (RapidAPI)
+
+**Common Issues:**
+
+**1. RapidAPI subscription required**
+```
+Error: 403 Forbidden
+Message: "You are not subscribed to this API"
+```
+- **Fix:** Subscribe at https://rapidapi.com/apidojo/api/realty-in-us
+
+**2. No sold comparables found**
+```
+Response: { comparables: [] }
+```
+- **Cause:** No recent sales in search radius
+- **Fix:** Expand radius or date range, or reduce filter constraints
+
+**3. Address geocoding failed**
+```
+Error: Unable to geocode address
+```
+- **Cause:** Address not found in Realtor.com database
+- **Fix:** Verify address format, try with zip code only
+
+**4. Rate limit (RapidAPI)**
 ```
 Error: 429 Too Many Requests
 Message: "Rate limit exceeded"
@@ -516,14 +529,16 @@ Message: "Rate limit exceeded"
 **Health Check:**
 ```bash
 # Test Realtor.com API (via RapidAPI)
-curl -X GET "https://realtor-com4.p.rapidapi.com/properties/detail?property_id=1234567" \
+curl -X GET "https://realty-in-us.p.rapidapi.com/properties/v3/detail?property_id=M1234567890" \
   -H "X-RapidAPI-Key: YOUR_KEY" \
-  -H "X-RapidAPI-Host: realtor-com4.p.rapidapi.com"
+  -H "X-RapidAPI-Host: realty-in-us.p.rapidapi.com"
 ```
 
 **Rate Limits:**
 - Depends on RapidAPI subscription tier
-- Typical: 100-1000 requests/month
+- Basic: 100 requests/month
+- Pro: 1,000 requests/month
+- Ultra: 10,000 requests/month
 - Cache duration: 7 days
 
 ---
@@ -558,6 +573,54 @@ curl "https://firms.modaps.eosdis.nasa.gov/api/area/csv/MAP_KEY/VIIRS_SNPP_NRT/w
 
 ---
 
+### Climate API (Open-Meteo)
+
+**Common Issues:**
+
+**1. Invalid coordinates**
+```
+Error: Coordinates out of range
+```
+- **Cause:** Latitude/longitude outside valid range
+- **Fix:** Validate lat (-90 to 90), lng (-180 to 180)
+
+**2. No historical data available**
+```
+Warning: Historical climate data limited for this location
+```
+- **Cause:** Remote location with sparse weather station coverage
+- **Fix:** Expected behavior, use available data with lower confidence
+
+**3. API overload (rare)**
+```
+Error: 503 Service Unavailable
+```
+- **Cause:** Free public API experiencing high load
+- **Fix:** Retry with exponential backoff (automatic in service)
+
+**Health Check:**
+```bash
+# Test current weather endpoint
+curl "https://api.open-meteo.com/v1/forecast?latitude=40.5186&longitude=-78.3947&current_weather=true"
+
+# Test historical climate data
+curl "https://archive-api.open-meteo.com/v1/archive?latitude=40.5186&longitude=-78.3947&start_date=2023-01-01&end_date=2023-12-31&daily=temperature_2m_max,temperature_2m_min,precipitation_sum"
+```
+
+**Rate Limits:**
+- Free public API
+- No documented rate limits
+- Cache duration: 1 hour (current weather), 7 days (climate normals)
+
+**Data Provided:**
+- Current weather conditions
+- 7-day forecast
+- Historical climate data
+- Climate normals (30-year averages)
+- Extreme weather risk assessment
+
+---
+
 ### Open-Elevation API
 
 **Common Issues:**
@@ -589,37 +652,417 @@ curl "https://api.open-elevation.com/api/v1/lookup?locations=40.7128,-74.0060"
 
 ---
 
-### Supabase (Database)
+### BLS (Bureau of Labor Statistics) API
 
 **Common Issues:**
 
-**1. Connection pool exhausted**
+**1. Rate limit exceeded (no API key)**
 ```
-Error: remaining connection slots reserved for non-replication superuser
+Error: 429 Too Many Requests
+Message: "Daily limit exceeded"
 ```
-- **Cause:** Too many concurrent connections
-- **Fix:** Use connection pooling, close idle connections
+- **Cause:** Free tier limit: 25 requests/day
+- **Fix:** Register for free API key (increases to 500 requests/day)
+- **Registration:** https://data.bls.gov/registrationEngine/
 
-**2. Rate limit (free tier)**
+**2. Invalid state abbreviation**
 ```
-Error: Rate limit exceeded
+Error: ValidationError - Invalid state abbreviation
 ```
-- **Cause:** Free tier limit: 100 requests/second
-- **Fix:** Upgrade to paid tier or optimize queries
+- **Cause:** Using full state name instead of abbreviation
+- **Fix:** Use 2-letter state code (e.g., "PA" not "Pennsylvania")
 
-**3. Row-level security (RLS) blocking query**
+**3. No data available**
 ```
-Error: new row violates row-level security policy
+Response: { status: "REQUEST_NOT_PROCESSED" }
 ```
-- **Cause:** RLS policy preventing insert/update
-- **Fix:** Use service role key for admin operations
+- **Cause:** Invalid series ID or date range
+- **Fix:** Verify series ID format and ensure dates are within available range
 
 **Health Check:**
 ```bash
-# Test Supabase connection
-curl "https://your-project.supabase.co/rest/v1/counties?limit=1" \
-  -H "apikey: YOUR_ANON_KEY"
+# Test unemployment rate API (no key required)
+curl "https://api.bls.gov/publicAPI/v2/timeseries/data/LNS14000000"
 ```
+
+**Rate Limits:**
+- Without key: 25 requests/day
+- With key: 500 requests/day
+- Cache duration: 7 days (monthly data updates)
+
+---
+
+### EPA (Environmental Protection Agency) API
+
+**Common Issues:**
+
+**1. No sites found**
+```
+Response: { superfundSites: [], brownfieldSites: [], ... }
+Result: All counts = 0
+```
+- **Cause:** No environmental hazards within search radius (normal for many areas)
+- **Fix:** Not an error - system records zero sites
+
+**2. Invalid coordinates**
+```
+Error: Invalid latitude/longitude
+```
+- **Cause:** Coordinates outside valid range or malformed
+- **Fix:** Validate lat (-90 to 90), lng (-180 to 180)
+
+**3. API endpoint unavailable**
+```
+Error: 503 Service Unavailable
+```
+- **Cause:** EPA Envirofacts API undergoing maintenance
+- **Fix:** System returns empty results gracefully, retry later
+
+**Health Check:**
+```bash
+# Test EPA Envirofacts endpoint
+curl "https://data.epa.gov/efservice/CERCLIS/SITE/rows/0:1/JSON"
+```
+
+**Rate Limits:**
+- Free public API
+- No documented rate limits
+- Cache duration: 7 days (environmental data changes slowly)
+
+**Data Sources:**
+- Superfund (CERCLIS) sites
+- Brownfield properties
+- Underground Storage Tanks (UST)
+- Toxic Release Inventory (TRI)
+- RCRA hazardous waste facilities
+- Radon zones by county
+
+---
+
+### FBI Crime Data API
+
+**Common Issues:**
+
+**1. Data lag (1-2 years)**
+```
+Warning: Latest data is from 2022
+Current year: 2024
+```
+- **Cause:** FBI crime data published annually with 1-2 year delay
+- **Fix:** Expected behavior, use most recent available year
+
+**2. No county-level data**
+```
+Error: Only state-level estimates available
+```
+- **Cause:** FBI primarily publishes state aggregates
+- **Fix:** Use state-level data as proxy for county analysis
+
+**3. API key optional**
+```
+Note: FBI_CRIME_API_KEY not required but recommended
+```
+- **Cause:** Public API works without key
+- **Fix:** Add api_key parameter for better rate limits
+
+**Health Check:**
+```bash
+# Test state estimates endpoint
+curl "https://api.usa.gov/crime/fbi/cde/estimates/states/PA"
+```
+
+**Rate Limits:**
+- 2 requests/second (conservative)
+- No hard limits documented
+- Cache duration: 30 days (data updated annually)
+
+---
+
+### FCC Broadband API
+
+**Common Issues:**
+
+**1. Address not found**
+```
+Response: { providers: [], error: "Address not found" }
+```
+- **Cause:** Address not in FCC database or formatting issue
+- **Fix:** Try with coordinates instead of address
+
+**2. No broadband providers**
+```
+Response: { summary: { totalProviders: 0, unserved: true } }
+```
+- **Cause:** Rural/remote area with no service
+- **Fix:** Not an error, flag property as "unserved area"
+
+**3. User-Agent required**
+```
+Error: 403 Forbidden
+Message: "User-Agent header required"
+```
+- **Cause:** FCC API requires User-Agent header
+- **Fix:** Automatic in service (already configured)
+
+**Health Check:**
+```bash
+# Test broadband availability by coordinates
+curl -H "User-Agent: PropertyAnalysis/1.0" \
+  "https://broadbandmap.fcc.gov/api/public/map/location?lat=40.7128&lon=-74.0060&format=json"
+```
+
+**Rate Limits:**
+- 2 requests/second recommended
+- No hard limits documented
+- Cache duration: 30 days (broadband data updated quarterly)
+
+**Service Thresholds:**
+- Adequate: 25/3 Mbps (download/upload)
+- Underserved: < 25/3 Mbps
+- Unserved: < 10/1 Mbps
+
+---
+
+### NOAA Weather API
+
+**Common Issues:**
+
+**1. User-Agent required**
+```
+Error: 403 Forbidden
+Message: "User-Agent header is required"
+```
+- **Cause:** NOAA requires identification via User-Agent
+- **Fix:** Automatic in service (configured as "TaxDeedFlow/1.0")
+
+**2. Grid point not found**
+```
+Error: 404 Not Found
+Path: /points/{lat},{lng}
+```
+- **Cause:** Coordinates outside US or in water
+- **Fix:** NOAA only covers US locations
+
+**3. Forecast office unavailable**
+```
+Error: 503 Service Unavailable
+Message: "Forecast office temporarily unavailable"
+```
+- **Cause:** Regional NOAA office down for maintenance
+- **Fix:** Retry with exponential backoff (automatic)
+
+**Health Check:**
+```bash
+# Test grid point lookup
+curl -H "User-Agent: PropertyAnalysis/1.0" \
+  "https://api.weather.gov/points/40.5186,-78.3947"
+
+# Test active alerts
+curl -H "User-Agent: PropertyAnalysis/1.0" \
+  "https://api.weather.gov/alerts/active?point=40.5186,-78.3947"
+```
+
+**Rate Limits:**
+- 2 requests/second recommended
+- No hard limits, but "reasonable use" policy
+- Cache duration: 1 hour (forecasts), 24 hours (climate data)
+
+---
+
+### Geoapify API
+
+**Common Issues:**
+
+**1. API key required**
+```
+Error: 401 Unauthorized
+Message: "API key is missing or invalid"
+```
+- **Cause:** GEOAPIFY_API_KEY not set in environment
+- **Fix:** Get free API key at https://www.geoapify.com/ (3,000 requests/day)
+
+**2. Rate limit exceeded**
+```
+Error: 429 Too Many Requests
+Message: "Daily limit exceeded"
+```
+- **Cause:** Free tier: 3,000 requests/day
+- **Fix:** Upgrade to paid tier or reduce requests
+
+**3. No places found**
+```
+Response: { features: [] }
+```
+- **Cause:** No POIs of requested type within radius
+- **Fix:** Not an error, expand search radius or try different category
+
+**Health Check:**
+```bash
+# Test geocoding
+curl "https://api.geoapify.com/v1/geocode/search?text=Altoona%20PA&apiKey=YOUR_KEY"
+
+# Test places search
+curl "https://api.geoapify.com/v2/places?categories=commercial.supermarket&filter=circle:-78.3947,40.5186,1000&apiKey=YOUR_KEY"
+```
+
+**Rate Limits:**
+- Free tier: 3,000 requests/day
+- Paid tier: Up to 100,000 requests/day
+- Cache duration: 24 hours (POIs)
+
+---
+
+### Mapbox API
+
+**Common Issues:**
+
+**1. Access token invalid**
+```
+Error: 401 Unauthorized
+Message: "Not Authorized - Invalid Token"
+```
+- **Cause:** NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN not set or expired
+- **Fix:** Get token at https://account.mapbox.com/
+
+**2. Rate limit exceeded**
+```
+Error: 429 Too Many Requests
+Message: "Rate limit exceeded"
+```
+- **Cause:** Free tier limits exceeded
+- **Fix:** Mapbox has generous limits (50,000-100,000 requests/month)
+
+**3. Geocoding returns no results**
+```
+Response: { features: [] }
+```
+- **Cause:** Address too vague or not found
+- **Fix:** Add more specificity (city, state, zip)
+
+**Health Check:**
+```bash
+# Test geocoding
+curl "https://api.mapbox.com/geocoding/v5/mapbox.places/Altoona%20PA.json?access_token=YOUR_TOKEN"
+
+# Test static map
+curl "https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/-78.3947,40.5186,14/400x300?access_token=YOUR_TOKEN" --output test.png
+```
+
+**Rate Limits:**
+- Geocoding: 100,000 requests/month (free)
+- Static maps: 50,000 requests/month (free)
+- Generous burst allowance
+- Cache duration: 7 days
+
+---
+
+### OpenAI API
+
+**Common Issues:**
+
+**1. API key required**
+```
+Error: 401 Unauthorized
+Message: "Incorrect API key provided"
+```
+- **Cause:** OPENAI_API_KEY not set or invalid
+- **Fix:** Get API key at https://platform.openai.com/api-keys
+
+**2. Rate limit exceeded**
+```
+Error: 429 Too Many Requests
+Message: "Rate limit reached for requests"
+```
+- **Cause:** Tier-based rate limits (varies by usage tier)
+- **Fix:** Wait and retry, or upgrade tier
+
+**3. Token limit exceeded**
+```
+Error: 400 Bad Request
+Message: "This model's maximum context length is 8192 tokens"
+```
+- **Cause:** Input + output exceeds model token limit
+- **Fix:** Reduce input data or use a larger context model
+
+**4. High cost**
+```
+Warning: Property analysis costs $0.10-$0.50 per request
+```
+- **Cause:** Using GPT-4 or large inputs
+- **Fix:** Use gpt-4o-mini for lower cost, cache analyses
+
+**Health Check:**
+```bash
+# Test chat completion
+curl https://api.openai.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Test"}],
+    "max_tokens": 10
+  }'
+```
+
+**Rate Limits:**
+- Tier 1 (free): 3 requests/min, 200 requests/day
+- Tier 2+: Higher limits based on usage
+- Cache duration: None (each property unique)
+
+**Cost:**
+- gpt-4o-mini: ~$0.15 per 1M input tokens, ~$0.60 per 1M output tokens
+- Property analysis: ~$0.05-$0.20 per report
+
+---
+
+### OSM (OpenStreetMap) / Nominatim API
+
+**Common Issues:**
+
+**1. Rate limit exceeded**
+```
+Error: 429 Too Many Requests
+Message: "Rate Limited"
+```
+- **Cause:** Exceeding 1 request/second limit
+- **Fix:** Service queues requests automatically, but reduce load
+
+**2. No results found**
+```
+Response: []
+```
+- **Cause:** Address too vague or not in OSM database
+- **Fix:** Try with more specific address or coordinates
+
+**3. User-Agent required**
+```
+Error: 403 Forbidden
+Message: "Missing User-Agent header"
+```
+- **Cause:** Nominatim requires User-Agent identification
+- **Fix:** Automatic in service (configured as "TaxDeedFlow/1.0")
+
+**Health Check:**
+```bash
+# Test geocoding
+curl -H "User-Agent: PropertyAnalysis/1.0" \
+  "https://nominatim.openstreetmap.org/search?q=Altoona,PA&format=json"
+
+# Test reverse geocoding
+curl -H "User-Agent: PropertyAnalysis/1.0" \
+  "https://nominatim.openstreetmap.org/reverse?lat=40.5186&lon=-78.3947&format=json"
+```
+
+**Rate Limits:**
+- STRICT: Maximum 1 request/second
+- No bulk geocoding allowed
+- No automated queries without permission
+- Cache duration: 7 days
+
+**Usage Policy:**
+- Must provide valid User-Agent
+- Must cache results aggressively
+- Free service - be respectful
 
 ---
 
