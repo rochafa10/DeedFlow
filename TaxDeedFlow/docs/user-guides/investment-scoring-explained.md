@@ -24,8 +24,8 @@ percentage = (score / 125) × 100
 
 **Interpretation:**
 - **A+ (95-100%):** Premium investment opportunity with exceptional characteristics across all categories. These are rare finds that represent the top 5% of properties.
-- **A (85-95%):** Outstanding investment with strong fundamentals and minimal risk. Highly desirable properties with excellent profit potential.
-- **A- (80-85%):** Excellent investment with solid fundamentals. Minor imperfections don't significantly impact overall quality.
+- **A (87.0-94.9%):** Outstanding investment with strong fundamentals and minimal risk. Highly desirable properties with excellent profit potential.
+- **A- (80.0-86.9%):** Excellent investment with solid fundamentals. Minor imperfections don't significantly impact overall quality.
 
 **Recommended Actions:**
 ✅ **PROCEED WITH CONFIDENCE**
@@ -47,9 +47,9 @@ percentage = (score / 125) × 100
 **Description:** Good investment with minor concerns
 
 **Interpretation:**
-- **B+ (72-79%):** Very good investment with a few minor issues. Still highly profitable with manageable risks.
-- **B (66-72%):** Solid investment opportunity. Some concerns exist but can be mitigated with proper planning.
-- **B- (60-66%):** Good investment overall but requires closer examination of weak categories.
+- **B+ (75.0-79.9%):** Very good investment with a few minor issues. Still highly profitable with manageable risks.
+- **B (67.0-74.9%):** Solid investment opportunity. Some concerns exist but can be mitigated with proper planning.
+- **B- (60.0-66.9%):** Good investment overall but requires closer examination of weak categories.
 
 **Recommended Actions:**
 ✅ **PROCEED WITH THOROUGH REVIEW**
@@ -77,9 +77,9 @@ percentage = (score / 125) × 100
 **Description:** Average investment, proceed with caution
 
 **Interpretation:**
-- **C+ (54-59%):** Borderline acceptable investment. Multiple concerns need addressing.
-- **C (47-54%):** Mediocre investment with significant risks. Only suitable for experienced investors.
-- **C- (40-47%):** Below-average investment. High risk with unclear profit potential.
+- **C+ (55.0-59.9%):** Borderline acceptable investment. Multiple concerns need addressing.
+- **C (47.0-54.9%):** Mediocre investment with significant risks. Only suitable for experienced investors.
+- **C- (40.0-46.9%):** Below-average investment. High risk with unclear profit potential.
 
 **Recommended Actions:**
 ⚠️ **PROCEED WITH EXTREME CAUTION**
@@ -120,9 +120,9 @@ percentage = (score / 125) × 100
 **Description:** Below average, significant concerns
 
 **Interpretation:**
-- **D+ (34-39%):** Significant problems across multiple categories. High risk of loss.
-- **D (27-34%):** Substantial deficiencies. Profit unlikely without major improvements.
-- **D- (20-27%):** Severe issues present. Investment is highly speculative.
+- **D+ (35.0-39.9%):** Significant problems across multiple categories. High risk of loss.
+- **D (27.0-34.9%):** Substantial deficiencies. Profit unlikely without major improvements.
+- **D- (20.0-26.9%):** Severe issues present. Investment is highly speculative.
 
 **Recommended Actions:**
 🛑 **AVOID - HIGH RISK**

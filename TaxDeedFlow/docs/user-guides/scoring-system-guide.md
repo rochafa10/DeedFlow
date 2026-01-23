@@ -185,21 +185,45 @@ Your total score (0-125 points) converts to a letter grade using the following t
 
 ### Complete Grade Scale
 
-| Grade | Score Range | Percentage | Points Required | Investment Quality | Recommendation |
-|-------|-------------|------------|-----------------|-------------------|----------------|
-| **A+** | 95.0-100% | 95.0-100.0% | 119-125 pts | **Exceptional** | Strong buy - excellent across all categories |
-| **A** | 90.0-94.99% | 90.0-94.9% | 113-118 pts | **Excellent** | Strong fundamentals, minimal concerns |
-| **A-** | 85.0-89.99% | 85.0-89.9% | 107-112 pts | **Very Good** | Solid opportunity with few weaknesses |
-| **B+** | 80.0-84.99% | 80.0-84.9% | 100-106 pts | **Good** | Good investment, some areas need attention |
-| **B** | 75.0-79.99% | 75.0-79.9% | 94-99 pts | **Above Average** | Solid opportunity with minor concerns |
-| **B-** | 70.0-74.99% | 70.0-74.9% | 88-93 pts | **Acceptable** | Proceed with standard due diligence |
-| **C+** | 65.0-69.99% | 65.0-69.9% | 82-87 pts | **Average** | Borderline - evaluate strengths/weaknesses |
-| **C** | 60.0-64.99% | 60.0-64.9% | 75-81 pts | **Below Average** | Proceed with caution, deep dive required |
-| **C-** | 55.0-59.99% | 55.0-59.9% | 69-74 pts | **Marginal** | Significant concerns, extra diligence needed |
-| **D+** | 50.0-54.99% | 50.0-54.9% | 63-68 pts | **Poor** | Multiple red flags, not recommended |
-| **D** | 45.0-49.99% | 45.0-49.9% | 57-62 pts | **Very Poor** | Significant risks across categories |
-| **D-** | 40.0-44.99% | 40.0-44.9% | 50-56 pts | **High Risk** | Not recommended for typical investors |
-| **F** | 0.0-39.99% | 0.0-39.9% | 0-49 pts | **Unacceptable** | Do not invest - critical issues identified |
+| Grade | Percentage Range | Points Range | Investment Quality | Recommendation |
+|-------|-----------------|--------------|-------------------|----------------|
+| **A+** | 95.0-100% | 119-125 pts | **Exceptional** | Strong buy - excellent across all categories |
+| **A** | 87.0-94.9% | 109-118 pts | **Excellent** | Strong fundamentals, minimal concerns |
+| **A-** | 80.0-86.9% | 100-108 pts | **Very Good** | Solid opportunity with few weaknesses |
+| **B+** | 75.0-79.9% | 94-99 pts | **Good** | Good investment, some areas need attention |
+| **B** | 67.0-74.9% | 84-93 pts | **Above Average** | Solid opportunity with minor concerns |
+| **B-** | 60.0-66.9% | 75-83 pts | **Acceptable** | Proceed with standard due diligence |
+| **C+** | 55.0-59.9% | 69-74 pts | **Average** | Borderline - evaluate strengths/weaknesses |
+| **C** | 47.0-54.9% | 59-68 pts | **Below Average** | Proceed with caution, deep dive required |
+| **C-** | 40.0-46.9% | 50-58 pts | **Marginal** | Significant concerns, extra diligence needed |
+| **D+** | 35.0-39.9% | 44-49 pts | **Poor** | Multiple red flags, not recommended |
+| **D** | 27.0-34.9% | 34-43 pts | **Very Poor** | Significant risks across categories |
+| **D-** | 20.0-26.9% | 25-33 pts | **High Risk** | Not recommended for typical investors |
+| **F** | 0.0-19.9% | 0-24 pts | **Unacceptable** | Do not invest - critical issues identified |
+
+### How Grade Modifiers Are Calculated
+
+The scoring system uses a two-step process:
+
+1. **Base Grade Assignment** (based on percentage thresholds):
+   - A: 80% or higher (100+ points)
+   - B: 60-79% (75-99 points)
+   - C: 40-59% (50-74 points)
+   - D: 20-39% (25-49 points)
+   - F: 0-19% (0-24 points)
+
+2. **Modifier Assignment** (based on position within the grade range):
+   - Each base grade (except F) spans 20 percentage points
+   - Position within range determines modifier:
+     - **Top 25%**: `+` modifier (e.g., 95-100% for A → A+)
+     - **Middle 40%**: No modifier (e.g., 87-94% for A → A)
+     - **Bottom 35%**: `-` modifier (e.g., 80-86% for A → A-)
+
+**Example Calculations:**
+- **100 points** = 80.0% → Base grade A → Position 0% in range → **A-**
+- **107 points** = 85.6% → Base grade A → Position 28% in range → **A-**
+- **110 points** = 88.0% → Base grade A → Position 40% in range → **A**
+- **119 points** = 95.2% → Base grade A → Position 76% in range → **A+**
 
 ### Visual Grade Distribution
 

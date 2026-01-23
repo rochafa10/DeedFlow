@@ -1325,21 +1325,21 @@ The final score (0-125) is converted to a letter grade for easy interpretation.
 
 ### Grade Thresholds
 
-| Grade | Points | Percentage | Description |
-|-------|--------|------------|-------------|
-| **A+** | 113-125 | 90-100% | Exceptional investment - top 10% of opportunities |
-| **A** | 106-112 | 85-89% | Excellent investment - highly recommended |
-| **A-** | 100-105 | 80-84% | Excellent investment - minimal concerns |
-| **B+** | 94-99 | 75-79% | Very good investment - few drawbacks |
-| **B** | 88-93 | 70-74% | Good investment - some trade-offs |
-| **B-** | 75-87 | 60-69% | Good investment - minor concerns exist |
-| **C+** | 69-74 | 55-59% | Average investment - proceed with caution |
-| **C** | 63-68 | 50-54% | Average investment - significant due diligence needed |
-| **C-** | 50-62 | 40-49% | Below average - only if compensating factors exist |
-| **D+** | 44-49 | 35-39% | Poor investment - major concerns |
-| **D** | 38-43 | 30-34% | Poor investment - likely avoid |
-| **D-** | 25-37 | 20-29% | Very poor - significant risks outweigh potential |
-| **F** | 0-24 | 0-19% | Fail - do not invest |
+| Grade | Percentage Range | Points Range | Investment Quality | Recommendation |
+|-------|-----------------|--------------|-------------------|----------------|
+| **A+** | 95.0-100% | 119-125 pts | **Exceptional** | Strong buy - excellent across all categories |
+| **A** | 87.0-94.9% | 109-118 pts | **Excellent** | Strong fundamentals, minimal concerns |
+| **A-** | 80.0-86.9% | 100-108 pts | **Very Good** | Solid opportunity with few weaknesses |
+| **B+** | 75.0-79.9% | 94-99 pts | **Good** | Good investment, some areas need attention |
+| **B** | 67.0-74.9% | 84-93 pts | **Above Average** | Solid opportunity with minor concerns |
+| **B-** | 60.0-66.9% | 75-83 pts | **Acceptable** | Proceed with standard due diligence |
+| **C+** | 55.0-59.9% | 69-74 pts | **Average** | Borderline - evaluate strengths/weaknesses |
+| **C** | 47.0-54.9% | 59-68 pts | **Below Average** | Proceed with caution, deep dive required |
+| **C-** | 40.0-46.9% | 50-58 pts | **Marginal** | Significant concerns, extra diligence needed |
+| **D+** | 35.0-39.9% | 44-49 pts | **Poor** | Multiple red flags, not recommended |
+| **D** | 27.0-34.9% | 34-43 pts | **Very Poor** | Significant risks across categories |
+| **D-** | 20.0-26.9% | 25-33 pts | **High Risk** | Not recommended for typical investors |
+| **F** | 0.0-19.9% | 0-24 pts | **Unacceptable** | Do not invest - critical issues identified |
 
 ### Grade Modifiers
 
