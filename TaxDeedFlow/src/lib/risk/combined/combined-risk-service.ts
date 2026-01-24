@@ -136,6 +136,7 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     environmental: 0.18,
     radon: 0.22,
     slope: 0.17,
+    drought: 0.00,
   },
   // Default balanced weights
   DEFAULT: {
@@ -146,7 +147,8 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     sinkhole: 0.08,
     environmental: 0.15,
     radon: 0.12,
-    slope: 0.18,
+    slope: 0.15,
+    drought: 0.03,
   },
 };
 
@@ -268,6 +270,7 @@ function normalizeWeights(weights: RiskWeights): RiskWeights {
     environmental: weights.environmental / sum,
     radon: weights.radon / sum,
     slope: weights.slope / sum,
+    drought: weights.drought / sum,
   };
 }
 
@@ -653,6 +656,7 @@ export function calculateRiskAssessment(
     environmental: input.environmental,
     radon: input.radon,
     slope: input.slope,
+    drought: input.drought,
     categoryScores,
     weightsUsed: weights,
     insuranceEstimates,

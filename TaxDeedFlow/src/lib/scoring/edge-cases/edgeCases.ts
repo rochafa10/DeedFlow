@@ -1103,7 +1103,7 @@ function determineHandlingStrategy(
  * Check if a property should be auto-rejected
  */
 export function shouldAutoReject(property: Partial<PropertyData>): boolean {
-  return detectCemetery(property) || detectUtilityProperty(property);
+  return detectCemetery(property).detected || detectUtilityProperty(property).detected;
 }
 
 /**
