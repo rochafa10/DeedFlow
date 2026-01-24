@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd TaxDeedFlow && npm install && npm run build",
+  "outputDirectory": "TaxDeedFlow/.next",
+  "installCommand": "cd TaxDeedFlow && npm install",
+  "framework": "nextjs"
+}

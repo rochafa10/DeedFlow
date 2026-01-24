@@ -91,3 +91,5 @@ out/
 .worktrees/
 .security-key
 logs/security/
+.vercel
+.env*.local

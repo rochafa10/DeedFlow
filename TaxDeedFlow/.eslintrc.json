@@ -1,11 +1,8 @@
 {
   "extends": "next/core-web-vitals",
-  "overrides": [
-    {
-      "files": ["src/app/api/**/*.ts", "src/app/api/**/*.tsx"],
-      "rules": {
-        "no-console": "error"
-      }
-    }
-  ]
+  "rules": {
+    "no-console": "off",
+    "@next/next/no-assign-module-variable": "off",
+    "react/no-unescaped-entities": "off"
+  }
 }

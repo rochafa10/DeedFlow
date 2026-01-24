@@ -1,25 +1,25 @@
 {
   "active": true,
-  "spec": "034-team-firm-collaboration",
+  "spec": "054-replace-insecure-math-random-fallback-in-csrf-toke",
   "state": "building",
   "subtasks": {
-    "completed": 28,
-    "total": 29,
+    "completed": 3,
+    "total": 4,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Integration & Testing",
+    "current": "Security Verification",
     "id": null,
-    "total": 4
+    "total": 2
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 880,
-    "started_at": "2026-01-23T08:20:15.815086"
+    "number": 5,
+    "started_at": "2026-01-24T00:14:09.274296"
   },
-  "last_update": "2026-01-23T13:36:47.076724"
+  "last_update": "2026-01-24T00:49:28.495400"
 }
