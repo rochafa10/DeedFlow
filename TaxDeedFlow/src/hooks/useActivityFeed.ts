@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
@@ -20,6 +20,14 @@ export interface ActivityFeedItem {
   priority?: number
   progress?: number
   taskType?: string
+}
+
+// Filter state type
+export interface ActivityFeedFilters {
+  agentType: string
+  county: string
+  status: string
+  searchQuery: string
 }
 
 // Orchestration session from database
@@ -71,6 +79,14 @@ export function useActivityFeed() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [channel, setChannel] = useState<RealtimeChannel | null>(null)
+
+  // Filter state
+  const [filters, setFilters] = useState<ActivityFeedFilters>({
+    agentType: "all",
+    county: "all",
+    status: "all",
+    searchQuery: "",
+  })
 
   // Transform session to activity item
   const transformSession = useCallback((session: OrchestrationSession): ActivityFeedItem => {
@@ -294,11 +310,77 @@ export function useActivityFeed() {
     }
   }, [fetchInitialData, transformSession, transformAssignment])
 
+  // Apply filters to activities
+  const filteredActivities = useMemo(() => {
+    let filtered = activities
+
+    // Filter by agent type
+    if (filters.agentType !== "all") {
+      filtered = filtered.filter((activity) => {
+        // For assignments, filter by agent_name
+        if (activity.type === "assignment") {
+          return activity.agentName === filters.agentType
+        }
+        // Sessions don't have a specific agent, so exclude them when filtering by agent
+        return false
+      })
+    }
+
+    // Filter by county
+    if (filters.county !== "all") {
+      filtered = filtered.filter((activity) => {
+        // Only assignments have county data
+        if (activity.type === "assignment") {
+          return activity.countyId === filters.county
+        }
+        // Sessions don't have county data, so exclude them when filtering by county
+        return false
+      })
+    }
+
+    // Filter by status
+    if (filters.status !== "all") {
+      filtered = filtered.filter((activity) => activity.status === filters.status)
+    }
+
+    // Filter by search query
+    if (filters.searchQuery.trim() !== "") {
+      const query = filters.searchQuery.toLowerCase().trim()
+      filtered = filtered.filter((activity) => {
+        // Search in agent name
+        if (activity.agentName?.toLowerCase().includes(query)) {
+          return true
+        }
+        // Search in action
+        if (activity.action.toLowerCase().includes(query)) {
+          return true
+        }
+        // Search in details
+        if (activity.details.toLowerCase().includes(query)) {
+          return true
+        }
+        // Search in county name
+        if (activity.county?.toLowerCase().includes(query)) {
+          return true
+        }
+        // Search in state
+        if (activity.state?.toLowerCase().includes(query)) {
+          return true
+        }
+        return false
+      })
+    }
+
+    return filtered
+  }, [activities, filters])
+
   return {
-    activities,
+    activities: filteredActivities,
     isLoading,
     error,
     refetch: fetchInitialData,
+    filters,
+    setFilters,
   }
 }
 
