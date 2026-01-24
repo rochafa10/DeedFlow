@@ -1,37 +1,7 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
 import type { DashboardData } from "@/types/dashboard"
-
-// Type for upcoming sales query with joined counties
-interface UpcomingSaleWithCounty {
-  id: string
-  sale_date: string
-  property_count: number | null
-  counties: {
-    county_name: string
-    state_code: string
-  } | null
-}
-
-// Type for county progress RPC result
-interface CountyProgressRow {
-  id: string
-  county_name: string
-  state_code: string
-  total_properties: number
-  regrid_count: number
-  validated_count: number
-  approved_count: number
-  days_until_auction: number | null
-}
-
-// Type for bottleneck items
-interface BottleneckItem {
-  title: string
-  count: number
-  severity: "critical" | "warning"
-  message: string
-}
+import { logger } from "@/lib/logger"
 
 // Mock data for development when Supabase is not configured
 const MOCK_DATA: DashboardData = {
@@ -125,7 +95,7 @@ export async function GET() {
 
     // If Supabase is not configured, return mock data
     if (!supabase) {
-      console.log("[API] Supabase not configured, returning mock data")
+      logger.log("[API] Supabase not configured, returning mock data")
       return NextResponse.json({
         data: MOCK_DATA,
         source: "mock",
@@ -188,8 +158,8 @@ export async function GET() {
     const totalPending = totalProperties - totalApproved
 
     // Calculate days until auction
-    const upcomingAuctions = (upcomingAuctionsResult.data as UpcomingSaleWithCounty[] | null ?? []).map(
-      (auction) => {
+    const upcomingAuctions = (upcomingAuctionsResult.data ?? []).map(
+      (auction: any) => {
         const saleDate = new Date(auction.sale_date)
         const today = new Date()
         const diffTime = saleDate.getTime() - today.getTime()
@@ -255,7 +225,7 @@ export async function GET() {
         totalValidated
       ),
       recentActivity: [], // TODO: Implement activity feed from orchestration_sessions
-      countyProgress: (countyProgressResult.data as CountyProgressRow[] | null ?? []).map((county) => ({
+      countyProgress: (countyProgressResult.data ?? []).map((county: any) => ({
         id: county.id,
         county: county.county_name,
         state: county.state_code,
@@ -275,7 +245,7 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    console.error("[API] Dashboard stats error:", error)
+    logger.error("[API] Dashboard stats error:", error)
 
     // Return mock data on error
     return NextResponse.json({
@@ -290,8 +260,8 @@ function calculateBottlenecks(
   totalProperties: number,
   enriched: number,
   validated: number
-): BottleneckItem[] {
-  const bottlenecks: BottleneckItem[] = []
+) {
+  const bottlenecks = []
 
   const needsEnrichment = totalProperties - enriched
   if (needsEnrichment > 0) {
@@ -313,5 +283,5 @@ function calculateBottlenecks(
     })
   }
 
-  return bottlenecks
+  return bottlenecks as any[]
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/auth/api-auth"
 import { validateCsrf, csrfErrorResponse } from "@/lib/auth/csrf"
 import { createServerClient } from "@/lib/supabase/client"
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/batch-jobs/[id]
@@ -42,7 +43,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      console.error("[API Batch Job] Database error:", error)
+      logger.error("[API Batch Job] Database error:", error)
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -54,7 +55,7 @@ export async function GET(
       source: "database",
     })
   } catch (error) {
-    console.error("[API Batch Job] Server error:", error)
+    logger.error("[API Batch Job] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -73,7 +74,7 @@ export async function PATCH(
   // CSRF Protection
   const csrfResult = await validateCsrf(request)
   if (!csrfResult.valid) {
-    console.log("[API Batch Job] CSRF validation failed:", csrfResult.error)
+    logger.log("[API Batch Job] CSRF validation failed:", csrfResult.error)
     return csrfErrorResponse(csrfResult.error)
   }
 
@@ -102,17 +103,7 @@ export async function PATCH(
     }
 
     // Build update object - only include fields that are provided
-    const updateData: {
-      status?: string
-      started_at?: string | null
-      paused_at?: string | null
-      completed_at?: string
-      processed_items?: number
-      failed_items?: number
-      current_batch?: number
-      last_error?: string | null
-      error_count?: number
-    } = {}
+    const updateData: Record<string, any> = {}
 
     if (body.status !== undefined) {
       updateData.status = body.status
@@ -179,7 +170,7 @@ export async function PATCH(
           { status: 404 }
         )
       }
-      console.error("[API Batch Job] Update error:", error)
+      logger.error("[API Batch Job] Update error:", error)
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -199,11 +190,11 @@ export async function PATCH(
         n8nTriggered = n8nResponse.ok
         if (!n8nResponse.ok) {
           n8nError = `n8n returned ${n8nResponse.status}`
-          console.error("[API Batch Job] n8n trigger failed:", n8nError)
+          logger.error("[API Batch Job] n8n trigger failed:", n8nError)
         }
       } catch (err) {
         n8nError = err instanceof Error ? err.message : "Unknown error"
-        console.error("[API Batch Job] n8n trigger error:", n8nError)
+        logger.error("[API Batch Job] n8n trigger error:", n8nError)
       }
     }
 
@@ -215,7 +206,7 @@ export async function PATCH(
       n8n_error: n8nError,
     })
   } catch (error) {
-    console.error("[API Batch Job] Server error:", error)
+    logger.error("[API Batch Job] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -266,7 +257,7 @@ export async function DELETE(
       .eq("id", id)
 
     if (error) {
-      console.error("[API Batch Job] Delete error:", error)
+      logger.error("[API Batch Job] Delete error:", error)
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -277,7 +268,7 @@ export async function DELETE(
       message: "Batch job deleted successfully",
     })
   } catch (error) {
-    console.error("[API Batch Job] Server error:", error)
+    logger.error("[API Batch Job] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

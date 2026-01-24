@@ -12,9 +12,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRealtyService, RealtyComparable } from '@/lib/api/services/realty-service';
-import { logger } from '@/lib/logger';
-
-const apiLogger = logger.withContext('Market API');
 import { getZillowService, ZillowProperty, PriceTrendAnalysis, TaxTrendAnalysis } from '@/lib/api/services/zillow-service';
 import {
   calculateAllMarketMetrics,
@@ -25,6 +22,7 @@ import {
   calculateMarketHistory,
   type MarketHistoryMetrics,
 } from '@/lib/utils/market-history-calculations';
+import { logger } from '@/lib/logger';
 
 // Mark as dynamic to prevent static generation issues
 export const dynamic = 'force-dynamic';
@@ -211,7 +209,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    apiLogger.error('Error', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('[Market API] Error:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -292,7 +290,7 @@ async function getAreaMarketData(
       });
       activeListingsCount = activeResult.data;
     } catch (e) {
-      apiLogger.warn('Failed to get active listings count', { error: e instanceof Error ? e.message : String(e) });
+      logger.warn('[Market API] Failed to get active listings count:', e);
     }
   }
 
@@ -455,7 +453,7 @@ async function getPropertyMarketData(
       taxTrends = zillowService.calculateTaxTrends(property.taxHistory);
     }
   } catch (error) {
-    apiLogger.warn('Failed to get Zillow property', { error: error instanceof Error ? error.message : String(error) });
+    logger.warn('[Market API] Failed to get Zillow property:', error);
   }
 
   // Get nearby comparables from Realty API
@@ -477,7 +475,7 @@ async function getPropertyMarketData(
       });
       nearbyComparables = result.data?.comparables || [];
     } catch (error) {
-      apiLogger.warn('Failed to get Realty comparables', { error: error instanceof Error ? error.message : String(error) });
+      logger.warn('[Market API] Failed to get Realty comparables:', error);
     }
   } else if (searchZip) {
     try {
@@ -489,7 +487,7 @@ async function getPropertyMarketData(
       });
       nearbyComparables = result.data?.comparables || [];
     } catch (error) {
-      apiLogger.warn('Failed to get Realty comparables', { error: error instanceof Error ? error.message : String(error) });
+      logger.warn('[Market API] Failed to get Realty comparables:', error);
     }
   }
 

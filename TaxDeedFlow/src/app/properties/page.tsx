@@ -37,10 +37,10 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
-import { useProfile } from "@/contexts/ProfileContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import { formatDate, DATE_FORMAT_KEY } from "@/lib/utils"
+import { AddToWatchlistDialog } from "@/components/watchlists/AddToWatchlistDialog"
 
 // Property type for API data
 interface Property {
@@ -158,7 +158,6 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
 function PropertiesContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const { activeProfile } = useProfile()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
@@ -181,6 +180,7 @@ function PropertiesContent() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [addToWatchlistProperty, setAddToWatchlistProperty] = useState<Property | null>(null)
 
   // Fetch properties from API
   useEffect(() => {
@@ -913,24 +913,10 @@ function PropertiesContent() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Title */}
         <div className="mb-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Properties</h1>
-              <p className="text-slate-600 mt-1">
-                Browse and manage properties in the pipeline
-              </p>
-            </div>
-            {/* Active Profile Indicator */}
-            {activeProfile && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
-                <Star className="h-4 w-4 text-blue-600" />
-                <div className="text-sm">
-                  <span className="text-slate-600">Active Profile:</span>{" "}
-                  <span className="font-medium text-slate-900">{activeProfile.name}</span>
-                </div>
-              </div>
-            )}
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Properties</h1>
+          <p className="text-slate-600 mt-1">
+            Browse and manage properties in the pipeline
+          </p>
         </div>
 
         {/* Search and Filters Bar */}
@@ -1500,6 +1486,13 @@ function PropertiesContent() {
                             <ExternalLink className="h-3.5 w-3.5" />
                           </button>
                           <button
+                            onClick={() => setAddToWatchlistProperty(property)}
+                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-700 font-medium"
+                            title="Add to watchlist"
+                          >
+                            <BookmarkPlus className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                             onClick={() => setDeleteConfirmId(property.id)}
                             className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium"
                             title="Delete property"
@@ -1792,6 +1785,20 @@ function PropertiesContent() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Add to Watchlist Dialog */}
+        {addToWatchlistProperty && (
+          <AddToWatchlistDialog
+            open={!!addToWatchlistProperty}
+            onOpenChange={(open) => !open && setAddToWatchlistProperty(null)}
+            propertyId={addToWatchlistProperty.id}
+            propertyAddress={`${addToWatchlistProperty.address}, ${addToWatchlistProperty.city}`}
+            onSuccess={() => {
+              // Optional: Show success toast or refresh data
+              setAddToWatchlistProperty(null)
+            }}
+          />
         )}
       </main>
     </div>

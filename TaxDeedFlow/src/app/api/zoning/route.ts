@@ -11,8 +11,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
 
-const apiLogger = logger.withContext('Zoning API');
-
 // Mark as dynamic to prevent static generation issues
 export const dynamic = 'force-dynamic';
 
@@ -76,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     // Check if Supabase is configured
     if (!supabaseUrl || !supabaseKey) {
-      apiLogger.warn('Supabase not configured, returning defaults');
+      logger.warn('[Zoning API] Supabase not configured, returning defaults');
       return NextResponse.json({
         success: true,
         data: getIntelligentDefaults(zoningCode, stateCode),
@@ -98,7 +96,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (error) {
-      apiLogger.error('Database error', { error: error.message });
+      logger.error('[Zoning API] Database error:', error);
       // Fall back to intelligent defaults
       return NextResponse.json({
         success: true,
@@ -154,7 +152,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    apiLogger.error('Error', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('[Zoning API] Error:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 

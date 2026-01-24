@@ -368,6 +368,28 @@ export {
 } from './categories/location';
 
 // ============================================
+// Phase 6E: Risk Category
+// ============================================
+
+export {
+  // Main calculator
+  calculateRiskScore,
+
+  // Individual component calculators
+  calculateFloodZoneScore,
+  calculateEnvironmentalHazardsScore,
+  calculateStructuralRiskScore,
+  calculateTitleIssuesScore,
+  calculateZoningComplianceScore,
+
+  // Utility functions
+  getRiskComponentIds,
+  getRiskComponentConfig,
+  hasCompleteRiskData,
+  getRiskDataCompleteness,
+} from './categories/risk';
+
+// ============================================
 // Phase 6E: Main Calculator
 // ============================================
 

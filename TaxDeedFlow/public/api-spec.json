@@ -1,0 +1,1538 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tax Deed Flow API",
+    "version": "1.0.0",
+    "description": "Public REST API for accessing tax deed property data, county information, and risk analysis. Requires API key authentication.",
+    "contact": {
+      "name": "Tax Deed Flow Support",
+      "url": "https://taxdeedflow.com/developer"
+    },
+    "license": {
+      "name": "Proprietary"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://taxdeedflow.com",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Properties",
+      "description": "Public API endpoints for accessing property data"
+    },
+    {
+      "name": "Counties",
+      "description": "Public API endpoints for accessing county and auction data"
+    },
+    {
+      "name": "Risk Analysis",
+      "description": "Public API endpoints for property risk scoring"
+    },
+    {
+      "name": "API Keys",
+      "description": "Developer endpoints for managing API keys"
+    },
+    {
+      "name": "Usage",
+      "description": "Developer endpoints for viewing API usage statistics"
+    },
+    {
+      "name": "Webhooks",
+      "description": "Developer endpoints for managing webhook subscriptions"
+    }
+  ],
+  "paths": {
+    "/api/v1/properties": {
+      "get": {
+        "tags": ["Properties"],
+        "summary": "List properties",
+        "description": "Retrieve a paginated list of properties with optional filtering and sorting",
+        "operationId": "listProperties",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "county_id",
+            "in": "query",
+            "description": "Filter by county ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "state_code",
+            "in": "query",
+            "description": "Filter by state code (e.g., PA, FL, TX)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            }
+          },
+          {
+            "name": "min_total_due",
+            "in": "query",
+            "description": "Minimum total amount due",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "max_total_due",
+            "in": "query",
+            "description": "Maximum total amount due",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "min_investability_score",
+            "in": "query",
+            "description": "Minimum investability score (0-100)",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "property_type",
+            "in": "query",
+            "description": "Filter by property type",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "has_regrid_data",
+            "in": "query",
+            "description": "Filter properties with Regrid data",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "visual_validation_status",
+            "in": "query",
+            "description": "Filter by visual validation status",
+            "schema": {
+              "type": "string",
+              "enum": ["approved", "rejected", "caution", "pending"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results to return (max 1000)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Field to sort by",
+            "schema": {
+              "type": "string",
+              "enum": ["total_due", "investability_score", "created_at", "updated_at"],
+              "default": "updated_at"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPropertiesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/properties/{id}": {
+      "get": {
+        "tags": ["Properties"],
+        "summary": "Get property details",
+        "description": "Retrieve detailed information about a specific property",
+        "operationId": "getProperty",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Property ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPropertyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/counties": {
+      "get": {
+        "tags": ["Counties"],
+        "summary": "List counties",
+        "description": "Retrieve a paginated list of counties with auction information",
+        "operationId": "listCounties",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "state_code",
+            "in": "query",
+            "description": "Filter by state code (e.g., PA, FL, TX)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            }
+          },
+          {
+            "name": "has_upcoming_sale",
+            "in": "query",
+            "description": "Filter counties with upcoming auctions",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results to return",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCountiesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/counties/{id}": {
+      "get": {
+        "tags": ["Counties"],
+        "summary": "Get county details",
+        "description": "Retrieve detailed information about a specific county including properties and upcoming sales",
+        "operationId": "getCounty",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "County ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCountyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/risk-analysis": {
+      "post": {
+        "tags": ["Risk Analysis"],
+        "summary": "Analyze property risk",
+        "description": "Calculate comprehensive risk score for a property including flood, earthquake, wildfire, and other environmental risks",
+        "operationId": "analyzePropertyRisk",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskAnalysisResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/developer/keys": {
+      "post": {
+        "tags": ["API Keys"],
+        "summary": "Create API key",
+        "description": "Generate a new API key with specified permissions and rate limit tier. The plaintext API key is only shown once.",
+        "operationId": "createApiKey",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API key created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateApiKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "get": {
+        "tags": ["API Keys"],
+        "summary": "List API keys",
+        "description": "Retrieve all API keys for the authenticated user",
+        "operationId": "listApiKeys",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListApiKeysResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/developer/keys/{id}": {
+      "delete": {
+        "tags": ["API Keys"],
+        "summary": "Revoke API key",
+        "description": "Revoke an API key, preventing future use. This action cannot be undone.",
+        "operationId": "revokeApiKey",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "API key ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key revoked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeApiKeyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "API key already revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/developer/usage": {
+      "get": {
+        "tags": ["Usage"],
+        "summary": "Get usage statistics",
+        "description": "Retrieve API usage statistics including request counts, rate limit status, and recent activity",
+        "operationId": "getUsageStats",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetUsageStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/developer/webhooks": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Create webhook subscription",
+        "description": "Create a webhook subscription to receive real-time notifications for specified events",
+        "operationId": "createWebhook",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWebhookRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateWebhookResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List webhook subscriptions",
+        "description": "Retrieve all webhook subscriptions for the authenticated user",
+        "operationId": "listWebhooks",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListWebhooksResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/developer/webhooks/{id}": {
+      "delete": {
+        "tags": ["Webhooks"],
+        "summary": "Delete webhook subscription",
+        "description": "Delete a webhook subscription to stop receiving notifications",
+        "operationId": "deleteWebhook",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook subscription ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteWebhookResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API key for accessing public v1 endpoints. Generate keys at /developer/keys"
+      },
+      "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session",
+        "description": "Session-based authentication for developer management endpoints"
+      }
+    },
+    "schemas": {
+      "Property": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Property unique identifier"
+          },
+          "county_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "County identifier"
+          },
+          "parcel_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property parcel number"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property address"
+          },
+          "total_due": {
+            "type": "number",
+            "nullable": true,
+            "description": "Total amount owed"
+          },
+          "sale_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Scheduled auction date"
+          },
+          "investability_score": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "AI-calculated investability score (0-100)"
+          },
+          "has_regrid_data": {
+            "type": "boolean",
+            "description": "Whether Regrid property data is available"
+          },
+          "has_screenshot": {
+            "type": "boolean",
+            "description": "Whether aerial/street view images are available"
+          },
+          "visual_validation_status": {
+            "type": "string",
+            "enum": ["approved", "rejected", "caution", "pending"],
+            "nullable": true,
+            "description": "Visual validation status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last updated timestamp"
+          }
+        }
+      },
+      "PropertyWithDetails": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Property"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "county": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "county_name": {
+                    "type": "string"
+                  },
+                  "state_code": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "GetPropertiesResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyWithDetails"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Total number of matching properties"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "GetPropertyResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PropertyWithDetails"
+          }
+        }
+      },
+      "County": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "County unique identifier"
+          },
+          "county_name": {
+            "type": "string",
+            "description": "County name"
+          },
+          "state_code": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "Two-letter state code"
+          },
+          "state_name": {
+            "type": "string",
+            "description": "Full state name"
+          },
+          "research_status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Research completion status"
+          },
+          "last_researched_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Last research timestamp"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record last updated timestamp"
+          }
+        }
+      },
+      "CountyWithDetails": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/County"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "property_count": {
+                "type": "integer",
+                "description": "Number of properties in county"
+              },
+              "upcoming_sale": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "sale_date": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Auction date"
+                  },
+                  "sale_type": {
+                    "type": "string",
+                    "description": "Type of sale (e.g., tax deed, tax lien)"
+                  },
+                  "registration_deadline": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true,
+                    "description": "Registration deadline"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "GetCountiesResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountyWithDetails"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Total number of matching counties"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "GetCountyResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CountyWithDetails"
+          }
+        }
+      },
+      "RiskAnalysisRequest": {
+        "type": "object",
+        "required": ["property_id"],
+        "properties": {
+          "property_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Property ID to analyze"
+          }
+        }
+      },
+      "RiskAnalysisResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "property_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "risk_score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Overall risk score (0-100, higher is riskier)"
+              },
+              "risk_level": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Risk level classification"
+              },
+              "factors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "description": "Risk category (e.g., flood, wildfire)"
+                    },
+                    "score": {
+                      "type": "number",
+                      "description": "Risk score for this category"
+                    },
+                    "weight": {
+                      "type": "number",
+                      "description": "Weight of this factor in overall score"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Detailed description of the risk"
+                    }
+                  }
+                }
+              },
+              "recommendations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Risk mitigation recommendations"
+              },
+              "calculated_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Analysis timestamp"
+              }
+            }
+          }
+        }
+      },
+      "CreateApiKeyRequest": {
+        "type": "object",
+        "required": ["name", "permissions"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable name for the API key"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["read", "write", "delete", "admin"]
+            },
+            "minItems": 1,
+            "description": "Array of permissions to grant"
+          },
+          "rate_limit_tier": {
+            "type": "string",
+            "enum": ["free", "pro", "enterprise", "unlimited"],
+            "default": "free",
+            "description": "Rate limit tier for this API key"
+          }
+        }
+      },
+      "CreateApiKeyResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiKeyWithSecret"
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message with warning to save the key"
+          }
+        }
+      },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "API key name"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Granted permissions"
+          },
+          "rate_limit_tier": {
+            "type": "string",
+            "enum": ["free", "pro", "enterprise", "unlimited"],
+            "description": "Rate limit tier"
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Last usage timestamp"
+          },
+          "request_count": {
+            "type": "integer",
+            "description": "Total request count"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Revocation timestamp"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiKeyWithSecret": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiKey"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "api_key": {
+                "type": "string",
+                "description": "Plaintext API key - only shown once on creation"
+              }
+            }
+          }
+        ]
+      },
+      "ListApiKeysResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKey"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Total number of API keys"
+          }
+        }
+      },
+      "RevokeApiKeyResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "GetUsageStatsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiUsageStats"
+          }
+        }
+      },
+      "ApiUsageStats": {
+        "type": "object",
+        "properties": {
+          "total_requests": {
+            "type": "integer",
+            "description": "Total requests across all API keys"
+          },
+          "requests_today": {
+            "type": "integer",
+            "description": "Requests since midnight"
+          },
+          "requests_this_hour": {
+            "type": "integer",
+            "description": "Requests in current hour"
+          },
+          "rate_limit_status": {
+            "$ref": "#/components/schemas/RateLimitStatus"
+          },
+          "top_endpoints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "endpoint": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                },
+                "success_rate": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              }
+            }
+          },
+          "recent_activity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiUsageRecord"
+            }
+          }
+        }
+      },
+      "RateLimitStatus": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Hourly rate limit"
+          },
+          "remaining": {
+            "type": "integer",
+            "description": "Remaining requests in current hour"
+          },
+          "reset": {
+            "type": "integer",
+            "description": "Unix timestamp when rate limit resets"
+          },
+          "tier": {
+            "type": "string",
+            "enum": ["free", "pro", "enterprise", "unlimited"],
+            "description": "Rate limit tier"
+          }
+        }
+      },
+      "ApiUsageRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "api_key_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          },
+          "request_count": {
+            "type": "integer"
+          },
+          "avg_response_time_ms": {
+            "type": "number",
+            "nullable": true
+          },
+          "error_count": {
+            "type": "integer"
+          },
+          "success_count": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hour_bucket": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateWebhookRequest": {
+        "type": "object",
+        "required": ["url", "events"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Webhook endpoint URL (must use http:// or https://)"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "property.created",
+                "property.updated",
+                "property.deleted",
+                "county.created",
+                "county.updated",
+                "auction.created",
+                "auction.updated",
+                "risk_score.calculated"
+              ]
+            },
+            "minItems": 1,
+            "description": "Events to subscribe to"
+          }
+        }
+      },
+      "CreateWebhookResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WebhookSubscription"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "WebhookSubscription": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "api_key_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "secret": {
+            "type": "string",
+            "description": "Secret for webhook signature verification"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether webhook is active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ListWebhooksResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookSubscription"
+            }
+          },
+          "count": {
+            "type": "integer"
+          }
+        }
+      },
+      "DeleteWebhookResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Number of results per page"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Number of results skipped"
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Whether more results are available"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error type"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error details"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - invalid parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": "Bad Request",
+              "message": "Invalid parameter: limit cannot exceed 1000"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - missing or invalid API key",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": "Unauthorized",
+              "message": "Missing or invalid API key"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden - insufficient permissions",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": "Forbidden",
+              "message": "Your API key does not have read permission"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found - resource does not exist",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": "Not Found",
+              "message": "Property not found"
+            }
+          }
+        }
+      },
+      "RateLimitExceeded": {
+        "description": "Rate limit exceeded",
+        "headers": {
+          "X-RateLimit-Limit": {
+            "description": "The rate limit ceiling for this endpoint",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Remaining": {
+            "description": "The number of requests remaining in the current window",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Reset": {
+            "description": "Unix timestamp when the rate limit resets",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": "Rate Limit Exceeded",
+              "message": "Rate limit exceeded. Limit: 1000/hour. Resets at 2024-01-23T15:00:00Z"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": "Server Error",
+              "message": "An unexpected error occurred"
+            }
+          }
+        }
+      }
+    }
+  }
+}

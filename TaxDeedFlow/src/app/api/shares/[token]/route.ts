@@ -20,9 +20,6 @@ import { createServerClient } from "@/lib/supabase/client"
 import type { ShareValidationResult, ReportShare } from "@/types/sharing"
 import { logger } from "@/lib/logger"
 
-// Create a contextual logger for this API route
-const apiLogger = logger.withContext("Share Token API")
-
 /**
  * Validate UUID format
  */
@@ -97,7 +94,7 @@ export async function GET(
     })
 
     if (error) {
-      apiLogger.error("Database error validating token", { error })
+      logger.error("[API Shares] Database error validating token:", error)
       // Return a generic invalid response rather than exposing DB errors
       const response: ShareValidationResult = {
         is_valid: false,
@@ -111,7 +108,7 @@ export async function GET(
     const validationResult = data as ShareValidationResult
 
     if (!validationResult) {
-      apiLogger.error("Invalid response from validate_and_increment_share_view")
+      logger.error("[API Shares] Invalid response from validate_and_increment_share_view")
       const response: ShareValidationResult = {
         is_valid: false,
         report_id: null,
@@ -122,7 +119,7 @@ export async function GET(
 
     // Log access for analytics (only log successful validations)
     if (validationResult.is_valid) {
-      apiLogger.info("Share token validated", {
+      logger.log("[API Shares] Share token validated:", {
         token: token.substring(0, 8) + "...",
         report_id: validationResult.report_id,
         ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
@@ -140,7 +137,7 @@ export async function GET(
       { status: statusCode }
     )
   } catch (error) {
-    apiLogger.error("Server error validating token", { error })
+    logger.error("[API Shares] Server error validating token:", error)
     const response: ShareValidationResult = {
       is_valid: false,
       report_id: null,
@@ -170,7 +167,7 @@ export async function DELETE(
   // CSRF Protection
   const csrfResult = await validateCsrf(request)
   if (!csrfResult.valid) {
-    apiLogger.warn("CSRF validation failed", { error: csrfResult.error })
+    logger.log("[API Shares] CSRF validation failed:", csrfResult.error)
     return csrfErrorResponse(csrfResult.error)
   }
 
@@ -214,7 +211,7 @@ export async function DELETE(
       .single()
 
     if (fetchError || !share) {
-      apiLogger.error("Share not found for deactivation", { token })
+      logger.error("[API Shares] Share not found for deactivation:", token)
       return NextResponse.json(
         {
           error: "Not found",
@@ -250,7 +247,7 @@ export async function DELETE(
 
     if (error) {
       // Log detailed error server-side only - do not expose to client
-      apiLogger.error("Database error deactivating share", {
+      logger.error("[API Shares] Database error deactivating share:", {
         token: token.substring(0, 8) + "...",
         error_code: error.code,
         error_message: error.message,
@@ -276,7 +273,7 @@ export async function DELETE(
       )
     }
 
-    apiLogger.info("Share deactivated", {
+    logger.log("[API Shares] Share deactivated:", {
       token: token.substring(0, 8) + "...",
       deactivated_by: authResult.user?.email,
     })
@@ -287,7 +284,7 @@ export async function DELETE(
       source: "database",
     })
   } catch (error) {
-    apiLogger.error("Server error deactivating share", { error })
+    logger.error("[API Shares] Server error deactivating share:", error)
     return NextResponse.json(
       {
         error: "Server error",
@@ -312,7 +309,7 @@ export async function PATCH(
   // CSRF Protection
   const csrfResult = await validateCsrf(request)
   if (!csrfResult.valid) {
-    apiLogger.warn("CSRF validation failed", { error: csrfResult.error })
+    logger.log("[API Shares] CSRF validation failed:", csrfResult.error)
     return csrfErrorResponse(csrfResult.error)
   }
 
@@ -445,7 +442,7 @@ export async function PATCH(
 
     if (updateError) {
       // Log detailed error server-side only - do not expose to client
-      apiLogger.error("Database error updating share", {
+      logger.error("[API Shares] Database error updating share:", {
         token: token.substring(0, 8) + "...",
         error_code: updateError.code,
         error_message: updateError.message,
@@ -460,7 +457,7 @@ export async function PATCH(
       )
     }
 
-    apiLogger.info("Share updated", {
+    logger.log("[API Shares] Share updated:", {
       token: token.substring(0, 8) + "...",
       updates: Object.keys(updates),
       updated_by: authResult.user?.email,
@@ -472,7 +469,7 @@ export async function PATCH(
       source: "database",
     })
   } catch (error) {
-    apiLogger.error("Server error updating share", { error })
+    logger.error("[API Shares] Server error updating share:", error)
     return NextResponse.json(
       {
         error: "Server error",

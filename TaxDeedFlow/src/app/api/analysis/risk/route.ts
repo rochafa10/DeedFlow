@@ -3,8 +3,6 @@ import { aggregateRiskData, type RiskAggregationInput, type RiskAggregationOptio
 import { createServerClient } from "@/lib/supabase/client"
 import { logger } from "@/lib/logger"
 
-const apiLogger = logger.withContext("Risk Analysis API")
-
 /**
  * POST /api/analysis/risk
  *
@@ -84,7 +82,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (regridError) {
-        apiLogger.error("Error fetching coordinates", { error: regridError.message })
+        logger.error("[Risk API] Error fetching coordinates:", regridError)
         return NextResponse.json(
           { error: "Could not find coordinates for property", details: regridError.message },
           { status: 404 }
@@ -164,7 +162,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    apiLogger.error("Error", { error: error instanceof Error ? error.message : String(error) })
+    logger.error("[Risk API] Error:", error)
 
     const message = error instanceof Error ? error.message : "Unknown error occurred"
 
@@ -256,7 +254,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    apiLogger.error("GET Error", { error: error instanceof Error ? error.message : String(error) })
+    logger.error("[Risk API] GET Error:", error)
 
     const message = error instanceof Error ? error.message : "Unknown error occurred"
 

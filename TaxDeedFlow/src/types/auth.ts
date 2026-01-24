@@ -7,6 +7,9 @@ export interface User {
   role: UserRole
   avatarUrl?: string
   createdAt: Date
+  // Organization membership
+  currentOrganizationId?: string
+  organizationRole?: UserRole
 }
 
 export interface AuthState {

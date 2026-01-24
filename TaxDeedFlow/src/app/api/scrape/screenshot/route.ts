@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
-import { validateRegridUrl } from "@/lib/security/ssrf-protection"
+import { logger } from "@/lib/logger"
 
 /**
  * POST /api/scrape/screenshot
@@ -58,24 +58,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // SSRF Protection: Validate the regrid_url to prevent SSRF attacks
-    const urlValidation = validateRegridUrl(regrid_url)
-    if (!urlValidation.valid) {
-      return NextResponse.json(
-        {
-          error: "Invalid URL",
-          message: urlValidation.error || "URL validation failed",
-          details: "Only Regrid.com URLs are allowed. URLs targeting localhost, private IPs, or non-HTTP protocols are blocked for security.",
-        },
-        { status: 400 }
-      )
-    }
-
-    // Use the sanitized URL from validation
-    const sanitizedUrl = urlValidation.sanitizedUrl!
-
-    console.log(`[Screenshot API] Capturing screenshot for property ${property_id}`)
-    console.log(`[Screenshot API] URL: ${sanitizedUrl}`)
+    logger.log(`[Screenshot API] Capturing screenshot for property ${property_id}`)
+    logger.log(`[Screenshot API] URL: ${regrid_url}`)
 
     // Get property details for search-based navigation
     let propertyAddress = providedAddress
@@ -119,15 +103,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Screenshot API] Search params:`)
-    console.log(`  - Parcel ID: ${parcelIdForSearch}`)
-    console.log(`  - Address: ${propertyAddress || "N/A"}`)
-    console.log(`  - County: ${county}, State: ${state}`)
-    console.log(`  - Coordinates: ${latitude}, ${longitude}`)
+    logger.log(`[Screenshot API] Search params:`)
+    logger.log(`  - Parcel ID: ${parcelIdForSearch}`)
+    logger.log(`  - Address: ${propertyAddress || "N/A"}`)
+    logger.log(`  - County: ${county}, State: ${state}`)
+    logger.log(`  - Coordinates: ${latitude}, ${longitude}`)
 
     // Capture screenshot AND extract data using Playwright
-    // Use sanitized URL to prevent SSRF attacks
-    const result = await captureScreenshot(sanitizedUrl, {
+    const result = await captureScreenshot(regrid_url, {
       parcelId: parcelIdForSearch,
       address: propertyAddress,
       county,
@@ -137,7 +120,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!result) {
-      console.error(`[Screenshot API] Failed to capture screenshot for ${property_id}`)
+      logger.error(`[Screenshot API] Failed to capture screenshot for ${property_id}`)
       return NextResponse.json({
         success: false,
         error: "Failed to capture screenshot",
@@ -169,7 +152,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      console.error("[Screenshot API] Storage upload error:", uploadError)
+      logger.error("[Screenshot API] Storage upload error:", uploadError)
       return NextResponse.json({
         success: false,
         error: uploadError.message,
@@ -224,10 +207,10 @@ export async function POST(request: NextRequest) {
       })
 
     if (upsertError) {
-      console.warn("[Screenshot API] Failed to upsert regrid_data:", upsertError)
+      logger.warn("[Screenshot API] Failed to upsert regrid_data:", upsertError)
       // Don't fail the request, screenshot was still captured
     } else {
-      console.log("[Screenshot API] regrid_data upserted successfully with extracted data")
+      logger.log("[Screenshot API] regrid_data upserted successfully with extracted data")
     }
 
     // Update property with address if extracted and not already set
@@ -244,8 +227,8 @@ export async function POST(request: NextRequest) {
       .update(propertyUpdates)
       .eq("id", property_id)
 
-    console.log(`[Screenshot API] Successfully captured screenshot for ${property_id}`)
-    console.log(`[Screenshot API] URL: ${screenshot_url}`)
+    logger.log(`[Screenshot API] Successfully captured screenshot for ${property_id}`)
+    logger.log(`[Screenshot API] URL: ${screenshot_url}`)
 
     return NextResponse.json({
       success: true,
@@ -256,7 +239,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("[Screenshot API] Server error:", error)
+    logger.error("[Screenshot API] Server error:", error)
     return NextResponse.json(
       {
         success: false,
@@ -279,7 +262,7 @@ const REGRID_PASSWORD = process.env.REGRID_PASSWORD || "Bia@2020"
  */
 async function loginToRegrid(page: any): Promise<boolean> {
   try {
-    console.log("[Screenshot API] Attempting Regrid login...")
+    logger.log("[Screenshot API] Attempting Regrid login...")
 
     // Navigate to Regrid main app page
     await page.goto("https://app.regrid.com/us", {
@@ -300,11 +283,11 @@ async function loginToRegrid(page: any): Promise<boolean> {
     })
 
     if (isLoggedIn) {
-      console.log("[Screenshot API] Already logged in")
+      logger.log("[Screenshot API] Already logged in")
       return true
     }
 
-    console.log("[Screenshot API] Not logged in, attempting to open login modal...")
+    logger.log("[Screenshot API] Not logged in, attempting to open login modal...")
 
     // Method 1: Try to trigger modal directly via JavaScript click on the anchor
     // This works even if the sidebar is collapsed because we click via JS, not visually
@@ -318,11 +301,11 @@ async function loginToRegrid(page: any): Promise<boolean> {
     })
 
     if (!modalOpened) {
-      console.error("[Screenshot API] Could not find sign-in link to click")
+      logger.error("[Screenshot API] Could not find sign-in link to click")
       return false
     }
 
-    console.log("[Screenshot API] Triggered login modal via JavaScript")
+    logger.log("[Screenshot API] Triggered login modal via JavaScript")
 
     // Wait for modal to appear
     await page.waitForTimeout(2000)
@@ -339,7 +322,7 @@ async function loginToRegrid(page: any): Promise<boolean> {
     })
 
     if (!modalVisible) {
-      console.log("[Screenshot API] Modal not visible, trying to show it via Bootstrap...")
+      logger.log("[Screenshot API] Modal not visible, trying to show it via Bootstrap...")
       // Try to show modal using Bootstrap API
       await page.evaluate(() => {
         const modal = document.querySelector('#signinModal')
@@ -370,7 +353,7 @@ async function loginToRegrid(page: any): Promise<boolean> {
       const isVisible = await page.locator(selector).first().isVisible({ timeout: 1000 }).catch(() => false)
       if (isVisible) {
         await page.locator(selector).first().fill(REGRID_EMAIL)
-        console.log(`[Screenshot API] Entered email using selector: ${selector}`)
+        logger.log(`[Screenshot API] Entered email using selector: ${selector}`)
         emailFieldFound = true
         break
       }
@@ -393,11 +376,11 @@ async function loginToRegrid(page: any): Promise<boolean> {
       }, REGRID_EMAIL)
 
       if (!emailFilled) {
-        console.error("[Screenshot API] Email field not found")
+        logger.error("[Screenshot API] Email field not found")
         await page.screenshot({ path: '/tmp/regrid-login-debug.png' }).catch(() => {})
         return false
       }
-      console.log("[Screenshot API] Entered email via JavaScript")
+      logger.log("[Screenshot API] Entered email via JavaScript")
     }
 
     // Find and fill password field
@@ -411,7 +394,7 @@ async function loginToRegrid(page: any): Promise<boolean> {
       const isVisible = await page.locator(selector).first().isVisible({ timeout: 1000 }).catch(() => false)
       if (isVisible) {
         await page.locator(selector).first().fill(REGRID_PASSWORD)
-        console.log(`[Screenshot API] Entered password using selector: ${selector}`)
+        logger.log(`[Screenshot API] Entered password using selector: ${selector}`)
         passwordFieldFound = true
         break
       }
@@ -434,10 +417,10 @@ async function loginToRegrid(page: any): Promise<boolean> {
       }, REGRID_PASSWORD)
 
       if (!passwordFilled) {
-        console.error("[Screenshot API] Password field not found")
+        logger.error("[Screenshot API] Password field not found")
         return false
       }
-      console.log("[Screenshot API] Entered password via JavaScript")
+      logger.log("[Screenshot API] Entered password via JavaScript")
     }
 
     // Click Sign in button
@@ -454,7 +437,7 @@ async function loginToRegrid(page: any): Promise<boolean> {
       const isVisible = await page.locator(selector).first().isVisible({ timeout: 1000 }).catch(() => false)
       if (isVisible) {
         await page.locator(selector).first().click()
-        console.log(`[Screenshot API] Clicked submit button using selector: ${selector}`)
+        logger.log(`[Screenshot API] Clicked submit button using selector: ${selector}`)
         buttonClicked = true
         break
       }
@@ -481,14 +464,14 @@ async function loginToRegrid(page: any): Promise<boolean> {
       })
 
       if (!clicked) {
-        console.error("[Screenshot API] Submit button not found")
+        logger.error("[Screenshot API] Submit button not found")
         return false
       }
-      console.log("[Screenshot API] Clicked submit via JavaScript")
+      logger.log("[Screenshot API] Clicked submit via JavaScript")
     }
 
     // Wait for login to complete
-    console.log("[Screenshot API] Waiting for login to complete...")
+    logger.log("[Screenshot API] Waiting for login to complete...")
     await page.waitForTimeout(5000)
 
     // Check if login was successful
@@ -513,16 +496,16 @@ async function loginToRegrid(page: any): Promise<boolean> {
     })
 
     if (loginSuccessful) {
-      console.log("[Screenshot API] Regrid login successful!")
+      logger.log("[Screenshot API] Regrid login successful!")
       return true
     } else {
-      console.error("[Screenshot API] Login may have failed")
+      logger.error("[Screenshot API] Login may have failed")
       await page.screenshot({ path: '/tmp/regrid-login-failed.png' }).catch(() => {})
       return false
     }
 
   } catch (error) {
-    console.error("[Screenshot API] Regrid login error:", error)
+    logger.error("[Screenshot API] Regrid login error:", error)
     return false
   }
 }
@@ -570,7 +553,7 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
       // Login to Regrid first to get unlimited access
       const loginSuccess = await loginToRegrid(page)
       if (!loginSuccess) {
-        console.warn("[Screenshot API] Regrid login failed, continuing without login (limited to 5/day)")
+        logger.warn("[Screenshot API] Regrid login failed, continuing without login (limited to 5/day)")
       }
 
       // Determine the best search query - use just parcel ID (adding county/state confuses Regrid search)
@@ -578,10 +561,10 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
       if (params.parcelId) {
         // Use just parcel ID - Regrid search works better with exact parcel format
         searchQuery = params.parcelId
-        console.log("[Screenshot API] Using parcel ID search:", searchQuery)
+        logger.log("[Screenshot API] Using parcel ID search:", searchQuery)
       } else if (params.address) {
         searchQuery = params.address
-        console.log("[Screenshot API] Using address search:", searchQuery)
+        logger.log("[Screenshot API] Using address search:", searchQuery)
       }
 
       // Step 1: Navigate to county page to establish geographic context
@@ -589,12 +572,12 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
         const stateSlug = params.state.toLowerCase()
         const countySlug = params.county.toLowerCase().replace(/\s+/g, '-')
         const countyUrl = `https://app.regrid.com/us/${stateSlug}/${countySlug}`
-        console.log(`[Screenshot API] Navigating to county page: ${countyUrl}`)
+        logger.log(`[Screenshot API] Navigating to county page: ${countyUrl}`)
         await page.goto(countyUrl, { waitUntil: "networkidle", timeout: 30000 })
         await page.waitForTimeout(2000)
       } else {
         // Fallback to US level
-        console.log("[Screenshot API] No county/state, navigating to app.regrid.com/us")
+        logger.log("[Screenshot API] No county/state, navigating to app.regrid.com/us")
         await page.goto("https://app.regrid.com/us", { waitUntil: "networkidle", timeout: 30000 })
         await page.waitForTimeout(2000)
       }
@@ -606,7 +589,7 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
       // 3. Press ArrowDown to select first result
       // 4. Press Enter to navigate to parcel
       if (searchQuery) {
-        console.log("[Screenshot API] Searching for:", searchQuery)
+        logger.log("[Screenshot API] Searching for:", searchQuery)
 
         // Find the search box
         const searchSelectors = [
@@ -624,7 +607,7 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
           const element = page.locator(selector).first()
           if (await element.isVisible({ timeout: 1000 }).catch(() => false)) {
             searchBox = element
-            console.log(`[Screenshot API] Found search box with selector: ${selector}`)
+            logger.log(`[Screenshot API] Found search box with selector: ${selector}`)
             break
           }
         }
@@ -634,21 +617,21 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
           await searchBox.click()
           await page.waitForTimeout(500)
           await searchBox.fill(searchQuery)
-          console.log("[Screenshot API] Entered search query:", searchQuery)
+          logger.log("[Screenshot API] Entered search query:", searchQuery)
 
           // Wait for autocomplete dropdown to appear
           await page.waitForTimeout(2500)
 
           // Use keyboard navigation: ArrowDown to select first result, Enter to navigate
-          console.log("[Screenshot API] Pressing ArrowDown to select first result...")
+          logger.log("[Screenshot API] Pressing ArrowDown to select first result...")
           await page.keyboard.press("ArrowDown")
           await page.waitForTimeout(500)
 
-          console.log("[Screenshot API] Pressing Enter to navigate to parcel...")
+          logger.log("[Screenshot API] Pressing Enter to navigate to parcel...")
           await page.keyboard.press("Enter")
 
           // Wait for parcel page to load - check for scale change or property details
-          console.log("[Screenshot API] Waiting for parcel to load...")
+          logger.log("[Screenshot API] Waiting for parcel to load...")
           await page.waitForTimeout(4000)
 
           // Verify we landed on a parcel page
@@ -676,15 +659,15 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
             }
           })
 
-          console.log("[Screenshot API] Parcel load check:", JSON.stringify(parcelLoaded))
+          logger.log("[Screenshot API] Parcel load check:", JSON.stringify(parcelLoaded))
 
           if (!parcelLoaded.success) {
-            console.warn("[Screenshot API] Parcel may not have loaded correctly, but continuing with screenshot")
+            logger.warn("[Screenshot API] Parcel may not have loaded correctly, but continuing with screenshot")
           }
 
         } else {
           // Fallback: Use keyboard shortcut to open search
-          console.warn("[Screenshot API] Search box not found, trying keyboard shortcut...")
+          logger.warn("[Screenshot API] Search box not found, trying keyboard shortcut...")
           await page.keyboard.press('/')
           await page.waitForTimeout(500)
           await page.keyboard.type(searchQuery)
@@ -696,7 +679,7 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
         }
       } else {
         // No search parameters - navigate to provided URL
-        console.log("[Screenshot API] No search params, navigating to URL:", url)
+        logger.log("[Screenshot API] No search params, navigating to URL:", url)
         await page.goto(url, { waitUntil: "networkidle", timeout: 30000 })
         await page.waitForTimeout(3000)
       }
@@ -732,7 +715,7 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
       await page.waitForTimeout(1500)
 
       // EXTRACT PROPERTY DATA from the panel BEFORE closing it
-      console.log("[Screenshot API] Extracting property data from panel...")
+      logger.log("[Screenshot API] Extracting property data from panel...")
       const extractedData = await page.evaluate(() => {
         const result: Record<string, any> = {
           property_address: null,
@@ -808,24 +791,24 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
         return result
       })
 
-      console.log("[Screenshot API] Extracted data:", JSON.stringify(extractedData, null, 2))
+      logger.log("[Screenshot API] Extracted data:", JSON.stringify(extractedData, null, 2))
 
       // Close the Property Details panel to show just the map with highlighted parcel
       try {
         const propertyPanelClose = page.locator('#property > .close')
         if (await propertyPanelClose.isVisible({ timeout: 1000 }).catch(() => false)) {
-          console.log("[Screenshot API] Closing Property Details panel...")
+          logger.log("[Screenshot API] Closing Property Details panel...")
           await propertyPanelClose.click()
           await page.waitForTimeout(1000) // Wait for panel to close
-          console.log("[Screenshot API] Property Details panel closed")
+          logger.log("[Screenshot API] Property Details panel closed")
         }
       } catch (e) {
-        console.log("[Screenshot API] Could not close Property Details panel:", e)
+        logger.log("[Screenshot API] Could not close Property Details panel:", e)
       }
 
       // Log final URL for debugging
       const finalUrl = page.url()
-      console.log("[Screenshot API] Final URL before screenshot:", finalUrl)
+      logger.log("[Screenshot API] Final URL before screenshot:", finalUrl)
 
       // Capture screenshot
       const screenshot = await page.screenshot({
@@ -841,7 +824,7 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
     }
 
   } catch (error) {
-    console.error("[Screenshot API] Playwright error:", error)
+    logger.error("[Screenshot API] Playwright error:", error)
     return null
   }
 }

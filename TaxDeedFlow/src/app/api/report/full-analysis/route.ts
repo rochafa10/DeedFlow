@@ -33,8 +33,7 @@ import {
   type UnifiedReportInput,
   type UnifiedReportOptions,
 } from '@/lib/api/services/unified-report-orchestrator';
-import { validateApiAuth } from '@/lib/auth/api-auth';
-import { createServerClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 /**
  * Request body type
@@ -138,46 +137,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { propertyId, address, coordinates, options } = validation.data;
 
-    // Check authentication (optional - for profile support)
-    const authResult = await validateApiAuth(request);
-    let activeProfile: any = null;
-
-    // If user is authenticated, fetch their active profile
-    if (authResult.authenticated && authResult.user?.id) {
-      try {
-        const supabase = createServerClient();
-        if (supabase) {
-          // Call get_active_profile database function
-          const { data, error } = await supabase
-            .rpc('get_active_profile', { p_user_id: authResult.user.id });
-
-          if (!error && data && data.length > 0) {
-            activeProfile = data[0];
-          }
-        }
-      } catch (error) {
-        // Log but don't fail the request if profile fetch fails
-        console.warn('[Full Analysis API] Failed to fetch active profile:', error);
-      }
-    }
-
     // Build input for orchestrator
     const input: UnifiedReportInput = {};
     if (propertyId) input.propertyId = propertyId;
     if (address) input.address = address;
     if (coordinates) input.coordinates = coordinates;
 
-    // Merge options with profile information
-    const enhancedOptions: UnifiedReportOptions = {
-      ...options,
-      profileId: activeProfile?.id,
-      profileName: activeProfile?.name,
-      scoringWeights: activeProfile?.scoring_weights,
-      riskTolerance: activeProfile?.risk_tolerance,
-    };
-
     // Generate the full report
-    const result = await generateFullReport(input, enhancedOptions);
+    const result = await generateFullReport(input, options || {});
 
     // Return appropriate response based on success
     if (result.success) {
@@ -186,7 +153,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(result, { status: 422 });
     }
   } catch (error) {
-    console.error('[Full Analysis API] Unhandled error:', error);
+    logger.error('[Full Analysis API] Unhandled error:', error);
 
     return NextResponse.json(
       {

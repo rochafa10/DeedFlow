@@ -35,13 +35,22 @@ export {
   getLocationDataCompleteness,
 } from './location';
 
-// Risk Category (Placeholder - Phase 6C)
-// export { calculateRiskScore, riskComponents } from './risk';
-
-// Financial Category (Implemented)
+// Risk Category (Implemented)
 export {
-  calculateFinancialScore,
-} from './financial';
+  calculateRiskScore,
+  calculateFloodZoneScore,
+  calculateEnvironmentalHazardsScore,
+  calculateStructuralRiskScore,
+  calculateTitleIssuesScore,
+  calculateZoningComplianceScore,
+  getRiskComponentIds,
+  getRiskComponentConfig,
+  hasCompleteRiskData,
+  getRiskDataCompleteness,
+} from './risk';
+
+// Financial Category (Placeholder - Phase 6D)
+// export { calculateFinancialScore, financialComponents } from './financial';
 
 // Market Category (Placeholder - Phase 6E)
 // export { calculateMarketScore, marketComponents } from './market';

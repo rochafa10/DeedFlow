@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/auth/api-auth"
 import { createServerClient } from "@/lib/supabase/client"
-import { logger } from "@/lib/logger"
-
-const apiLogger = logger.withContext("Property API")
 
 /**
  * GET /api/properties/[id]
@@ -53,7 +50,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      apiLogger.error("Database error", { error: propertyError.message })
+      console.error("[API Property] Database error:", propertyError)
       return NextResponse.json(
         { error: "Database error", message: propertyError.message },
         { status: 500 }
@@ -82,9 +79,26 @@ export async function GET(
       validationData = validation
     }
 
-    // Note: property_notes and watchlist tables don't exist yet
-    // TODO: Create these tables if user notes feature is needed
-    const propertyNotes: Array<{ id: string; note_type: string; note: string; created_at: string; user_id: string }> = []
+    // Fetch notes if user is authenticated
+    let propertyNotes: Array<{ id: string; note_type: string; note_text: string; created_at: string; user_id: string }> = []
+
+    // Try to get authenticated user (optional - won't fail if not authenticated)
+    const authResult = await validateApiAuth(request)
+    if (authResult.authenticated && authResult.user) {
+      const userId = authResult.user.id
+
+      // Fetch user's notes for this property
+      const { data: notes, error: notesError } = await supabase
+        .from("property_notes")
+        .select("*")
+        .eq("property_id", propertyId)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (!notesError && notes) {
+        propertyNotes = notes
+      }
+    }
 
     // Transform to frontend-friendly format
     const transformedProperty = {
@@ -159,10 +173,10 @@ export async function GET(
       ] : [],
 
       // Notes
-      propertyNotes: (propertyNotes || []).map((note: { id: string; note_type: string; note: string; created_at: string; user_id: string }) => ({
+      propertyNotes: (propertyNotes || []).map((note: { id: string; note_type: string; note_text: string; created_at: string; user_id: string }) => ({
         id: note.id,
         type: note.note_type || "general",
-        text: note.note,
+        text: note.note_text,
         createdAt: note.created_at,
         createdBy: note.user_id,
       })),
@@ -189,7 +203,7 @@ export async function GET(
       source: "database",
     })
   } catch (error) {
-    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
+    console.error("[API Property] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -236,7 +250,7 @@ export async function DELETE(
       .eq("id", propertyId)
 
     if (error) {
-      apiLogger.error("Delete error", { error: error.message })
+      console.error("[API Property] Delete error:", error)
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -248,7 +262,7 @@ export async function DELETE(
       message: "Property deleted successfully",
     })
   } catch (error) {
-    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
+    console.error("[API Property] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

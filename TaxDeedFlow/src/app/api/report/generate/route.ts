@@ -11,9 +11,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
-
-const apiLogger = logger.withContext('Report Generation API');
 
 // Service imports
 import { getGeoapifyService } from '@/lib/api/services/geoapify-service';
@@ -26,6 +23,7 @@ import { getNASAFIRMSService } from '@/lib/api/services/nasa-firms-service';
 import { getEPAService } from '@/lib/api/services/epa-service';
 import { getOpenAIService } from '@/lib/api/services/openai-service';
 import { getCensusService } from '@/lib/api/services/census-service';
+import { logger } from '@/lib/logger';
 
 interface ReportRequest {
   address: string;
@@ -233,7 +231,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: reportData,
     });
   } catch (error) {
-    apiLogger.error('Report generation error', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('Report generation error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate report' },
       { status: 500 }

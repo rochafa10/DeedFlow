@@ -307,6 +307,11 @@ Check for new property lists posted
 - **QUICK-START.md** - 15-minute setup ⭐
 - **AGENT-USAGE-GUIDE.md** - Commands & examples
 
+### API Reference
+- **[API Documentation](./docs/api/README.md)** - Complete API reference for all 29 endpoints
+- Comprehensive guides for authentication, properties, auctions, reports, and integrations
+- Request/response examples and data models
+
 ### Technical Details
 - **AGENT-SYSTEM-PROMPT.md** - How the agent works
 - **CLAUDE-DESKTOP-SETUP.md** - MCP configuration

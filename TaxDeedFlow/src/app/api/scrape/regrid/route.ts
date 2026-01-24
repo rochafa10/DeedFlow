@@ -1,50 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
-import { z } from "zod"
-
-// ============================================
-// Request Validation Schemas
-// ============================================
-
-/**
- * Sanitizes a string to prevent SSRF and injection attacks
- * Removes dangerous characters while preserving valid input
- */
-function sanitizeString(value: string): string {
-  return value
-    .replace(/[<>]/g, "") // Remove HTML tags
-    .replace(/javascript:/gi, "") // Remove javascript: protocol
-    .replace(/data:/gi, "") // Remove data: protocol
-    .replace(/vbscript:/gi, "") // Remove vbscript: protocol
-    .replace(/file:/gi, "") // Remove file: protocol
-    .replace(/https?:\/\//gi, "") // Remove http(s):// URLs
-    .trim()
-}
-
-const RegridScraperRequestSchema = z.object({
-  property_id: z.string().uuid({
-    message: "property_id must be a valid UUID"
-  }),
-  parcel_id: z.string()
-    .min(1, "parcel_id is required")
-    .max(100, "parcel_id must be less than 100 characters")
-    .transform(sanitizeString),
-  address: z.string()
-    .max(500, "address must be less than 500 characters")
-    .transform(sanitizeString)
-    .optional(),
-  county: z.string()
-    .min(1, "county is required")
-    .max(100, "county must be less than 100 characters")
-    .transform(sanitizeString),
-  state: z.string()
-    .length(2, "state must be a 2-letter state code")
-    .regex(/^[A-Z]{2}$/, "state must be uppercase 2-letter code (e.g., PA, FL)")
-    .transform(val => val.toUpperCase()),
-  job_id: z.string().uuid({
-    message: "job_id must be a valid UUID"
-  }).optional(),
-})
+import { logger } from "@/lib/logger"
 
 /**
  * POST /api/scrape/regrid
@@ -54,12 +10,12 @@ const RegridScraperRequestSchema = z.object({
  *
  * Request body:
  * {
- *   property_id: string (UUID),
+ *   property_id: string,
  *   parcel_id: string,
  *   address?: string,
  *   county: string,
- *   state: string (2-letter code),
- *   job_id?: string (UUID)
+ *   state: string,
+ *   job_id?: string  // batch job ID for progress tracking
  * }
  */
 export async function POST(request: NextRequest) {
@@ -88,29 +44,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
+    const { property_id, parcel_id, address, county, state, job_id } = body
 
-    // Validate request using Zod schema
-    const validationResult = RegridScraperRequestSchema.safeParse(body)
-
-    if (!validationResult.success) {
+    if (!property_id || !parcel_id) {
       return NextResponse.json(
-        {
-          error: "Validation error",
-          details: validationResult.error.errors,
-        },
+        { error: "Validation error", message: "property_id and parcel_id are required" },
         { status: 400 }
       )
     }
 
-    const { property_id, parcel_id, address, county, state, job_id } = validationResult.data
-
-    console.log(`[Regrid Scraper] Processing property ${parcel_id} in ${county}, ${state}`)
+    logger.log(`[Regrid Scraper] Processing property ${parcel_id} in ${county}, ${state}`)
 
     // Scrape Regrid data using their public search
     const regridData = await scrapeRegridData(parcel_id, address, county, state)
 
     if (!regridData.success || !regridData.data) {
-      console.error(`[Regrid Scraper] Failed to scrape ${parcel_id}:`, regridData.error)
+      logger.error(`[Regrid Scraper] Failed to scrape ${parcel_id}:`, regridData.error)
       return NextResponse.json({
         success: false,
         error: regridData.error || "No data returned",
@@ -167,7 +116,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (upsertError) {
-      console.error("[Regrid Scraper] Database error:", upsertError)
+      logger.error("[Regrid Scraper] Database error:", upsertError)
       return NextResponse.json({
         success: false,
         error: upsertError.message,
@@ -182,7 +131,7 @@ export async function POST(request: NextRequest) {
       .update({ has_regrid_data: true })
       .eq("id", property_id)
 
-    console.log(`[Regrid Scraper] Successfully processed ${parcel_id}`)
+    logger.log(`[Regrid Scraper] Successfully processed ${parcel_id}`)
 
     return NextResponse.json({
       success: true,
@@ -193,7 +142,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("[Regrid Scraper] Server error:", error)
+    logger.error("[Regrid Scraper] Server error:", error)
     return NextResponse.json(
       {
         success: false,

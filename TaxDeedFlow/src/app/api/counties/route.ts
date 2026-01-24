@@ -1,14 +1,21 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
-import { logger } from "@/lib/logger"
-
-const apiLogger = logger.withContext("Counties API")
 
 /**
  * GET /api/counties
  * Returns all counties with property counts, progress, and next auction dates
+ *
+ * Note: Counties are PUBLIC REFERENCE DATA (government jurisdictions).
+ * Organization scoping happens at the watchlist/deal/assignment level.
+ * This endpoint is accessible to all users for browsing auction jurisdictions.
+ *
+ * Query parameters:
+ * - limit: number (default: all, max: 500)
+ * - offset: number (default: 0)
+ * - state_code: string (filter by state abbreviation, e.g., 'PA', 'FL')
+ * - has_properties: boolean (only show counties with properties)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient()
 
@@ -19,8 +26,15 @@ export async function GET() {
       )
     }
 
-    // Get all counties with property counts and upcoming sales
-    const { data: counties, error: countiesError } = await supabase
+    // Parse query parameters
+    const { searchParams } = new URL(request.url)
+    const limit = searchParams.get("limit") ? Math.min(Number(searchParams.get("limit")), 500) : undefined
+    const offset = Number(searchParams.get("offset")) || 0
+    const stateCode = searchParams.get("state_code")
+    const hasProperties = searchParams.get("has_properties") === "true"
+
+    // Build query for counties
+    let query = supabase
       .from("counties")
       .select(`
         id,
@@ -32,8 +46,21 @@ export async function GET() {
       `)
       .order("county_name", { ascending: true })
 
+    // Apply filters
+    if (stateCode) {
+      query = query.eq("state_code", stateCode.toUpperCase())
+    }
+
+    // Apply pagination if limit specified
+    if (limit !== undefined) {
+      query = query.range(offset, offset + limit - 1)
+    }
+
+    // Get all counties with property counts and upcoming sales
+    const { data: counties, error: countiesError } = await query
+
     if (countiesError) {
-      apiLogger.error("Database error", { error: countiesError.message })
+      console.error("[API Counties] Database error:", countiesError)
       return NextResponse.json(
         { error: "Database error", message: countiesError.message },
         { status: 500 }
@@ -46,7 +73,7 @@ export async function GET() {
       .select("county_id")
 
     if (propCountError) {
-      apiLogger.error("Property count error", { error: propCountError.message })
+      console.error("[API Counties] Property count error:", propCountError)
     }
 
     // Get upcoming sales per county
@@ -61,7 +88,7 @@ export async function GET() {
       .order("sale_date", { ascending: true })
 
     if (salesError) {
-      apiLogger.error("Sales error", { error: salesError.message })
+      console.error("[API Counties] Sales error:", salesError)
     }
 
     // Get documents count per county
@@ -70,7 +97,7 @@ export async function GET() {
       .select("county_id")
 
     if (docsError) {
-      apiLogger.error("Documents error", { error: docsError.message })
+      console.error("[API Counties] Documents error:", docsError)
     }
 
     // Get regrid and validation counts per county for progress calculation
@@ -79,7 +106,7 @@ export async function GET() {
       .select("county_id, has_regrid_data, visual_validation_status")
 
     if (progressError) {
-      apiLogger.error("Progress error", { error: progressError.message })
+      console.error("[API Counties] Progress error:", progressError)
     }
 
     // Count properties per county
@@ -126,7 +153,7 @@ export async function GET() {
     }
 
     // Transform data to frontend format
-    const transformedCounties = (counties || []).map((county) => {
+    let transformedCounties = (counties || []).map((county) => {
       const propertyCount = propertyCountMap.get(county.id) || 0
       const documentCount = documentCountMap.get(county.id) || 0
       const nextSale = nextSaleMap.get(county.id)
@@ -172,13 +199,18 @@ export async function GET() {
       }
     })
 
+    // Apply has_properties filter if requested
+    if (hasProperties) {
+      transformedCounties = transformedCounties.filter(county => county.propertyCount > 0)
+    }
+
     return NextResponse.json({
       data: transformedCounties,
       total: transformedCounties.length,
       source: "database",
     })
   } catch (error) {
-    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
+    console.error("[API Counties] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

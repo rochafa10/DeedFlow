@@ -13,11 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { logger } from '@/lib/logger';
-
-const apiLogger = logger.withContext('Financial Analysis API');
 
 import {
   analyzePropertyFinancials,
@@ -26,15 +22,7 @@ import {
   type FinancialAnalysis,
 } from '@/lib/analysis/financial';
 import type { RehabScope } from '@/types/costs';
-
-// ============================================
-// Supabase Client
-// ============================================
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createServerClient } from '@/lib/supabase/client';
 
 // ============================================
 // Request Validation Schemas
@@ -102,6 +90,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { propertyId, purchasePrice, riskScore, locationScore, marketScore, options } =
       validationResult.data;
+
+    const supabase = createServerClient();
+
+    // Demo mode: return error if Supabase not configured
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local' },
+        { status: 503 }
+      );
+    }
 
     // Fetch property data from Supabase
     const { data: property, error: propertyError } = await supabase
@@ -214,7 +212,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
 
     if (upsertError) {
-      apiLogger.error('Error storing analysis', { error: upsertError.message });
+      console.error('Error storing analysis:', upsertError);
       // Continue - don't fail the request if storage fails
     }
 
@@ -224,7 +222,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       analysis,
     });
   } catch (error) {
-    apiLogger.error('Financial analysis error', { error: error instanceof Error ? error.message : String(error) });
+    console.error('Financial analysis error:', error);
     return NextResponse.json(
       {
         error: 'Analysis failed',
@@ -461,6 +459,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid propertyId format' }, { status: 400 });
     }
 
+    const supabase = createServerClient();
+
+    // Demo mode: return error if Supabase not configured
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local' },
+        { status: 503 }
+      );
+    }
+
     // Fetch cached analysis
     const { data: cachedAnalysis, error } = await supabase
       .from('property_financial_analysis')
@@ -504,7 +512,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       analyzedAt: cachedAnalysis.analyzed_at,
     });
   } catch (error) {
-    apiLogger.error('Error retrieving analysis', { error: error instanceof Error ? error.message : String(error) });
+    console.error('Error retrieving analysis:', error);
     return NextResponse.json(
       {
         error: 'Failed to retrieve analysis',

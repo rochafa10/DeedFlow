@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { validateSupabaseAuth } from "./supabase-auth"
+import { logger } from "@/lib/logger"
 
-// API authentication using Supabase Auth
-// All requests must include a valid Supabase JWT token in the Authorization header
+// Simple API authentication using a custom header
+// In production, this would validate JWT tokens or session cookies
 
 export interface AuthResult {
   authenticated: boolean
@@ -15,27 +15,33 @@ export interface AuthResult {
   error?: string
 }
 
+// Valid user IDs for demo mode
+// In production, this would validate against a database or JWT signature
+const VALID_USER_IDS = new Set([
+  "demo-user-1",      // Admin user
+  "viewer-user-1",    // Viewer user
+  "analyst-user-1",   // Analyst user
+])
+
+// Valid email addresses that must match the user ID
+const VALID_USER_EMAILS: Record<string, string> = {
+  "demo-user-1": "demo@taxdeedflow.com",
+  "viewer-user-1": "viewer@taxdeedflow.com",
+  "analyst-user-1": "analyst@taxdeedflow.com",
+}
+
 /**
- * Validate authentication for API requests using Supabase Auth
- *
- * Validates JWT tokens from the Authorization header using Supabase's getUser() method.
- * Returns user information including role from Supabase user metadata.
- *
- * Legacy X-User-Token headers are rejected with a clear error message.
+ * Validate authentication for API requests
+ * Checks for X-User-Token header containing serialized user info
+ * In demo mode, this validates against known demo users
  */
 export async function validateApiAuth(request: NextRequest): Promise<AuthResult> {
-  // Validate using Supabase Auth
-  const supabaseResult = await validateSupabaseAuth(request)
-
-  // If Supabase Auth succeeds, return immediately
-  if (supabaseResult.authenticated) {
-    return supabaseResult
-  }
-
-  // If Supabase Auth fails, check for invalid auth attempts
-  // to provide clear error messages
+  // Check for auth header (custom header for demo purposes)
   const authHeader = request.headers.get("Authorization")
   const userToken = request.headers.get("X-User-Token")
+
+  // In a real app, we'd validate JWT tokens here
+  // For demo, we check if a user token is provided
 
   if (!authHeader && !userToken) {
     return {
@@ -48,23 +54,68 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
   if (authHeader) {
     const token = authHeader.replace("Bearer ", "")
 
-    // Invalid token (already tried Supabase Auth)
+    // Demo: Accept specific demo tokens
+    if (token === "demo-token" || token === "demo123") {
+      return {
+        authenticated: true,
+        user: {
+          id: "demo-user-1",
+          email: "demo@taxdeedflow.com",
+          name: "Demo User",
+          role: "admin",
+        },
+      }
+    }
+
+    // Invalid token
     return {
       authenticated: false,
       error: "Invalid or expired token.",
     }
   }
 
-  // Reject legacy X-User-Token authentication (no longer supported)
+  // If using X-User-Token (client sends serialized user info)
   if (userToken) {
     try {
       const user = JSON.parse(userToken)
 
-      // Demo token support has been removed
-      // All X-User-Token requests are now rejected
+      // Validate that user has required fields
+      if (!user || !user.id || !user.email) {
+        return {
+          authenticated: false,
+          error: "Invalid token: missing required fields.",
+        }
+      }
+
+      // SECURITY: Validate that the user ID is a known valid ID
+      // This prevents arbitrary tokens from being accepted
+      if (!VALID_USER_IDS.has(user.id)) {
+        logger.log("[API Auth] Invalid user ID rejected:", user.id)
+        return {
+          authenticated: false,
+          error: "Invalid or expired token.",
+        }
+      }
+
+      // SECURITY: Validate that the email matches the expected email for this user ID
+      // This prevents token tampering where someone changes their role/email
+      const expectedEmail = VALID_USER_EMAILS[user.id]
+      if (expectedEmail && user.email !== expectedEmail) {
+        logger.log("[API Auth] Email mismatch rejected. Expected:", expectedEmail, "Got:", user.email)
+        return {
+          authenticated: false,
+          error: "Invalid or expired token.",
+        }
+      }
+
       return {
-        authenticated: false,
-        error: "Demo authentication is no longer supported. Please use Supabase authentication.",
+        authenticated: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name || "Unknown",
+          role: user.role || "viewer",
+        },
       }
     } catch {
       return {

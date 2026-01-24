@@ -2,9 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react"
 import { User, AuthState, LoginCredentials } from "@/types/auth"
-import { logger } from "@/lib/logger"
-
-const authLogger = logger.withContext('Auth Context')
+import { Organization } from "@/types/team"
 
 // Session timeout configuration (in milliseconds)
 // Default: 30 minutes of inactivity
@@ -15,6 +13,30 @@ const ACTIVITY_EVENTS = ["mousedown", "keydown", "scroll", "touchstart", "click"
 // Storage keys
 const USER_STORAGE_KEY = "taxdeedflow_user"
 const LAST_ACTIVITY_KEY = "taxdeedflow_last_activity"
+const ORGANIZATION_STORAGE_KEY = "taxdeedflow_organization"
+
+// Demo organization for development
+const DEMO_ORGANIZATION: Organization = {
+  id: "demo-org-1",
+  name: "Demo Investment Firm",
+  slug: "demo-firm",
+  planType: "enterprise",
+  settings: {
+    features: {
+      shared_watchlists: true,
+      deal_pipeline: true,
+      audit_log: true,
+      advanced_analytics: true,
+    },
+    limits: {
+      max_members: 50,
+      max_watchlists: 100,
+      max_properties_per_watchlist: 500,
+    },
+  },
+  createdAt: new Date("2024-01-01"),
+  updatedAt: new Date(),
+}
 
 // Demo user for development (admin)
 const DEMO_USER: User = {
@@ -23,6 +45,8 @@ const DEMO_USER: User = {
   name: "Demo User",
   role: "admin",
   createdAt: new Date(),
+  currentOrganizationId: DEMO_ORGANIZATION.id,
+  organizationRole: "admin",
 }
 
 // Viewer user for testing role-based access control
@@ -32,6 +56,8 @@ const VIEWER_USER: User = {
   name: "Viewer User",
   role: "viewer",
   createdAt: new Date(),
+  currentOrganizationId: DEMO_ORGANIZATION.id,
+  organizationRole: "viewer",
 }
 
 // Analyst user for testing role-based access control
@@ -41,6 +67,8 @@ const ANALYST_USER: User = {
   name: "Analyst User",
   role: "analyst",
   createdAt: new Date(),
+  currentOrganizationId: DEMO_ORGANIZATION.id,
+  organizationRole: "analyst",
 }
 
 // Demo credentials (for development only)
@@ -67,6 +95,9 @@ interface AuthContextType extends AuthState {
   refreshUser: () => Promise<void>
   sessionTimeoutMs: number
   lastActivity: number | null
+  currentOrganization: Organization | null
+  switchOrganization: (organizationId: string) => Promise<void>
+  refreshOrganization: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -75,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [lastActivity, setLastActivity] = useState<number | null>(null)
+  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null)
 
   // Update last activity time
   const updateLastActivity = useCallback(() => {
@@ -97,10 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeSinceActivity = now - lastActivityTime
 
     if (timeSinceActivity > SESSION_TIMEOUT_MS) {
-      authLogger.debug("Session expired due to inactivity", {
-        timeSinceActivity,
-        timeoutMs: SESSION_TIMEOUT_MS
-      })
+      console.log("[Auth] Session expired due to inactivity")
       return true
     }
 
@@ -110,9 +139,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Handle session expiry
   const handleSessionExpiry = useCallback(async () => {
     setUser(null)
+    setCurrentOrganization(null)
     localStorage.removeItem(USER_STORAGE_KEY)
     localStorage.removeItem(LAST_ACTIVITY_KEY)
-    authLogger.debug("Session expired - user logged out")
+    localStorage.removeItem(ORGANIZATION_STORAGE_KEY)
+    console.log("[Auth] Session expired - user logged out")
   }, [])
 
   // Check for existing session on mount
@@ -134,6 +165,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             createdAt: new Date(parsedUser.createdAt),
           })
 
+          // Restore organization data if available
+          const storedOrganization = localStorage.getItem(ORGANIZATION_STORAGE_KEY)
+          if (storedOrganization) {
+            const parsedOrganization = JSON.parse(storedOrganization)
+            setCurrentOrganization({
+              ...parsedOrganization,
+              createdAt: new Date(parsedOrganization.createdAt),
+              updatedAt: new Date(parsedOrganization.updatedAt),
+              deletedAt: parsedOrganization.deletedAt ? new Date(parsedOrganization.deletedAt) : undefined,
+            })
+          }
+
           // Restore last activity
           const storedLastActivity = localStorage.getItem(LAST_ACTIVITY_KEY)
           if (storedLastActivity) {
@@ -144,9 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        authLogger.error("Error checking session", {
-          error: error instanceof Error ? error.message : String(error)
-        })
+        console.error("Error checking session:", error)
         localStorage.removeItem(USER_STORAGE_KEY)
         localStorage.removeItem(LAST_ACTIVITY_KEY)
       } finally {
@@ -202,21 +243,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event.key === USER_STORAGE_KEY) {
         if (event.newValue === null) {
           // User was logged out in another tab
-          authLogger.debug("Detected logout in another tab")
+          console.log("[Auth] Detected logout in another tab")
           setUser(null)
+          setCurrentOrganization(null)
         } else if (event.newValue) {
           // User was logged in from another tab
           try {
             const parsedUser = JSON.parse(event.newValue)
-            authLogger.debug("Detected login in another tab")
+            console.log("[Auth] Detected login in another tab")
             setUser({
               ...parsedUser,
               createdAt: new Date(parsedUser.createdAt),
             })
           } catch (error) {
-            authLogger.error("Error parsing user from storage event", {
-              error: error instanceof Error ? error.message : String(error)
+            console.error("[Auth] Error parsing user from storage event:", error)
+          }
+        }
+      }
+
+      // Sync organization changes across tabs
+      if (event.key === ORGANIZATION_STORAGE_KEY) {
+        if (event.newValue === null) {
+          setCurrentOrganization(null)
+        } else if (event.newValue) {
+          try {
+            const parsedOrganization = JSON.parse(event.newValue)
+            console.log("[Auth] Detected organization change in another tab")
+            setCurrentOrganization({
+              ...parsedOrganization,
+              createdAt: new Date(parsedOrganization.createdAt),
+              updatedAt: new Date(parsedOrganization.updatedAt),
+              deletedAt: parsedOrganization.deletedAt ? new Date(parsedOrganization.deletedAt) : undefined,
             })
+          } catch (error) {
+            console.error("[Auth] Error parsing organization from storage event:", error)
           }
         }
       }
@@ -266,19 +326,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (userToLogin) {
         setUser(userToLogin)
+        setCurrentOrganization(DEMO_ORGANIZATION)
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userToLogin))
+        localStorage.setItem(ORGANIZATION_STORAGE_KEY, JSON.stringify(DEMO_ORGANIZATION))
         updateLastActivity()
-        authLogger.info("Login successful", { email: credentials.email })
+        console.log("[Auth] Login successful for:", credentials.email)
         return { success: true }
       }
 
       // Invalid credentials - show error
-      authLogger.warn("Login failed", { email: credentials.email })
+      console.log("[Auth] Login failed for:", credentials.email)
       return { success: false, error: "Invalid email or password. Please use the demo credentials." }
     } catch (error) {
-      authLogger.error("Login error", {
-        error: error instanceof Error ? error.message : String(error)
-      })
+      console.error("[Auth] Login error:", error)
       return { success: false, error: "An error occurred during login" }
     } finally {
       setIsLoading(false)
@@ -291,14 +351,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 200))
       setUser(null)
+      setCurrentOrganization(null)
       setLastActivity(null)
       localStorage.removeItem(USER_STORAGE_KEY)
       localStorage.removeItem(LAST_ACTIVITY_KEY)
-      authLogger.info("Logout successful")
+      localStorage.removeItem(ORGANIZATION_STORAGE_KEY)
+      console.log("[Auth] Logout successful")
     } catch (error) {
-      authLogger.error("Logout error", {
-        error: error instanceof Error ? error.message : String(error)
-      })
+      console.error("[Auth] Logout error:", error)
     } finally {
       setIsLoading(false)
     }
@@ -322,6 +382,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const switchOrganization = async (organizationId: string) => {
+    // First check if session has expired
+    if (checkSessionExpiry()) {
+      await handleSessionExpiry()
+      return
+    }
+
+    if (!user) {
+      console.error("[Auth] Cannot switch organization: No user logged in")
+      return
+    }
+
+    try {
+      // In production, this would:
+      // 1. Verify user has access to this organization via API
+      // 2. Fetch organization details from server
+      // 3. Update user's currentOrganizationId and organizationRole
+
+      // For demo mode, we only support the demo organization
+      if (organizationId === DEMO_ORGANIZATION.id) {
+        // Update user with new organization context
+        const updatedUser = {
+          ...user,
+          currentOrganizationId: organizationId,
+          organizationRole: user.role, // In demo mode, org role matches user role
+        }
+
+        setUser(updatedUser)
+        setCurrentOrganization(DEMO_ORGANIZATION)
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser))
+        localStorage.setItem(ORGANIZATION_STORAGE_KEY, JSON.stringify(DEMO_ORGANIZATION))
+        console.log("[Auth] Switched to organization:", organizationId)
+      } else {
+        console.error("[Auth] Organization not found:", organizationId)
+      }
+    } catch (error) {
+      console.error("[Auth] Error switching organization:", error)
+    }
+  }
+
+  const refreshOrganization = async () => {
+    // First check if session has expired
+    if (checkSessionExpiry()) {
+      await handleSessionExpiry()
+      return
+    }
+
+    if (!user?.currentOrganizationId) {
+      setCurrentOrganization(null)
+      return
+    }
+
+    // In production, this would fetch the organization from the server
+    const storedOrganization = localStorage.getItem(ORGANIZATION_STORAGE_KEY)
+    if (storedOrganization) {
+      const parsedOrganization = JSON.parse(storedOrganization)
+      setCurrentOrganization({
+        ...parsedOrganization,
+        createdAt: new Date(parsedOrganization.createdAt),
+        updatedAt: new Date(parsedOrganization.updatedAt),
+        deletedAt: parsedOrganization.deletedAt ? new Date(parsedOrganization.deletedAt) : undefined,
+      })
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -333,6 +458,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUser,
         sessionTimeoutMs: SESSION_TIMEOUT_MS,
         lastActivity,
+        currentOrganization,
+        switchOrganization,
+        refreshOrganization,
       }}
     >
       {children}

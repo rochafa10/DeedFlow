@@ -1,25 +1,25 @@
 {
   "active": true,
-  "spec": "021-smart-deal-alerts",
+  "spec": "034-team-firm-collaboration",
   "state": "building",
   "subtasks": {
-    "completed": 18,
-    "total": 19,
+    "completed": 28,
+    "total": 29,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Integration Testing",
+    "current": "Integration & Testing",
     "id": null,
-    "total": 1
+    "total": 4
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 680,
-    "started_at": "2026-01-22T19:04:23.233189"
+    "number": 880,
+    "started_at": "2026-01-23T08:20:15.815086"
   },
-  "last_update": "2026-01-22T23:45:00.733802"
+  "last_update": "2026-01-23T13:36:47.076724"
 }

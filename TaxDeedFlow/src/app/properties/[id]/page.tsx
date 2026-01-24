@@ -38,9 +38,7 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 import { PropertyMap } from "@/components/map/PropertyMap"
-import { BidRecommendationCard } from "@/components/financial/BidRecommendationCard"
-import type { BidRecommendation } from "@/lib/analysis/bidding/types"
-
+import { AddToWatchlistDialog } from "@/components/watchlists/AddToWatchlistDialog"
 interface RegridData {
   lotSizeAcres: number
   lotSizeSqFt: number
@@ -256,6 +254,7 @@ export default function PropertyDetailPage() {
 
   // Watchlist state
   const [isInWatchlist, setIsInWatchlist] = useState(false)
+  const [showAddToWatchlist, setShowAddToWatchlist] = useState(false)
   const [enlargedImage, setEnlargedImage] = useState<{ url: string; caption: string } | null>(null)
 
   // Notes editing state
@@ -273,10 +272,6 @@ export default function PropertyDetailPage() {
   // Scraping state
   const [isFetchingRegrid, setIsFetchingRegrid] = useState(false)
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false)
-
-  // Bid recommendation state
-  const [bidRecommendation, setBidRecommendation] = useState<BidRecommendation | null>(null)
-  const [isFetchingBidRec, setIsFetchingBidRec] = useState(false)
 
   const propertyId = params.id as string
 
@@ -409,38 +404,7 @@ export default function PropertyDetailPage() {
   // Add to watchlist
   const addToWatchlist = () => {
     if (!property) return
-    const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
-
-    // Check if already in watchlist
-    if (watchlist.some((item) => item.propertyId === propertyId)) {
-      toast.info("Already in watchlist", {
-        description: "This property is already in your watchlist.",
-      })
-      return
-    }
-
-    const newItem: WatchlistItem = {
-      id: `watchlist-${Date.now()}`,
-      userId: user?.id || "anonymous",
-      propertyId: propertyId,
-      parcelId: property.parcelId,
-      address: property.address,
-      city: property.city,
-      county: property.county,
-      state: property.state,
-      totalDue: property.totalDue,
-      saleDate: property.saleDate,
-      maxBid: null,
-      notes: "",
-      addedAt: new Date().toISOString(),
-    }
-
-    watchlist.push(newItem)
-    localStorage.setItem("watchlist", JSON.stringify(watchlist))
-    setIsInWatchlist(true)
-    toast.success("Added to watchlist", {
-      description: `${property.parcelId} has been added to your watchlist.`,
-    })
+    setShowAddToWatchlist(true)
   }
 
   // Remove from watchlist
@@ -510,39 +474,6 @@ export default function PropertyDetailPage() {
       loadProperty()
     }
   }, [propertyId, isAuthenticated, router, pathname])
-
-  // Load bid recommendation data
-  useEffect(() => {
-    const loadBidRecommendation = async () => {
-      if (!propertyId || !isAuthenticated) return
-
-      setIsFetchingBidRec(true)
-      try {
-        const response = await fetch(`/api/properties/${propertyId}/bid-recommendations`)
-
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            setBidRecommendation(result.data)
-          } else {
-            setBidRecommendation(null)
-          }
-        } else {
-          // Not an error - just no recommendation available yet
-          setBidRecommendation(null)
-        }
-      } catch (error) {
-        console.error("Error loading bid recommendation:", error)
-        setBidRecommendation(null)
-      } finally {
-        setIsFetchingBidRec(false)
-      }
-    }
-
-    if (propertyId && isAuthenticated) {
-      loadBidRecommendation()
-    }
-  }, [propertyId, isAuthenticated])
 
   // Start editing - capture the current version
   const startEditing = useCallback(() => {
@@ -1847,15 +1778,12 @@ export default function PropertyDetailPage() {
             )}
 
             {activeTab === "analysis" && (
-              <div className="space-y-6">
-                {isFetchingBidRec ? (
-                  <div className="flex items-center justify-center p-8">
-                    <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
-                    <span className="ml-2 text-slate-600">Loading bid recommendation...</span>
-                  </div>
-                ) : (
-                  <BidRecommendationCard recommendation={bidRecommendation ?? undefined} />
-                )}
+              <div className="text-center py-12 text-slate-500">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Analysis not yet available.</p>
+                <p className="text-sm mt-2">
+                  Property analysis will be available after validation.
+                </p>
               </div>
             )}
 
@@ -2230,6 +2158,21 @@ export default function PropertyDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add to Watchlist Dialog */}
+      {property && (
+        <AddToWatchlistDialog
+          open={showAddToWatchlist}
+          onOpenChange={setShowAddToWatchlist}
+          propertyId={property.id}
+          propertyAddress={`${property.address}, ${property.city}`}
+          onSuccess={() => {
+            setShowAddToWatchlist(false)
+            // Optionally mark as in watchlist after adding
+            setIsInWatchlist(true)
+          }}
+        />
       )}
     </div>
   )

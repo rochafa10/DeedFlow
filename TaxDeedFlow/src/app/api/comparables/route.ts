@@ -15,9 +15,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRealtyService, ComparableSearchOptions, RealtyComparable } from '@/lib/api/services/realty-service';
-import { logger } from '@/lib/logger';
-
-const apiLogger = logger.withContext('Comparables API');
 import {
   calculateAllMarketMetrics,
   type CalculatedMarketMetrics,
@@ -27,6 +24,7 @@ import {
   calculateMarketHistory,
   type MarketHistoryMetrics,
 } from '@/lib/utils/market-history-calculations';
+import { logger } from '@/lib/logger';
 
 // Mark as dynamic to prevent static generation issues
 export const dynamic = 'force-dynamic';
@@ -62,7 +60,7 @@ async function fetchActiveListingsCount(
     const result = await realtyService.getActiveListingsCount(options);
     return result.data;
   } catch (error) {
-    apiLogger.warn('Failed to fetch active listings count', { error: error instanceof Error ? error.message : String(error) });
+    logger.warn('[Comparables API] Failed to fetch active listings count:', error);
     return null;
   }
 }
@@ -176,7 +174,7 @@ export async function GET(request: NextRequest) {
             historicalMetrics = calculateMarketHistory(comparables);
           }
         } catch (error) {
-          apiLogger.warn('Failed to fetch extended historical data', { error: error instanceof Error ? error.message : String(error) });
+          logger.warn('[Comparables API] Failed to fetch extended historical data:', error);
           // Fall back to using current comparables
           historicalMetrics = calculateMarketHistory(comparables);
         }
@@ -231,7 +229,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    apiLogger.error('Error', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('[Comparables API] Error:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -330,7 +328,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    apiLogger.error('POST Error', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('[Comparables API] POST Error:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 

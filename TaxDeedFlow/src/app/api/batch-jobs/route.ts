@@ -2,59 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { validateApiAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/auth/api-auth"
 import { validateCsrf, csrfErrorResponse } from "@/lib/auth/csrf"
 import { createServerClient } from "@/lib/supabase/client"
-import { SupabaseClient } from "@supabase/supabase-js"
-
-// Type for batch job data returned from database query
-interface BatchJobWithCounty {
-  id: string;
-  job_type: string;
-  county_id: string;
-  status: string;
-  batch_size: number;
-  total_items: number;
-  processed_items: number;
-  failed_items: number;
-  current_batch: number;
-  total_batches: number;
-  last_error: string | null;
-  error_count: number;
-  started_at: string | null;
-  paused_at: string | null;
-  completed_at: string | null;
-  created_at: string;
-  counties: {
-    id: string;
-    county_name: string;
-    state_code: string;
-  } | null;
-}
-
-// Type for transformed job data sent to frontend
-interface TransformedJob {
-  id: string;
-  name: string;
-  type: string;
-  county: string;
-  countyId: string;
-  state: string;
-  status: string;
-  progress: number;
-  totalItems: number;
-  processedItems: number;
-  failedItems: number;
-  startedAt: string | null;
-  pausedAt: string | null;
-  completedAt: string | null;
-  createdAt: string;
-  batchSize: number;
-  currentBatch: number;
-  totalBatches: number;
-  duration: string | null;
-  successRate: number;
-  errorLog: string | null;
-  errorCount: number;
-  estimatedCompletion: null;
-}
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/batch-jobs
@@ -117,7 +65,7 @@ export async function GET(request: NextRequest) {
     const { data: jobs, error: jobsError } = await query
 
     if (jobsError) {
-      console.error("[API Batch Jobs] Database error:", jobsError)
+      logger.error("[API Batch Jobs] Database error:", jobsError)
       return NextResponse.json(
         { error: "Database error", message: jobsError.message },
         { status: 500 }
@@ -125,8 +73,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform to frontend format
-    const transformedJobs = (jobs || []).map((jobRaw): TransformedJob => {
-      const job = jobRaw as unknown as BatchJobWithCounty;
+    const transformedJobs = (jobs || []).map((job: any) => {
       const progress = job.total_items > 0
         ? Math.round((job.processed_items / job.total_items) * 100)
         : 0
@@ -192,16 +139,16 @@ export async function GET(request: NextRequest) {
 
     // Split into active and history
     const activeJobs = transformedJobs.filter(
-      (j: TransformedJob) => ["running", "paused", "pending", "in_progress"].includes(j.status)
+      (j: any) => ["running", "paused", "pending", "in_progress"].includes(j.status)
     )
     const jobHistory = transformedJobs.filter(
-      (j: TransformedJob) => ["completed", "failed"].includes(j.status)
+      (j: any) => ["completed", "failed"].includes(j.status)
     )
 
     // Calculate stats
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const completedToday = jobHistory.filter((j: TransformedJob) => {
+    const completedToday = jobHistory.filter((j: any) => {
       if (!j.completedAt) return false
       const completedDate = new Date(j.completedAt)
       completedDate.setHours(0, 0, 0, 0)
@@ -209,7 +156,7 @@ export async function GET(request: NextRequest) {
     }).length
 
     const totalSuccessRate = jobHistory.length > 0
-      ? Math.round(jobHistory.reduce((sum: number, j: TransformedJob) => sum + j.successRate, 0) / jobHistory.length)
+      ? Math.round(jobHistory.reduce((sum: number, j: any) => sum + j.successRate, 0) / jobHistory.length)
       : 100
 
     return NextResponse.json({
@@ -217,8 +164,8 @@ export async function GET(request: NextRequest) {
         activeJobs,
         jobHistory,
         stats: {
-          running: activeJobs.filter((j: TransformedJob) => j.status === "running").length,
-          paused: activeJobs.filter((j: TransformedJob) => j.status === "paused").length,
+          running: activeJobs.filter((j: any) => j.status === "running").length,
+          paused: activeJobs.filter((j: any) => j.status === "paused").length,
           completedToday,
           successRate: totalSuccessRate,
         },
@@ -226,7 +173,7 @@ export async function GET(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    console.error("[API Batch Jobs] Server error:", error)
+    logger.error("[API Batch Jobs] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -257,7 +204,7 @@ export async function POST(request: NextRequest) {
   // CSRF Protection: Validate request origin
   const csrfResult = await validateCsrf(request)
   if (!csrfResult.valid) {
-    console.log("[API Batch Jobs] CSRF validation failed:", csrfResult.error)
+    logger.log("[API Batch Jobs] CSRF validation failed:", csrfResult.error)
     return csrfErrorResponse(csrfResult.error)
   }
 
@@ -341,7 +288,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("[API Batch Jobs] Insert error:", error)
+      logger.error("[API Batch Jobs] Insert error:", error)
       return NextResponse.json(
         {
           error: "Database error",
@@ -357,7 +304,7 @@ export async function POST(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    console.error("[API Batch Jobs] Server error:", error)
+    logger.error("[API Batch Jobs] Server error:", error)
     return NextResponse.json(
       {
         error: "Server error",
@@ -372,7 +319,7 @@ export async function POST(request: NextRequest) {
  * Calculate total items for a batch job based on job type and county
  */
 async function calculateTotalItems(
-  supabase: SupabaseClient,
+  supabase: any,
   jobType: string,
   countyId: string
 ): Promise<number> {
@@ -436,13 +383,13 @@ async function calculateTotalItems(
     const { count, error } = await query
 
     if (error) {
-      console.error("[API Batch Jobs] Count error:", error)
+      logger.error("[API Batch Jobs] Count error:", error)
       return 0
     }
 
     return count || 0
   } catch (error) {
-    console.error("[API Batch Jobs] Calculate total items error:", error)
+    logger.error("[API Batch Jobs] Calculate total items error:", error)
     return 0
   }
 }

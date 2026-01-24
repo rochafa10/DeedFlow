@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import { logger } from "@/lib/logger"
-
-const apiLogger = logger.withContext("Upload Screenshot API")
-
-// Initialize Supabase client with service role key for storage operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+import { createServerClient } from "@/lib/supabase/client"
 
 /**
  * POST /api/upload-screenshot
@@ -32,7 +25,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Supabase client with service role key
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createServerClient()
+
+    // Demo mode: return error if Supabase not configured
+    if (!supabase) {
+      return NextResponse.json(
+        { success: false, error: "Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local" },
+        { status: 503 }
+      )
+    }
 
     // Convert base64 to buffer
     const imageBuffer = Buffer.from(screenshot_base64, "base64")
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       ? parcel_id.replace(/\./g, "_").replace(/-/g, "_").replace(/___/g, "___") + ".jpg"
       : `${property_id}.jpg`
 
-    apiLogger.info("Uploading screenshot", { fileName, propertyId: property_id })
+    console.log(`[Upload Screenshot] Uploading ${fileName} for property ${property_id}`)
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      apiLogger.error("Storage error", { error: uploadError.message })
+      console.error("[Upload Screenshot] Storage error:", uploadError)
       return NextResponse.json(
         { success: false, error: uploadError.message },
         { status: 500 }
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     const screenshot_url = urlData.publicUrl
 
-    apiLogger.info("Uploaded successfully", { screenshotUrl: screenshot_url })
+    console.log(`[Upload Screenshot] Uploaded to: ${screenshot_url}`)
 
     // Update regrid_data with screenshot_url
     const { error: updateError } = await supabase
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
       .eq("property_id", property_id)
 
     if (updateError) {
-      apiLogger.warn("Failed to update regrid_data", { error: updateError.message })
+      console.warn("[Upload Screenshot] Failed to update regrid_data:", updateError)
       // Try to insert if update fails (no existing regrid_data record)
       const { error: insertError } = await supabase
         .from("regrid_data")
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
         })
       
       if (insertError) {
-        apiLogger.warn("Failed to insert regrid_data", { error: insertError.message })
+        console.warn("[Upload Screenshot] Failed to insert regrid_data:", insertError)
       }
     }
 
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
+    console.error("[Upload Screenshot] Server error:", error)
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : "Server error" },
       { status: 500 }

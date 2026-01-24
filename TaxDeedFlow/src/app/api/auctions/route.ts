@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/auctions
@@ -39,7 +40,7 @@ export async function GET() {
       .order("sale_date", { ascending: true })
 
     if (salesError) {
-      console.error("[API Auctions] Database error:", salesError)
+      logger.error("[API Auctions] Database error:", salesError)
       return NextResponse.json(
         { error: "Database error", message: salesError.message },
         { status: 500 }
@@ -66,7 +67,7 @@ export async function GET() {
       .limit(10)
 
     if (alertsError) {
-      console.error("[API Auctions] Alerts error:", alertsError)
+      logger.error("[API Auctions] Alerts error:", alertsError)
     }
 
     // Transform sales to frontend format
@@ -120,15 +121,6 @@ export async function GET() {
       return saleDate.getMonth() === thisMonth && saleDate.getFullYear() === thisYear
     }).length
 
-    // Get notification preferences (if user has an active subscription)
-    // For now, return default preferences
-    const notificationPreferences = {
-      enabled: false, // Will be true if user has active subscription
-      notifyRegistrationDeadline: true,
-      notifyAuctionDate: true,
-      notifyDaysBefore: [3, 7], // Notify 3 and 7 days before deadlines
-    }
-
     return NextResponse.json({
       data: {
         auctions: transformedSales,
@@ -136,13 +128,12 @@ export async function GET() {
         stats: {
           totalUpcoming: transformedSales.length,
           thisMonth: auctionsThisMonth,
-        },
-        notificationPreferences,
+        }
       },
       source: "database",
     })
   } catch (error) {
-    console.error("[API Auctions] Server error:", error)
+    logger.error("[API Auctions] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

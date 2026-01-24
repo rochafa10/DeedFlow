@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
 import { logger } from "@/lib/logger"
 
-const apiLogger = logger.withContext("Property Report API")
-
 /**
  * Property Report Response Types
  * These types define the structure of the report API response
@@ -198,7 +196,7 @@ export async function GET(
         )
       }
 
-      apiLogger.error("Database error", { error: propertyError.message })
+      logger.error("[API Property Report] Database error:", propertyError)
       return NextResponse.json(
         {
           error: "Database error",
@@ -327,7 +325,7 @@ export async function GET(
     })
 
   } catch (error) {
-    apiLogger.error("Server error", { error: error instanceof Error ? error.message : String(error) })
+    logger.error("[API Property Report] Server error:", error)
     return NextResponse.json(
       {
         error: "Server error",

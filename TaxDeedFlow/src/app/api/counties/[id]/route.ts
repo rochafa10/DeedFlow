@@ -1,30 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
-import type {
-  County,
-  Property,
-  Document,
-  UpcomingSale,
-  OfficialLink,
-  VendorPortal,
-  AdditionalResource,
-  ImportantNote,
-  BatchJob,
-  ResearchLog,
-} from "@/types/database"
-
-// Type for the partial property data returned by the query
-interface PropertyStats {
-  id: string;
-  parcel_id: string | null;
-  property_address: string | null;
-  total_due: number | null;
-  has_regrid_data: boolean;
-  visual_validation_status: string | null;
-  auction_status: string | null;
-  sale_type: string | null;
-  sale_date: string | null;
-}
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/counties/[id]
@@ -59,7 +35,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      console.error("[API County Detail] Database error:", countyError)
+      logger.error("[API County Detail] Database error:", countyError)
       return NextResponse.json(
         { error: "Database error", message: countyError.message },
         { status: 500 }
@@ -157,23 +133,21 @@ export async function GET(
     const batchJobs = batchJobsResult.data || []
     const researchLog = researchLogResult.data || []
 
-    // Calculate property stats (cast to PropertyStats type)
-    const propertyStats = properties as unknown as PropertyStats[];
-    const totalProperties = propertyStats.length
-    const activeProperties = propertyStats.filter(p => p.auction_status === "active").length
-    const withRegrid = propertyStats.filter(p => p.has_regrid_data).length
-    const validated = propertyStats.filter(p => p.visual_validation_status).length
-    const approved = propertyStats.filter(p => p.visual_validation_status === "APPROVED").length
-    const caution = propertyStats.filter(p => p.visual_validation_status === "CAUTION").length
-    const rejected = propertyStats.filter(p => p.visual_validation_status === "REJECT").length
+    // Calculate property stats
+    const totalProperties = properties.length
+    const activeProperties = properties.filter((p: any) => p.auction_status === "active").length
+    const withRegrid = properties.filter((p: any) => p.has_regrid_data).length
+    const validated = properties.filter((p: any) => p.visual_validation_status).length
+    const approved = properties.filter((p: any) => p.visual_validation_status === "APPROVED").length
+    const caution = properties.filter((p: any) => p.visual_validation_status === "CAUTION").length
+    const rejected = properties.filter((p: any) => p.visual_validation_status === "REJECT").length
 
     // Calculate progress
     const progress = totalProperties > 0 ? Math.round((withRegrid / totalProperties) * 100) : 0
 
     // Find next auction
     const today = new Date()
-    const salesData = upcomingSales as unknown as UpcomingSale[];
-    const futureAuctions = salesData.filter(s => new Date(s.sale_date) > today)
+    const futureAuctions = upcomingSales.filter((s: any) => new Date(s.sale_date) > today)
     const nextAuction = futureAuctions[0]
     let daysUntilAuction: number | null = null
     let nextAuctionDate: string | null = null
@@ -221,21 +195,21 @@ export async function GET(
       },
 
       // Documents
-      documents: documents.map((d: Document) => ({
+      documents: documents.map((d: any) => ({
         id: d.id,
         type: d.document_type,
         title: d.title,
-        url: d.file_url,
+        url: d.url,
         format: d.file_format,
-        propertyCount: d.properties_extracted,
+        propertyCount: d.property_count,
         parsingStatus: d.parsing_status,
-        publicationDate: d.created_at,
-        year: new Date(d.created_at).getFullYear(),
+        publicationDate: d.publication_date,
+        year: d.year,
         createdAt: d.created_at,
       })),
 
       // Upcoming auctions
-      upcomingAuctions: upcomingSales.map((s: UpcomingSale) => {
+      upcomingAuctions: upcomingSales.map((s: any) => {
         const saleDate = new Date(s.sale_date)
         const days = Math.ceil((saleDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
         return {
@@ -253,71 +227,71 @@ export async function GET(
       }),
 
       // Contacts from official links
-      contacts: officialLinks.map((l: OfficialLink) => ({
+      contacts: officialLinks.map((l: any) => ({
         id: l.id,
         type: l.link_type,
         title: l.title,
         url: l.url,
-        phone: l.contact_phone,
-        email: l.contact_email,
+        phone: l.phone,
+        email: l.email,
       })),
 
       // Vendor portals
       vendorPortal: vendorPortals.length > 0 ? {
         id: vendorPortals[0].id,
         name: vendorPortals[0].vendor_name,
-        url: vendorPortals[0].vendor_url,
-        registrationUrl: vendorPortals[0].vendor_url,
-        isPrimary: true,
+        url: vendorPortals[0].county_specific_url,
+        registrationUrl: vendorPortals[0].registration_url,
+        isPrimary: vendorPortals[0].is_primary,
       } : null,
 
       // Additional resources
-      resources: additionalResources.map((r: AdditionalResource) => ({
+      resources: additionalResources.map((r: any) => ({
         id: r.id,
         type: r.resource_type,
-        title: r.resource_name,
+        title: r.title,
         url: r.url,
         description: r.description,
       })),
 
       // Important notes
-      notes: importantNotes.map((n: ImportantNote) => ({
+      notes: importantNotes.map((n: any) => ({
         id: n.id,
         type: n.note_type,
-        text: n.content,
+        text: n.note_text,
         priority: n.priority,
         createdAt: n.created_at,
       })),
 
       // Recent activity (from batch jobs and research log)
       recentActivity: [
-        ...batchJobs.map((j: BatchJob) => ({
+        ...batchJobs.map((j: any) => ({
           id: j.id,
           type: "batch_job",
           title: `${j.job_type} - ${j.status}`,
-          description: `Processed ${j.completed_items || 0}/${j.total_items || 0} items`,
+          description: `Processed ${j.processed_items || 0}/${j.total_items || 0} items`,
           timestamp: j.created_at,
         })),
-        ...researchLog.map((r: ResearchLog) => ({
+        ...researchLog.map((r: any) => ({
           id: r.id,
           type: "research",
           title: "Research completed",
-          description: `Quality score: ${r.quality_score || "N/A"}`,
+          description: `Quality score: ${r.data_quality_score || "N/A"}`,
           timestamp: r.created_at,
         })),
       ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 10),
 
       // Sample properties (first 20)
-      properties: propertyStats.slice(0, 20).map(p => ({
+      properties: properties.slice(0, 20).map((p: any) => ({
         id: p.id,
-        parcelId: p.parcel_id || "N/A",
+        parcelId: p.parcel_id,
         address: p.property_address || "N/A",
         totalDue: p.total_due,
         hasRegridData: p.has_regrid_data,
-        validationStatus: p.visual_validation_status || "pending",
-        auctionStatus: p.auction_status || "active",
-        saleType: p.sale_type || "tax_deed",
-        saleDate: p.sale_date || new Date().toISOString(),
+        validationStatus: p.visual_validation_status,
+        auctionStatus: p.auction_status,
+        saleType: p.sale_type,
+        saleDate: p.sale_date,
       })),
     }
 
@@ -326,7 +300,7 @@ export async function GET(
       source: "database",
     })
   } catch (error) {
-    console.error("[API County Detail] Server error:", error)
+    logger.error("[API County Detail] Server error:", error)
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

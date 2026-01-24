@@ -51,6 +51,9 @@ next-env.d.ts
 
 # Playwright
 .playwright-mcp/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Claude
 .agent.lock
@@ -58,13 +61,3 @@ next-env.d.ts
 
 # Features database (session-specific)
 features.db
-
-# Auto Claude data directory
-.auto-claude/
-
-# Auto Claude generated files
-.auto-claude-security.json
-.auto-claude-status
-.worktrees/
-.security-key
-logs/security/
