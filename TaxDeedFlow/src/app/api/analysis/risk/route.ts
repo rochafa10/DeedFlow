@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (regridError) {
-        logger.error("[Risk API] Error fetching coordinates:", regridError)
+        logger.error("[Risk API] Error fetching coordinates:", { error: regridError.message, code: regridError.code })
         return NextResponse.json(
           { error: "Could not find coordinates for property", details: regridError.message },
           { status: 404 }
@@ -162,9 +162,8 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    logger.error("[Risk API] Error:", error)
-
     const message = error instanceof Error ? error.message : "Unknown error occurred"
+    logger.error("[Risk API] Error:", { message })
 
     return NextResponse.json(
       {
@@ -254,9 +253,8 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    logger.error("[Risk API] GET Error:", error)
-
     const message = error instanceof Error ? error.message : "Unknown error occurred"
+    logger.error("[Risk API] GET Error:", { message })
 
     return NextResponse.json(
       {
