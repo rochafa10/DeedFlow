@@ -1,24 +1,38 @@
 "use client"
 
-import { useState, Suspense } from "react"
-
 // Force dynamic rendering to prevent build-time errors with context hooks
 export const dynamic = 'force-dynamic'
-import { Search, UserPlus, Users, Shield, Eye, User, Settings, Building2 } from "lucide-react"
+
+import { useState, Suspense, useEffect } from "react"
+import { Search, UserPlus, Users, Shield, User, Settings, Building2 } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useOrganization } from "@/contexts/OrganizationContext"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
 import { TeamMemberList } from "@/components/team/TeamMemberList"
 import { InviteMemberDialog } from "@/components/team/InviteMemberDialog"
 
-function TeamContent() {
+// Loading skeleton component
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <Header />
+      <main className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+          <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+// Separate component that uses useOrganization - only rendered client-side after mount
+function TeamOrganizationContent() {
   const { isAuthenticated, isLoading: authLoading, currentOrganization } = useAuth()
   const router = useRouter()
   const {
     members,
-    isLoadingMembers,
     getMemberCount,
     getActiveMemberCount,
     canPerformAction,
@@ -35,17 +49,7 @@ function TeamContent() {
 
   // Show loading state
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
-            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
-          </div>
-        </main>
-      </div>
-    )
+    return <LoadingSkeleton />
   }
 
   // Don't render if not authenticated (will redirect)
@@ -180,6 +184,23 @@ function TeamContent() {
       />
     </div>
   )
+}
+
+// Wrapper component that handles client-side mounting
+function TeamContent() {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Show loading skeleton during SSR and initial mount
+  if (!isMounted) {
+    return <LoadingSkeleton />
+  }
+
+  // Only render the organization content after mounting on client
+  return <TeamOrganizationContent />
 }
 
 export default function TeamPage() {
