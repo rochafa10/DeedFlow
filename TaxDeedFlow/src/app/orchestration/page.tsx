@@ -28,6 +28,7 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { authFetch } from "@/lib/api/authFetch"
+import { ActivityFeed } from "@/components/orchestration/ActivityFeed"
 
 // Session types
 const SESSION_TYPES = [
@@ -893,6 +894,11 @@ export default function OrchestrationPage() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Agent Activity Feed */}
+        <div className="mt-6">
+          <ActivityFeed maxItems={20} />
         </div>
 
         {/* AI Session Plan */}
