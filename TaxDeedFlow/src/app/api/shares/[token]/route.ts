@@ -94,7 +94,7 @@ export async function GET(
     })
 
     if (error) {
-      logger.error("[API Shares] Database error validating token:", error)
+      logger.error("[API Shares] Database error validating token:", { error: error.message, code: error.code })
       // Return a generic invalid response rather than exposing DB errors
       const response: ShareValidationResult = {
         is_valid: false,
@@ -137,7 +137,8 @@ export async function GET(
       { status: statusCode }
     )
   } catch (error) {
-    logger.error("[API Shares] Server error validating token:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Shares] Server error validating token:", { message })
     const response: ShareValidationResult = {
       is_valid: false,
       report_id: null,
@@ -211,7 +212,7 @@ export async function DELETE(
       .single()
 
     if (fetchError || !share) {
-      logger.error("[API Shares] Share not found for deactivation:", token)
+      logger.error("[API Shares] Share not found for deactivation:", { token })
       return NextResponse.json(
         {
           error: "Not found",
@@ -284,7 +285,8 @@ export async function DELETE(
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Shares] Server error deactivating share:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Shares] Server error deactivating share:", { message })
     return NextResponse.json(
       {
         error: "Server error",
@@ -469,7 +471,8 @@ export async function PATCH(
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Shares] Server error updating share:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Shares] Server error updating share:", { message })
     return NextResponse.json(
       {
         error: "Server error",

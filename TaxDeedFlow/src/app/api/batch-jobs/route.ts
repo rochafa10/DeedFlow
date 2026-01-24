@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const { data: jobs, error: jobsError } = await query
 
     if (jobsError) {
-      logger.error("[API Batch Jobs] Database error:", jobsError)
+      logger.error("[API Batch Jobs] Database error:", { error: jobsError.message, code: jobsError.code })
       return NextResponse.json(
         { error: "Database error", message: jobsError.message },
         { status: 500 }
@@ -173,7 +173,8 @@ export async function GET(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Batch Jobs] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Batch Jobs] Server error:", { message })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -288,7 +289,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      logger.error("[API Batch Jobs] Insert error:", error)
+      logger.error("[API Batch Jobs] Insert error:", { error: error.message, code: error.code })
       return NextResponse.json(
         {
           error: "Database error",
@@ -304,7 +305,8 @@ export async function POST(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Batch Jobs] Server error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Batch Jobs] Server error:", { message: errorMessage })
     return NextResponse.json(
       {
         error: "Server error",
@@ -383,13 +385,14 @@ async function calculateTotalItems(
     const { count, error } = await query
 
     if (error) {
-      logger.error("[API Batch Jobs] Count error:", error)
+      logger.error("[API Batch Jobs] Count error:", { error: error.message, code: error.code })
       return 0
     }
 
     return count || 0
   } catch (error) {
-    logger.error("[API Batch Jobs] Calculate total items error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Batch Jobs] Calculate total items error:", { message: errorMessage })
     return 0
   }
 }

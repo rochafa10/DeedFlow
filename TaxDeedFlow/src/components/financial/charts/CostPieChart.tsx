@@ -284,7 +284,8 @@ export function CostPieChart({
             <PieChart>
               <Pie
                 activeIndex={activeIndex}
-                activeShape={renderActiveShape as unknown as typeof Sector}
+                // @ts-expect-error - Recharts activeShape type is overly strict
+                activeShape={renderActiveShape}
                 data={chartData}
                 cx="50%"
                 cy="50%"

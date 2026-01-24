@@ -397,7 +397,7 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
-      setIsInWatchlist(watchlist.some((item) => item.propertyId === propertyId))
+      setIsInWatchlist(watchlist.some((item) => item.property_id === propertyId))
     }
   }, [propertyId])
 
@@ -410,7 +410,7 @@ export default function PropertyDetailPage() {
   // Remove from watchlist
   const removeFromWatchlist = () => {
     const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
-    const filtered = watchlist.filter((item) => item.propertyId !== propertyId)
+    const filtered = watchlist.filter((item) => item.property_id !== propertyId)
     localStorage.setItem("watchlist", JSON.stringify(filtered))
     setIsInWatchlist(false)
     toast.success("Removed from watchlist", {

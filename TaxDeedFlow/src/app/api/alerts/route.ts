@@ -28,23 +28,23 @@ export interface AuctionAlert {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createServerClient();
+
+    if (!supabase) {
+      console.warn('[Alerts API] Database not configured, returning empty alerts');
+      return NextResponse.json({
+        alerts: [],
+        count: 0,
+        hasData: false,
+        dataSource: 'empty',
+      });
+    }
+
     const { searchParams } = new URL(request.url);
     const acknowledgedFilter = searchParams.get('acknowledged');
     const severityFilter = searchParams.get('severity');
     const limitParam = searchParams.get('limit');
     const limit = limitParam ? parseInt(limitParam, 10) : 50;
-
-    const supabase = createServerClient();
-
-    // Demo mode: return empty array if Supabase not configured
-    if (!supabase) {
-      return NextResponse.json({
-        alerts: [],
-        count: 0,
-        hasData: false,
-        dataSource: 'demo',
-      });
-    }
 
     // Build query
     let query = supabase
@@ -130,6 +130,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createServerClient();
+
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const { alertId, acknowledge } = body;
 
@@ -138,16 +147,6 @@ export async function POST(request: NextRequest) {
         { error: 'Alert ID is required' },
         { status: 400 }
       );
-    }
-
-    const supabase = createServerClient();
-
-    // Demo mode: return mock success if Supabase not configured
-    if (!supabase) {
-      return NextResponse.json({
-        success: true,
-        alert: { id: alertId, acknowledged: acknowledge !== false },
-      });
     }
 
     const { data, error } = await supabase
@@ -189,12 +188,11 @@ export async function PATCH() {
   try {
     const supabase = createServerClient();
 
-    // Demo mode: return mock success if Supabase not configured
     if (!supabase) {
-      return NextResponse.json({
-        success: true,
-        count: 0,
-      });
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
     }
 
     const { data, error } = await supabase

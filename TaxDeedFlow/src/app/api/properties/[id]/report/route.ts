@@ -196,7 +196,7 @@ export async function GET(
         )
       }
 
-      logger.error("[API Property Report] Database error:", propertyError)
+      logger.error("[API Property Report] Database error:", { error: propertyError.message, code: propertyError.code })
       return NextResponse.json(
         {
           error: "Database error",
@@ -325,7 +325,8 @@ export async function GET(
     })
 
   } catch (error) {
-    logger.error("[API Property Report] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Property Report] Server error:", { message })
     return NextResponse.json(
       {
         error: "Server error",

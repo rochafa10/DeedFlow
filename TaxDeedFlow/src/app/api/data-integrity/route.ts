@@ -327,7 +327,8 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Data Integrity] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Data Integrity] Server error:", { message })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

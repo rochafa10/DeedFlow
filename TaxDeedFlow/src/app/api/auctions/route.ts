@@ -40,7 +40,7 @@ export async function GET() {
       .order("sale_date", { ascending: true })
 
     if (salesError) {
-      logger.error("[API Auctions] Database error:", salesError)
+      logger.error("[API Auctions] Database error:", { error: salesError.message, code: salesError.code })
       return NextResponse.json(
         { error: "Database error", message: salesError.message },
         { status: 500 }
@@ -67,7 +67,7 @@ export async function GET() {
       .limit(10)
 
     if (alertsError) {
-      logger.error("[API Auctions] Alerts error:", alertsError)
+      logger.error("[API Auctions] Alerts error:", { error: alertsError.message, code: alertsError.code })
     }
 
     // Transform sales to frontend format
@@ -133,7 +133,8 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Auctions] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Auctions] Server error:", { message })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

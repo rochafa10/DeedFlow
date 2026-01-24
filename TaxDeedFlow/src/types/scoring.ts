@@ -242,8 +242,8 @@ export interface CategoryScore {
   name: string;
   /** Calculated score (0-25) */
   score: number;
-  /** Maximum possible score (always 25) */
-  maxScore: 25;
+  /** Maximum possible score (default 25, adjustable with custom weights) */
+  maxScore: number;
   /** Confidence level for this category (0-100%) */
   confidence: number;
   /** Percentage of required data present (0-100%) */

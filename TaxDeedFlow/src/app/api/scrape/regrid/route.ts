@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const regridData = await scrapeRegridData(parcel_id, address, county, state)
 
     if (!regridData.success || !regridData.data) {
-      logger.error(`[Regrid Scraper] Failed to scrape ${parcel_id}:`, regridData.error)
+      logger.error(`[Regrid Scraper] Failed to scrape ${parcel_id}:`, { error: regridData.error || 'No data returned' })
       return NextResponse.json({
         success: false,
         error: regridData.error || "No data returned",
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (upsertError) {
-      logger.error("[Regrid Scraper] Database error:", upsertError)
+      logger.error("[Regrid Scraper] Database error:", { error: upsertError.message, code: upsertError.code })
       return NextResponse.json({
         success: false,
         error: upsertError.message,
@@ -142,12 +142,13 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    logger.error("[Regrid Scraper] Server error:", error)
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+    logger.error("[Regrid Scraper] Server error:", { message: errorMessage })
     return NextResponse.json(
       {
         success: false,
         error: "Server error",
-        message: error instanceof Error ? error.message : "An unexpected error occurred"
+        message: errorMessage
       },
       { status: 500 }
     )

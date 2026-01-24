@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
       source: 'FBI Crime Data Explorer',
     });
   } catch (error) {
-    logger.error('[Crime API] Error fetching crime data:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('[Crime API] Error fetching crime data:', { message: errorMessage });
 
     // Return a fallback response with moderate risk if API fails
     return NextResponse.json({

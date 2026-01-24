@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/client"
+import { createClient } from "@supabase/supabase-js"
 
 /**
  * POST /api/upload-screenshot
  * Uploads a base64 screenshot to Supabase Storage and updates the database
- * 
+ *
  * Request body:
  * {
  *   property_id: string,
@@ -24,16 +24,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create Supabase client with service role key
-    const supabase = createServerClient()
+    // Get environment variables inside handler
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    // Demo mode: return error if Supabase not configured
-    if (!supabase) {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("[Upload Screenshot] Missing Supabase credentials")
       return NextResponse.json(
-        { success: false, error: "Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local" },
-        { status: 503 }
+        { success: false, error: "Database not configured" },
+        { status: 500 }
       )
     }
+
+    // Create Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Convert base64 to buffer
     const imageBuffer = Buffer.from(screenshot_base64, "base64")

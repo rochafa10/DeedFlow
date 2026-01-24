@@ -43,7 +43,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      logger.error("[API Batch Job] Database error:", error)
+      logger.error("[API Batch Job] Database error:", { error: error.message, code: error.code })
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -55,7 +55,8 @@ export async function GET(
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Batch Job] Server error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Batch Job] Server error:", { message: errorMessage })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -170,7 +171,7 @@ export async function PATCH(
           { status: 404 }
         )
       }
-      logger.error("[API Batch Job] Update error:", error)
+      logger.error("[API Batch Job] Update error:", { error: error.message, code: error.code })
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -190,11 +191,11 @@ export async function PATCH(
         n8nTriggered = n8nResponse.ok
         if (!n8nResponse.ok) {
           n8nError = `n8n returned ${n8nResponse.status}`
-          logger.error("[API Batch Job] n8n trigger failed:", n8nError)
+          logger.error("[API Batch Job] n8n trigger failed:", { error: n8nError })
         }
       } catch (err) {
         n8nError = err instanceof Error ? err.message : "Unknown error"
-        logger.error("[API Batch Job] n8n trigger error:", n8nError)
+        logger.error("[API Batch Job] n8n trigger error:", { error: n8nError })
       }
     }
 
@@ -206,7 +207,8 @@ export async function PATCH(
       n8n_error: n8nError,
     })
   } catch (error) {
-    logger.error("[API Batch Job] Server error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Batch Job] Server error:", { message: errorMessage })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
@@ -257,7 +259,7 @@ export async function DELETE(
       .eq("id", id)
 
     if (error) {
-      logger.error("[API Batch Job] Delete error:", error)
+      logger.error("[API Batch Job] Delete error:", { error: error.message, code: error.code })
       return NextResponse.json(
         { error: "Database error", message: error.message },
         { status: 500 }
@@ -268,7 +270,8 @@ export async function DELETE(
       message: "Batch job deleted successfully",
     })
   } catch (error) {
-    logger.error("[API Batch Job] Server error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Batch Job] Server error:", { message: errorMessage })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

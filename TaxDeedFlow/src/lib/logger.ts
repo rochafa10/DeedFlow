@@ -94,6 +94,7 @@ export enum LogLevel {
  */
 export interface Logger {
   debug(message: string, data?: Record<string, unknown>): void;
+  log(message: string, ...args: unknown[]): void;
   info(message: string, data?: Record<string, unknown>): void;
   warn(message: string, data?: Record<string, unknown>): void;
   error(message: string, data?: Record<string, unknown>): void;
@@ -231,7 +232,7 @@ class LoggerImpl implements Logger {
   /**
    * Core logging method
    */
-  private log(
+  private logInternal(
     level: LogLevel,
     levelName: string,
     color: string,
@@ -258,28 +259,38 @@ class LoggerImpl implements Logger {
    * Debug level logging (verbose, development only)
    */
   debug(message: string, data?: Record<string, unknown>): void {
-    this.log(LogLevel.DEBUG, 'DEBUG', colors.cyan, console.debug, message, data);
+    this.logInternal(LogLevel.DEBUG, 'DEBUG', colors.cyan, console.debug, message, data);
+  }
+
+  /**
+   * General logging (alias for info with flexible arguments)
+   * Supports legacy console.log style calls with multiple arguments
+   */
+  log(message: string, ...args: unknown[]): void {
+    // If there are additional arguments, convert them to a data object
+    const data = args.length > 0 ? { args } : undefined;
+    this.logInternal(LogLevel.INFO, 'LOG', colors.blue, console.log, message, data);
   }
 
   /**
    * Info level logging (general information)
    */
   info(message: string, data?: Record<string, unknown>): void {
-    this.log(LogLevel.INFO, 'INFO', colors.blue, console.info, message, data);
+    this.logInternal(LogLevel.INFO, 'INFO', colors.blue, console.info, message, data);
   }
 
   /**
    * Warning level logging (potential issues)
    */
   warn(message: string, data?: Record<string, unknown>): void {
-    this.log(LogLevel.WARN, 'WARN', colors.yellow, console.warn, message, data);
+    this.logInternal(LogLevel.WARN, 'WARN', colors.yellow, console.warn, message, data);
   }
 
   /**
    * Error level logging (errors and exceptions)
    */
   error(message: string, data?: Record<string, unknown>): void {
-    this.log(LogLevel.ERROR, 'ERROR', colors.red, console.error, message, data);
+    this.logInternal(LogLevel.ERROR, 'ERROR', colors.red, console.error, message, data);
   }
 }
 

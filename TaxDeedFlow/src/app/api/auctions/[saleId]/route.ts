@@ -53,7 +53,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      logger.error("[API Auction Detail] Database error:", saleError)
+      logger.error("[API Auction Detail] Database error:", { error: saleError.message, code: saleError.code })
       return NextResponse.json(
         { error: "Database error", message: saleError.message },
         { status: 500 }
@@ -288,7 +288,8 @@ export async function GET(
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Auction Detail] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Auction Detail] Server error:", { message })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

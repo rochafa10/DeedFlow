@@ -88,18 +88,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const { propertyId, purchasePrice, riskScore, locationScore, marketScore, options } =
-      validationResult.data;
-
     const supabase = createServerClient();
 
-    // Demo mode: return error if Supabase not configured
     if (!supabase) {
       return NextResponse.json(
-        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local' },
-        { status: 503 }
+        { error: 'Database not configured' },
+        { status: 500 }
       );
     }
+
+    const { propertyId, purchasePrice, riskScore, locationScore, marketScore, options } =
+      validationResult.data;
 
     // Fetch property data from Supabase
     const { data: property, error: propertyError } = await supabase
@@ -461,11 +460,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const supabase = createServerClient();
 
-    // Demo mode: return error if Supabase not configured
     if (!supabase) {
       return NextResponse.json(
-        { error: 'Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local' },
-        { status: 503 }
+        { error: 'Database not configured' },
+        { status: 500 }
       );
     }
 

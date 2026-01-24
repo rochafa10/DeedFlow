@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (error) {
-      logger.error('[Zoning API] Database error:', error);
+      logger.error('[Zoning API] Database error:', { error: error.message, code: error.code });
       // Fall back to intelligent defaults
       return NextResponse.json({
         success: true,
@@ -152,9 +152,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Zoning API] Error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('[Zoning API] Error:', { message: errorMessage });
 
     return NextResponse.json(
       {

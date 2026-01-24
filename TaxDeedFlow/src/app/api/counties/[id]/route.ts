@@ -35,7 +35,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      logger.error("[API County Detail] Database error:", countyError)
+      logger.error("[API County Detail] Database error:", { error: countyError.message, code: countyError.code })
       return NextResponse.json(
         { error: "Database error", message: countyError.message },
         { status: 500 }
@@ -300,7 +300,8 @@ export async function GET(
       source: "database",
     })
   } catch (error) {
-    logger.error("[API County Detail] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API County Detail] Server error:", { message })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }

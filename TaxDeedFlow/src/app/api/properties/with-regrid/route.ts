@@ -40,7 +40,7 @@ export async function GET() {
       .limit(100)
 
     if (error) {
-      logger.error("[API Properties With Regrid] Database error:", error)
+      logger.error("[API Properties With Regrid] Database error:", { error: error.message, code: error.code })
       return NextResponse.json(
         {
           error: "Database error",
@@ -70,7 +70,8 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Properties With Regrid] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Properties With Regrid] Server error:", { message })
     return NextResponse.json(
       {
         error: "Server error",

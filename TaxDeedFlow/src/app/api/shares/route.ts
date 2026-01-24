@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (reportError || !reportExists) {
-      logger.error("[API Shares] Report not found:", report_id)
+      logger.error("[API Shares] Report not found:", { report_id })
       return NextResponse.json(
         {
           error: "Not found",
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      logger.error("[API Shares] Database error creating share:", error)
+      logger.error("[API Shares] Database error creating share:", { error: error.message, code: error.code })
       return NextResponse.json(
         {
           error: "Database error",
@@ -267,7 +267,8 @@ export async function POST(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Shares] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Shares] Server error:", { message })
     return NextResponse.json(
       {
         error: "Server error",
@@ -334,7 +335,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
-      logger.error("[API Shares] Database error listing shares:", error)
+      logger.error("[API Shares] Database error listing shares:", { error: error.message, code: error.code })
       return NextResponse.json(
         {
           error: "Database error",
@@ -351,7 +352,8 @@ export async function GET(request: NextRequest) {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Shares] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Shares] Server error:", { message })
     return NextResponse.json(
       {
         error: "Server error",

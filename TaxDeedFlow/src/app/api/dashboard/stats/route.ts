@@ -245,7 +245,8 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API] Dashboard stats error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API] Dashboard stats error:", { message })
 
     // Return mock data on error
     return NextResponse.json({

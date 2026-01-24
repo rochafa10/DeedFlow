@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      logger.error("[Screenshot API] Storage upload error:", uploadError)
+      logger.error("[Screenshot API] Storage upload error:", { error: uploadError.message })
       return NextResponse.json({
         success: false,
         error: uploadError.message,
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (upsertError) {
-      logger.warn("[Screenshot API] Failed to upsert regrid_data:", upsertError)
+      logger.warn("[Screenshot API] Failed to upsert regrid_data:", { error: upsertError.message, code: upsertError.code })
       // Don't fail the request, screenshot was still captured
     } else {
       logger.log("[Screenshot API] regrid_data upserted successfully with extracted data")
@@ -239,12 +239,13 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    logger.error("[Screenshot API] Server error:", error)
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+    logger.error("[Screenshot API] Server error:", { message: errorMessage })
     return NextResponse.json(
       {
         success: false,
         error: "Server error",
-        message: error instanceof Error ? error.message : "An unexpected error occurred"
+        message: errorMessage
       },
       { status: 500 }
     )
@@ -505,7 +506,8 @@ async function loginToRegrid(page: any): Promise<boolean> {
     }
 
   } catch (error) {
-    logger.error("[Screenshot API] Regrid login error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[Screenshot API] Regrid login error:", { message })
     return false
   }
 }
@@ -824,7 +826,8 @@ async function captureScreenshot(url: string, params: SearchParams): Promise<Scr
     }
 
   } catch (error) {
-    logger.error("[Screenshot API] Playwright error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[Screenshot API] Playwright error:", { message })
     return null
   }
 }

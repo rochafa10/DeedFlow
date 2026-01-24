@@ -231,9 +231,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: reportData,
     });
   } catch (error) {
-    logger.error('Report generation error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate report';
+    logger.error('Report generation error:', { message: errorMessage });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate report' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

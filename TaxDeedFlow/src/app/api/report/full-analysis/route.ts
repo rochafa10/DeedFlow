@@ -153,13 +153,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(result, { status: 422 });
     }
   } catch (error) {
-    logger.error('[Full Analysis API] Unhandled error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    logger.error('[Full Analysis API] Unhandled error:', { message: errorMessage });
 
     return NextResponse.json(
       {
         success: false,
         reportId: '',
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: errorMessage,
         metadata: {
           generatedAt: new Date().toISOString(),
           durationMs: 0,

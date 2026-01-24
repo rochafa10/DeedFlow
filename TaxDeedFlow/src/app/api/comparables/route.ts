@@ -60,7 +60,8 @@ async function fetchActiveListingsCount(
     const result = await realtyService.getActiveListingsCount(options);
     return result.data;
   } catch (error) {
-    logger.warn('[Comparables API] Failed to fetch active listings count:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.warn('[Comparables API] Failed to fetch active listings count:', { message });
     return null;
   }
 }
@@ -174,7 +175,8 @@ export async function GET(request: NextRequest) {
             historicalMetrics = calculateMarketHistory(comparables);
           }
         } catch (error) {
-          logger.warn('[Comparables API] Failed to fetch extended historical data:', error);
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          logger.warn('[Comparables API] Failed to fetch extended historical data:', { message });
           // Fall back to using current comparables
           historicalMetrics = calculateMarketHistory(comparables);
         }
@@ -229,9 +231,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Comparables API] Error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('[Comparables API] Error:', { message: errorMessage });
 
     return NextResponse.json(
       {
@@ -328,9 +329,8 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    logger.error('[Comparables API] POST Error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('[Comparables API] POST Error:', { message: errorMessage });
 
     return NextResponse.json(
       {

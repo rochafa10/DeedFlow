@@ -26,7 +26,7 @@ import { toast } from "sonner"
 import { runMigrationWithFeedback } from "@/lib/watchlist/migrate-localStorage"
 
 // Watchlist item type from API
-interface WatchlistItem {
+export interface WatchlistItem {
   id: string
   watchlist_id: string
   property_id: string

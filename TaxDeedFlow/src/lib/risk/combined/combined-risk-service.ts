@@ -64,6 +64,7 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     environmental: 0.10,
     radon: 0.04,
     slope: 0.13,
+    drought: 0.00,
   },
   // Atlantic coast (NC to ME) - High hurricane, flood
   ATLANTIC_COAST: {
@@ -75,6 +76,7 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     environmental: 0.12,
     radon: 0.10,
     slope: 0.17,
+    drought: 0.00,
   },
   // California, Pacific Northwest - High earthquake, wildfire
   WEST_COAST: {
@@ -85,7 +87,8 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     sinkhole: 0.03,
     environmental: 0.12,
     radon: 0.08,
-    slope: 0.18,
+    slope: 0.13,
+    drought: 0.05,
   },
   // TX, OK, KS, NE - Tornado alley, mixed risks
   TORNADO_ALLEY: {
@@ -96,7 +99,8 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     sinkhole: 0.08,
     environmental: 0.15,
     radon: 0.10,
-    slope: 0.21,
+    slope: 0.16,
+    drought: 0.05,
   },
   // OH, IN, IL, MI, WI, MN, IA - Flood, radon
   MIDWEST: {
@@ -108,8 +112,9 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     environmental: 0.18,
     radon: 0.18,
     slope: 0.25,
+    drought: 0.00,
   },
-  // CO, UT, AZ, NM, NV - Wildfire, slope
+  // CO, UT, AZ, NM, NV - Wildfire, slope, drought
   MOUNTAIN_WEST: {
     flood: 0.10,
     earthquake: 0.12,
@@ -118,7 +123,8 @@ export const RISK_REGIONS: Record<string, RiskWeights> = {
     sinkhole: 0.05,
     environmental: 0.12,
     radon: 0.12,
-    slope: 0.22,
+    slope: 0.14,
+    drought: 0.08,
   },
   // PA, NY, NJ, CT, MA, etc. - Radon, flood
   NORTHEAST: {

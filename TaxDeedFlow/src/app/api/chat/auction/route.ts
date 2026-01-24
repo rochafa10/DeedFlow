@@ -130,7 +130,8 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`))
           controller.close()
         } catch (error) {
-          logger.error("[Chat API] Stream error:", error)
+          const message = error instanceof Error ? error.message : "Unknown error"
+          logger.error("[Chat API] Stream error:", { message })
           controller.error(error)
         }
       },
@@ -144,7 +145,8 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    logger.error("[Chat API] Error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[Chat API] Error:", { message })
     return new Response(
       JSON.stringify({ error: "Failed to process chat request" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
@@ -260,7 +262,8 @@ async function fetchDocumentContents(
         logger.log(`[Chat API] No meaningful content extracted from: ${doc.title}`)
       }
     } catch (error) {
-      logger.error(`[Chat API] Error fetching ${doc.title}:`, error)
+      const message = error instanceof Error ? error.message : "Unknown error"
+      logger.error(`[Chat API] Error fetching ${doc.title}:`, { message })
     }
   }
 

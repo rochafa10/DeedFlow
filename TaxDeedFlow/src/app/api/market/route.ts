@@ -209,9 +209,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Market API] Error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('[Market API] Error:', { message: errorMessage });
 
     return NextResponse.json(
       {
@@ -290,7 +289,8 @@ async function getAreaMarketData(
       });
       activeListingsCount = activeResult.data;
     } catch (e) {
-      logger.warn('[Market API] Failed to get active listings count:', e);
+      const warnMsg = e instanceof Error ? e.message : 'Unknown error';
+      logger.warn('[Market API] Failed to get active listings count:', { message: warnMsg });
     }
   }
 
@@ -453,7 +453,8 @@ async function getPropertyMarketData(
       taxTrends = zillowService.calculateTaxTrends(property.taxHistory);
     }
   } catch (error) {
-    logger.warn('[Market API] Failed to get Zillow property:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.warn('[Market API] Failed to get Zillow property:', { message });
   }
 
   // Get nearby comparables from Realty API
@@ -475,7 +476,8 @@ async function getPropertyMarketData(
       });
       nearbyComparables = result.data?.comparables || [];
     } catch (error) {
-      logger.warn('[Market API] Failed to get Realty comparables:', error);
+      const warnMsg = error instanceof Error ? error.message : 'Unknown error';
+      logger.warn('[Market API] Failed to get Realty comparables:', { message: warnMsg });
     }
   } else if (searchZip) {
     try {
@@ -487,7 +489,8 @@ async function getPropertyMarketData(
       });
       nearbyComparables = result.data?.comparables || [];
     } catch (error) {
-      logger.warn('[Market API] Failed to get Realty comparables:', error);
+      const warnMsg = error instanceof Error ? error.message : 'Unknown error';
+      logger.warn('[Market API] Failed to get Realty comparables:', { message: warnMsg });
     }
   }
 

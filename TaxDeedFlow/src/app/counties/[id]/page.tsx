@@ -305,7 +305,7 @@ export default function CountyDetailPage() {
       <Breadcrumbs
         items={[
           { label: "Counties", href: "/counties" },
-          { label: `${county.name} County`, current: true },
+          { label: `${county.name} County` },
         ]}
       />
 

@@ -84,10 +84,10 @@ export async function GET() {
 
     // Handle errors
     if (sessionsResult.error) {
-      logger.error("[API Orchestration] Sessions error:", sessionsResult.error)
+      logger.error("[API Orchestration] Sessions error:", { error: sessionsResult.error.message, code: sessionsResult.error.code })
     }
     if (assignmentsResult.error) {
-      logger.error("[API Orchestration] Assignments error:", assignmentsResult.error)
+      logger.error("[API Orchestration] Assignments error:", { error: assignmentsResult.error.message, code: assignmentsResult.error.code })
     }
 
     const sessions = sessionsResult.data || []
@@ -221,7 +221,8 @@ export async function GET() {
       source: "database",
     })
   } catch (error) {
-    logger.error("[API Orchestration] Server error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    logger.error("[API Orchestration] Server error:", { message })
     return NextResponse.json(
       { error: "Server error", message: "An unexpected error occurred" },
       { status: 500 }
