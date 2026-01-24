@@ -38,7 +38,6 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 import { PropertyMap } from "@/components/map/PropertyMap"
-import { AddToWatchlistDialog } from "@/components/watchlists/AddToWatchlistDialog"
 interface RegridData {
   lotSizeAcres: number
   lotSizeSqFt: number
@@ -254,7 +253,6 @@ export default function PropertyDetailPage() {
 
   // Watchlist state
   const [isInWatchlist, setIsInWatchlist] = useState(false)
-  const [showAddToWatchlist, setShowAddToWatchlist] = useState(false)
   const [enlargedImage, setEnlargedImage] = useState<{ url: string; caption: string } | null>(null)
 
   // Notes editing state
@@ -397,20 +395,51 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
-      setIsInWatchlist(watchlist.some((item) => item.property_id === propertyId))
+      setIsInWatchlist(watchlist.some((item) => item.propertyId === propertyId))
     }
   }, [propertyId])
 
   // Add to watchlist
   const addToWatchlist = () => {
     if (!property) return
-    setShowAddToWatchlist(true)
+    const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
+
+    // Check if already in watchlist
+    if (watchlist.some((item) => item.propertyId === propertyId)) {
+      toast.info("Already in watchlist", {
+        description: "This property is already in your watchlist.",
+      })
+      return
+    }
+
+    const newItem: WatchlistItem = {
+      id: `watchlist-${Date.now()}`,
+      userId: user?.id || "anonymous",
+      propertyId: propertyId,
+      parcelId: property.parcelId,
+      address: property.address,
+      city: property.city,
+      county: property.county,
+      state: property.state,
+      totalDue: property.totalDue,
+      saleDate: property.saleDate,
+      maxBid: null,
+      notes: "",
+      addedAt: new Date().toISOString(),
+    }
+
+    watchlist.push(newItem)
+    localStorage.setItem("watchlist", JSON.stringify(watchlist))
+    setIsInWatchlist(true)
+    toast.success("Added to watchlist", {
+      description: `${property.parcelId} has been added to your watchlist.`,
+    })
   }
 
   // Remove from watchlist
   const removeFromWatchlist = () => {
     const watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]") as WatchlistItem[]
-    const filtered = watchlist.filter((item) => item.property_id !== propertyId)
+    const filtered = watchlist.filter((item) => item.propertyId !== propertyId)
     localStorage.setItem("watchlist", JSON.stringify(filtered))
     setIsInWatchlist(false)
     toast.success("Removed from watchlist", {
@@ -865,48 +894,50 @@ export default function PropertyDetailPage() {
             /* View Mode */
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-slate-900">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
                     {property.address}
                   </h1>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium",
-                      statusConfig.color
-                    )}
-                  >
-                    {statusConfig.icon}
-                    {statusConfig.label}
-                  </span>
-                  {validationConfig && (
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span
                       className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium",
-                        validationConfig.color
+                        statusConfig.color
                       )}
                     >
-                      {validationConfig.icon}
-                      {validationConfig.label}
+                      {statusConfig.icon}
+                      {statusConfig.label}
                     </span>
-                  )}
+                    {validationConfig && (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium",
+                          validationConfig.color
+                        )}
+                      >
+                        {validationConfig.icon}
+                        {validationConfig.label}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-600">
-                  <MapPin className="h-4 w-4" />
+                <div className="flex flex-wrap items-center gap-2 text-sm sm:text-base text-slate-600">
+                  <MapPin className="h-4 w-4 flex-shrink-0" />
                   <span>
                     {property.city}, {property.state} {property.zipCode}
                   </span>
-                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-300 hidden sm:inline">|</span>
                   <span>{property.county} County</span>
                 </div>
-                <div className="mt-2 font-mono text-sm text-slate-500">
+                <div className="mt-2 font-mono text-xs sm:text-sm text-slate-500 break-all">
                   Parcel ID: {property.parcelId}
                 </div>
               </div>
 
-              <div className="flex flex-col items-end gap-2">
-                <div className="text-right">
+              <div className="flex flex-col items-start md:items-end gap-2">
+                <div className="text-left md:text-right">
                   <div className="text-sm text-slate-500">Total Due</div>
-                  <div className="text-2xl font-bold text-slate-900 flex items-center gap-1">
+                  <div className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-1">
                     <DollarSign className="h-5 w-5" />
                     {property.totalDue.toLocaleString("en-US", {
                       minimumFractionDigits: 2,
@@ -1111,20 +1142,20 @@ export default function PropertyDetailPage() {
         {/* Tabs */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div className="border-b border-slate-200">
-            <div className="flex overflow-x-auto">
+            <div className="flex overflow-x-auto scrollbar-hide touch-pan-x">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                    "flex items-center gap-2 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap touch-manipulation",
                     activeTab === tab.id
                       ? "border-primary text-primary"
                       : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                   )}
                 >
                   {tab.icon}
-                  {tab.label}
+                  <span className="hidden xs:inline">{tab.label}</span>
                 </button>
               ))}
             </div>
@@ -1217,29 +1248,29 @@ export default function PropertyDetailPage() {
                       address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
                       parcelId={property.parcelId}
                       totalDue={property.totalDue}
-                      className="h-[400px]"
+                      className="h-[300px] sm:h-[400px] md:h-[500px] touch-manipulation"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-slate-500">Latitude</div>
-                      <div className="font-medium text-slate-900 font-mono">
+                      <div className="font-medium text-slate-900 font-mono text-sm">
                         {property.latitude.toFixed(6)}
                       </div>
                     </div>
                     <div>
                       <div className="text-sm text-slate-500">Longitude</div>
-                      <div className="font-medium text-slate-900 font-mono">
+                      <div className="font-medium text-slate-900 font-mono text-sm">
                         {property.longitude.toFixed(6)}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <a
                       href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open in Google Maps
@@ -1248,7 +1279,7 @@ export default function PropertyDetailPage() {
                       href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${property.latitude},${property.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Street View
@@ -1257,7 +1288,7 @@ export default function PropertyDetailPage() {
                       href={`https://www.zillow.com/homes/${encodeURIComponent(property.address + ' ' + property.city + ' ' + property.state + ' ' + property.zipCode)}_rb/`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                     >
                       <ExternalLink className="h-4 w-4" />
                       View on Zillow
@@ -1538,7 +1569,7 @@ export default function PropertyDetailPage() {
                         <img
                           src={image.url}
                           alt={image.caption}
-                          className="w-full h-48 object-cover transition-transform group-hover:scale-105"
+                          className="w-full h-56 sm:h-48 md:h-52 object-cover transition-transform group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1778,11 +1809,24 @@ export default function PropertyDetailPage() {
             )}
 
             {activeTab === "analysis" && (
-              <div className="text-center py-12 text-slate-500">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Analysis not yet available.</p>
-                <p className="text-sm mt-2">
-                  Property analysis will be available after validation.
+              <div className="text-center py-12">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  Property Analysis Report
+                </h3>
+                <p className="text-slate-500 mb-6">
+                  View comprehensive investment analysis including financial projections, risk assessment, and market comparables.
+                </p>
+                <a
+                  href={`/report/demo?propertyId=${property.id}`}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                >
+                  <FileText className="h-5 w-5" />
+                  View Full Analysis Report
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <p className="text-sm text-slate-400 mt-4">
+                  Includes: Investment Score, Risk Assessment, Financial Analysis, Comparables, and Market Data
                 </p>
               </div>
             )}
@@ -1995,23 +2039,23 @@ export default function PropertyDetailPage() {
       {/* Image Lightbox Modal */}
       {enlargedImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90"
           onClick={() => setEnlargedImage(null)}
         >
           <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setEnlargedImage(null)}
-              className="absolute -top-12 right-0 p-2 text-white hover:text-slate-300 transition-colors"
+              className="absolute -top-10 sm:-top-12 right-0 p-2 text-white hover:text-slate-300 transition-colors z-10"
               aria-label="Close image"
             >
-              <X className="h-8 w-8" />
+              <X className="h-6 w-6 sm:h-8 sm:w-8" />
             </button>
             <img
               src={enlargedImage.url}
               alt={enlargedImage.caption}
-              className="w-full rounded-lg shadow-2xl"
+              className="w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
             />
-            <p className="text-white text-center mt-4 text-lg">
+            <p className="text-white text-center mt-2 sm:mt-4 text-sm sm:text-lg px-4">
               {enlargedImage.caption}
             </p>
           </div>
@@ -2158,21 +2202,6 @@ export default function PropertyDetailPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Add to Watchlist Dialog */}
-      {property && (
-        <AddToWatchlistDialog
-          open={showAddToWatchlist}
-          onOpenChange={setShowAddToWatchlist}
-          propertyId={property.id}
-          propertyAddress={`${property.address}, ${property.city}`}
-          onSuccess={() => {
-            setShowAddToWatchlist(false)
-            // Optionally mark as in watchlist after adding
-            setIsInWatchlist(true)
-          }}
-        />
       )}
     </div>
   )

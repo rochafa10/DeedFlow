@@ -17,6 +17,8 @@ import {
 import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { MobileDataTable } from "@/components/shared/MobileDataTable"
 
 // County type from API
 interface County {
@@ -294,10 +296,164 @@ export default function CountiesPage() {
         </div>
 
         {/* Counties Table */}
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <MobileDataTable
+          cardView={
+            <div className="space-y-3">
+              {filteredCounties.length > 0 ? (
+                filteredCounties.map((county) => (
+                  <div
+                    key={county.id}
+                    className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3"
+                  >
+                    {/* Header: County Name + State */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <MapPin className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                        <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-100">
+                          {county.name}
+                        </h3>
+                      </div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400 ml-7">
+                        {county.state}
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Status</div>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                          STATUS_CONFIG[county.status as CountyStatus].color
+                        )}
+                      >
+                        {STATUS_CONFIG[county.status as CountyStatus].icon}
+                        {STATUS_CONFIG[county.status as CountyStatus].label}
+                      </span>
+                    </div>
+
+                    {/* Properties + Documents */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Properties</div>
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            {county.propertyCount.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Documents</div>
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            {county.documentsCount}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">Progress</div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                county.progress >= 75
+                                  ? "bg-green-500"
+                                  : county.progress >= 50
+                                  ? "bg-amber-500"
+                                  : county.progress > 0
+                                  ? "bg-blue-500"
+                                  : "bg-slate-300 dark:bg-slate-600"
+                              )}
+                              style={{ width: `${county.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100 min-w-[38px]">
+                          {county.progress}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Next Auction */}
+                    {county.nextAuctionDate && (
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Next Auction</div>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm text-slate-900 dark:text-slate-100">
+                            {county.nextAuctionDate}
+                          </span>
+                          {county.daysUntilAuction !== null && (
+                            <span
+                              className={cn(
+                                "text-xs font-medium",
+                                county.daysUntilAuction <= 14
+                                  ? "text-red-600 dark:text-red-400"
+                                  : county.daysUntilAuction <= 30
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-slate-500 dark:text-slate-400"
+                              )}
+                            >
+                              ({county.daysUntilAuction} days)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Last Researched */}
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Last Researched</div>
+                      {county.researchedAt ? (
+                        <div>
+                          <div className="text-sm text-slate-900 dark:text-slate-100">
+                            {new Date(county.researchedAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {Math.floor((Date.now() - new Date(county.researchedAt).getTime()) / (1000 * 60 * 60 * 24))} days ago
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-400 dark:text-slate-500 italic">Not researched</span>
+                      )}
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        onClick={() => router.push(`/counties/${county.id}`)}
+                        className="w-full min-h-[44px] px-4 py-2 flex items-center justify-center gap-2 text-sm text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 rounded-lg font-medium transition-colors"
+                      >
+                        View Details
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8">
+                  <div className="text-center text-slate-500 dark:text-slate-400">
+                    No counties found matching your criteria
+                  </div>
+                </div>
+              )}
+            </div>
+          }
+        >
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="sticky top-0 z-10 bg-slate-50">
+              <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     County
@@ -463,12 +619,8 @@ export default function CountiesPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </MobileDataTable>
       </main>
     </div>
   )
-}
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ")
 }

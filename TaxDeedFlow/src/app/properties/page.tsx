@@ -39,8 +39,8 @@ import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
-import { formatDate, DATE_FORMAT_KEY } from "@/lib/utils"
-import { AddToWatchlistDialog } from "@/components/watchlists/AddToWatchlistDialog"
+import { formatDate, DATE_FORMAT_KEY, cn } from "@/lib/utils"
+import { MobileDataTable } from "@/components/shared/MobileDataTable"
 
 // Property type for API data
 interface Property {
@@ -180,7 +180,6 @@ function PropertiesContent() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [addToWatchlistProperty, setAddToWatchlistProperty] = useState<Property | null>(null)
 
   // Fetch properties from API
   useEffect(() => {
@@ -1039,19 +1038,21 @@ function PropertiesContent() {
                               <button
                                 onClick={() => filter.isDefault ? handleRemoveDefault(filter.id) : handleSetAsDefault(filter.id)}
                                 className={cn(
-                                  "p-1 rounded",
+                                  "min-w-[44px] min-h-[44px] p-2 rounded flex items-center justify-center",
                                   filter.isDefault
                                     ? "text-amber-500 hover:text-amber-600 hover:bg-amber-100"
                                     : "text-slate-400 hover:text-amber-500 hover:bg-amber-50"
                                 )}
                                 title={filter.isDefault ? "Remove as default" : "Set as default"}
+                                aria-label={filter.isDefault ? "Remove as default" : "Set as default"}
                               >
                                 <Star className={cn("h-4 w-4", filter.isDefault && "fill-current")} />
                               </button>
                               <button
                                 onClick={() => handleDeleteFilter(filter.id)}
-                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                className="min-w-[44px] min-h-[44px] p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded flex items-center justify-center"
                                 title="Delete filter"
+                                aria-label="Delete filter"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -1165,7 +1166,8 @@ function PropertiesContent() {
                           setCurrentPage(1)
                           updateUrlParams({ stage: null, page: null })
                         }}
-                        className="hover:bg-primary/20 rounded-full p-0.5"
+                        className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
+                        aria-label="Remove status filter"
                       >
                         ×
                       </button>
@@ -1180,7 +1182,8 @@ function PropertiesContent() {
                           setCurrentPage(1)
                           updateUrlParams({ county: null, page: null })
                         }}
-                        className="hover:bg-primary/20 rounded-full p-0.5"
+                        className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
+                        aria-label="Remove county filter"
                       >
                         ×
                       </button>
@@ -1195,7 +1198,8 @@ function PropertiesContent() {
                           setCurrentPage(1)
                           updateUrlParams({ dateRange: null, page: null })
                         }}
-                        className="hover:bg-primary/20 rounded-full p-0.5"
+                        className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
+                        aria-label="Remove date range filter"
                       >
                         ×
                       </button>
@@ -1282,7 +1286,185 @@ function PropertiesContent() {
         )}
 
         {/* Properties Table */}
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <MobileDataTable
+          cardView={
+            <div className="space-y-3">
+              {paginatedProperties.length > 0 ? (
+                paginatedProperties.map((property) => (
+                  <div
+                    key={property.id}
+                    className={cn(
+                      "bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3",
+                      selectedProperties.has(property.id) && "ring-2 ring-blue-500 bg-blue-50/50 dark:bg-blue-900/10"
+                    )}
+                  >
+                    {/* Header: Checkbox + Status + Validation */}
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        onClick={() => handleSelectProperty(property.id)}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-primary transition-colors"
+                        aria-label={selectedProperties.has(property.id) ? "Deselect property" : "Select property"}
+                      >
+                        {selectedProperties.has(property.id) ? (
+                          <CheckSquare className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Square className="h-5 w-5 text-slate-400" />
+                        )}
+                      </button>
+                      <div className="flex-1 flex flex-wrap items-center gap-2">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                            STATUS_CONFIG[property.status as PropertyStatus].color
+                          )}
+                        >
+                          {STATUS_CONFIG[property.status as PropertyStatus].icon}
+                          {STATUS_CONFIG[property.status as PropertyStatus].label}
+                        </span>
+                        {property.validation ? (
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                              VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].color
+                            )}
+                          >
+                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].icon}
+                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-400 dark:text-slate-500">
+                            <Shield className="h-3 w-3" />
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Parcel ID */}
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Parcel ID</div>
+                      <div className="text-sm font-mono text-slate-900 dark:text-slate-100">{property.parcelId}</div>
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Address</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{property.address}</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                        {property.city}, {property.state}
+                      </div>
+                    </div>
+
+                    {/* County + Total Due (side by side) */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">County</div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm text-slate-900 dark:text-slate-100">{property.county}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Total Due</div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            {property.totalDue.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sale Date + Sale Type (side by side) */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Sale Date</div>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm text-slate-900 dark:text-slate-100">
+                            {formatDate(property.saleDate, dateFormatPreference)}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Sale Type</div>
+                        <div className="flex items-center gap-1">
+                          <Gavel className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm text-slate-900 dark:text-slate-100">{property.saleType}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        onClick={() => router.push(`/properties/${property.id}`)}
+                        className="flex-1 min-h-[44px] px-4 py-2 flex items-center justify-center gap-2 text-sm text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 rounded-lg font-medium transition-colors"
+                      >
+                        View Details
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirmId(property.id)}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                        title="Delete property"
+                        aria-label="Delete property"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8">
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                      <Search className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+                    </div>
+                    <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                      No properties found
+                    </h3>
+                    {trimmedSearch && (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                        No results for &quot;{searchQuery.trim()}&quot;
+                      </p>
+                    )}
+                    <div className="text-sm text-slate-500 dark:text-slate-400 space-y-1">
+                      <p>Try:</p>
+                      <ul className="list-disc list-inside">
+                        {trimmedSearch && (
+                          <li>Check for typos in your search term</li>
+                        )}
+                        <li>Try a different address, parcel ID, or city</li>
+                        {(statusFilter !== "all" || countyFilter !== "all") && (
+                          <li>Remove some filters to see more results</li>
+                        )}
+                      </ul>
+                    </div>
+                    {(trimmedSearch || statusFilter !== "all" || countyFilter !== "all" || dateRangeFilter !== "all") && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery("")
+                          setStatusFilter("all")
+                          setCountyFilter("all")
+                          setDateRangeFilter("all")
+                          setCurrentPage(1)
+                          updateUrlParams({ stage: null, county: null, dateRange: null, q: null, page: null })
+                        }}
+                        className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 dark:text-blue-400 dark:hover:text-blue-300 border border-primary/30 dark:border-blue-500/30 rounded-lg hover:bg-primary/5 dark:hover:bg-blue-500/10 transition-colors"
+                      >
+                        Clear all filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          }
+        >
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50">
@@ -1290,7 +1472,7 @@ function PropertiesContent() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-10">
                     <button
                       onClick={handleSelectAll}
-                      className="flex items-center justify-center hover:text-slate-700 transition-colors"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-slate-700 transition-colors"
                       aria-label={allCurrentPageSelected ? "Deselect all" : "Select all"}
                       title={allCurrentPageSelected ? "Deselect all on page" : "Select all on page"}
                     >
@@ -1380,7 +1562,7 @@ function PropertiesContent() {
                       <td className="px-4 py-4">
                         <button
                           onClick={() => handleSelectProperty(property.id)}
-                          className="flex items-center justify-center hover:text-primary transition-colors"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-primary transition-colors"
                           aria-label={selectedProperties.has(property.id) ? "Deselect property" : "Select property"}
                         >
                           {selectedProperties.has(property.id) ? (
@@ -1480,24 +1662,18 @@ function PropertiesContent() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => router.push(`/properties/${property.id}`)}
-                            className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
+                            className="min-h-[44px] px-2 flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
                           >
                             View
                             <ExternalLink className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={() => setAddToWatchlistProperty(property)}
-                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-700 font-medium"
-                            title="Add to watchlist"
-                          >
-                            <BookmarkPlus className="h-3.5 w-3.5" />
-                          </button>
-                          <button
                             onClick={() => setDeleteConfirmId(property.id)}
-                            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-sm text-red-500 hover:text-red-700 font-medium"
                             title="Delete property"
+                            aria-label="Delete property"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -1557,7 +1733,7 @@ function PropertiesContent() {
           </div>
 
           {/* Pagination and Page Size */}
-          <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between">
+          <div className="px-4 py-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <p className="text-sm text-slate-500">
                 Page {validCurrentPage} of {totalPages}
@@ -1620,7 +1796,7 @@ function PropertiesContent() {
               </div>
             )}
           </div>
-        </div>
+        </MobileDataTable>
 
         {/* Save Filter Modal */}
         {showSaveFilterModal && (
@@ -1645,7 +1821,8 @@ function PropertiesContent() {
                     setShowSaveFilterModal(false)
                     setNewFilterName("")
                   }}
-                  className="p-1 hover:bg-slate-100 rounded-lg"
+                  className="min-w-[44px] min-h-[44px] p-2 hover:bg-slate-100 rounded-lg flex items-center justify-center"
+                  aria-label="Close modal"
                 >
                   <X className="h-5 w-5 text-slate-500" />
                 </button>
@@ -1707,14 +1884,14 @@ function PropertiesContent() {
                     setShowSaveFilterModal(false)
                     setNewFilterName("")
                   }}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  className="min-h-[44px] px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveFilter}
                   disabled={!newFilterName.trim()}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 min-h-[44px] px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <BookmarkPlus className="h-4 w-4" />
                   Save Filter
@@ -1742,8 +1919,9 @@ function PropertiesContent() {
                 </div>
                 <button
                   onClick={() => !isDeleting && setDeleteConfirmId(null)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-600"
                   disabled={isDeleting}
+                  aria-label="Close modal"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1769,7 +1947,7 @@ function PropertiesContent() {
               <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-200">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  className="min-h-[44px] px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                   disabled={isDeleting}
                 >
                   Cancel
@@ -1777,7 +1955,7 @@ function PropertiesContent() {
                 <button
                   onClick={() => handleDeleteProperty(deleteConfirmId)}
                   disabled={isDeleting}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 min-h-[44px] px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-4 w-4" />
                   {isDeleting ? "Deleting..." : "Delete Property"}
@@ -1785,20 +1963,6 @@ function PropertiesContent() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Add to Watchlist Dialog */}
-        {addToWatchlistProperty && (
-          <AddToWatchlistDialog
-            open={!!addToWatchlistProperty}
-            onOpenChange={(open) => !open && setAddToWatchlistProperty(null)}
-            propertyId={addToWatchlistProperty.id}
-            propertyAddress={`${addToWatchlistProperty.address}, ${addToWatchlistProperty.city}`}
-            onSuccess={() => {
-              // Optional: Show success toast or refresh data
-              setAddToWatchlistProperty(null)
-            }}
-          />
         )}
       </main>
     </div>
@@ -1819,8 +1983,4 @@ export default function PropertiesPage() {
       <PropertiesContent />
     </Suspense>
   )
-}
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ")
 }

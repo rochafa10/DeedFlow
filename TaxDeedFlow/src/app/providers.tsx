@@ -4,8 +4,8 @@ import { ReactNode, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ThemeProvider } from "next-themes"
 import { AuthProvider } from "@/contexts/AuthContext"
-import { OrganizationProvider } from "@/contexts/OrganizationContext"
 import { Toaster } from "sonner"
+import { InstallPrompt } from "@/components/pwa/InstallPrompt"
 
 export function Providers({ children }: { children: ReactNode }) {
   // Create QueryClient inside component to avoid shared state between requests
@@ -30,9 +30,7 @@ export function Providers({ children }: { children: ReactNode }) {
         disableTransitionOnChange
       >
         <AuthProvider>
-          <OrganizationProvider>
-            {children}
-          </OrganizationProvider>
+          {children}
           <Toaster
             position="top-right"
             toastOptions={{
@@ -45,6 +43,7 @@ export function Providers({ children }: { children: ReactNode }) {
             }}
             richColors
           />
+          <InstallPrompt />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
