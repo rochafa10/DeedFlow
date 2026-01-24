@@ -11,10 +11,12 @@
  * @date 2026-01-24
  */
 
+import { useState, useEffect, useCallback } from "react";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { ActivityFeedItem } from "@/components/orchestration/ActivityFeedItem";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Activity, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Activity, RefreshCw, AlertCircle, Loader2, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -40,7 +42,36 @@ interface ActivityFeedProps {
  * Supabase subscriptions.
  */
 export function ActivityFeed({ className, maxItems }: ActivityFeedProps) {
-  const { activities, isLoading, error, refetch } = useActivityFeed();
+  const { activities, isLoading, error, refetch, filters, setFilters } = useActivityFeed();
+
+  // Local state for search input with debouncing
+  const [searchInputValue, setSearchInputValue] = useState(filters.searchQuery);
+
+  // Debounced search: update filter after 300ms of no typing
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setFilters({
+        ...filters,
+        searchQuery: searchInputValue,
+      });
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInputValue]);
+
+  // Sync local input value with filter state (for external filter changes)
+  useEffect(() => {
+    if (filters.searchQuery !== searchInputValue) {
+      setSearchInputValue(filters.searchQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.searchQuery]);
+
+  // Clear search input
+  const clearSearch = useCallback(() => {
+    setSearchInputValue("");
+  }, []);
 
   // Limit displayed items if maxItems is specified
   const displayedActivities = maxItems
@@ -75,6 +106,33 @@ export function ActivityFeed({ className, maxItems }: ActivityFeedProps) {
         <CardDescription>
           Real-time updates from orchestration sessions and agent assignments
         </CardDescription>
+
+        {/* Search Input */}
+        <div className="mt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Search by agent, county, or activity..."
+              value={searchInputValue}
+              onChange={(e) => setSearchInputValue(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {searchInputValue && (
+              <button
+                onClick={clearSearch}
+                className={cn(
+                  "absolute right-3 top-1/2 -translate-y-1/2",
+                  "p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800",
+                  "transition-colors"
+                )}
+                aria-label="Clear search"
+              >
+                <X className="h-3 w-3 text-slate-500" />
+              </button>
+            )}
+          </div>
+        </div>
       </CardHeader>
 
       <CardContent>
