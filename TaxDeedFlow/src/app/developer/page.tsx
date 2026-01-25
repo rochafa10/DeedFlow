@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { Key, BookOpen, BarChart3, Webhook, ArrowRight, Code, Shield, Zap } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -34,8 +33,6 @@ export default function DeveloperPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

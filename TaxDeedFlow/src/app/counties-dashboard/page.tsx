@@ -18,7 +18,6 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { useCountyDashboard, County } from "@/hooks/useCountyDashboard"
@@ -130,8 +129,6 @@ export default function CountiesDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-
       {/* Main Content */}
       <main
         id="main-content"

@@ -21,6 +21,9 @@ import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Import property management types
+import type { PropertyNote, PropertyImage, ActivityLogEntry } from "@/components/property-management";
+
 // Import utilities
 import {
   calculateLocationScores,
@@ -132,6 +135,27 @@ export function PropertyReportContainer({ propertyId }: PropertyReportContainerP
   // State for risk assessment from API
   const [riskApiData, setRiskApiData] = useState<RiskAssessment | null>(null);
   const [riskApiLoading, setRiskApiLoading] = useState(false);
+
+  // ============================================
+  // Property Management State
+  // ============================================
+
+  // Edit/Save/Delete state
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Watchlist state
+  const [isOnWatchlist, setIsOnWatchlist] = useState(false);
+
+  // Notes, images, and activity log
+  const [notes, setNotes] = useState<PropertyNote[]>([]);
+  const [images, setImages] = useState<PropertyImage[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+
+  // Enrichment loading states
+  const [isRegridLoading, setIsRegridLoading] = useState(false);
+  const [isScreenshotLoading, setIsScreenshotLoading] = useState(false);
 
   // Fetch property from Supabase
   useEffect(() => {
@@ -642,6 +666,89 @@ export function PropertyReportContainer({ propertyId }: PropertyReportContainerP
     // Future implementation: Share via Web Share API or generate shareable link
   }, [reportData]);
 
+  // ============================================
+  // Property Management Callbacks
+  // ============================================
+
+  // Edit mode callbacks
+  const handleEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      // TODO: Implement save API call
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Placeholder
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false);
+  }, []);
+
+  // Watchlist toggle
+  const handleWatchlistToggle = useCallback(async () => {
+    try {
+      setIsOnWatchlist(prev => !prev);
+      // TODO: Implement watchlist API call
+    } catch (error) {
+      console.error('Failed to toggle watchlist:', error);
+      setIsOnWatchlist(prev => !prev); // Revert on error
+    }
+  }, []);
+
+  // Delete handler
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      // TODO: Implement delete API call
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Placeholder
+      // Redirect after delete
+      window.location.href = '/properties';
+    } catch (error) {
+      console.error('Failed to delete:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, []);
+
+  // Notes change handler
+  const handleNotesChange = useCallback((newNotes: PropertyNote[]) => {
+    setNotes(newNotes);
+    // TODO: Implement notes save API call
+  }, []);
+
+  // Data enrichment handlers
+  const handleFetchRegrid = useCallback(async () => {
+    setIsRegridLoading(true);
+    try {
+      // TODO: Implement Regrid fetch
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Placeholder
+    } catch (error) {
+      console.error('Failed to fetch Regrid:', error);
+    } finally {
+      setIsRegridLoading(false);
+    }
+  }, []);
+
+  const handleCaptureScreenshots = useCallback(async () => {
+    setIsScreenshotLoading(true);
+    try {
+      // TODO: Implement screenshot capture
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Placeholder
+    } catch (error) {
+      console.error('Failed to capture screenshots:', error);
+    } finally {
+      setIsScreenshotLoading(false);
+    }
+  }, []);
+
   // Handle back button
   const handleBack = useCallback(() => {
     router.back();
@@ -695,6 +802,49 @@ export function PropertyReportContainer({ propertyId }: PropertyReportContainerP
       {...reportData}
       onExportPDF={handleExportPDF}
       onShare={handleShare}
+
+      // Property management features
+      showManagementFeatures={true}
+      propertyId={propertyId}
+      canEdit={true} // TODO: Get from auth context
+      canDelete={true} // TODO: Get from auth context
+      isEditing={isEditing}
+      isOnWatchlist={isOnWatchlist}
+      isSaving={isSaving}
+      isDeleting={isDeleting}
+      propertyVersion={1} // TODO: Get from property data
+      lastModified={new Date().toISOString()} // TODO: Get from property data
+
+      // Edit callbacks
+      onEdit={handleEdit}
+      onSave={handleSave}
+      onCancel={handleCancel}
+      onWatchlistToggle={handleWatchlistToggle}
+      onDelete={handleDelete}
+
+      // Enrichment status
+      enrichmentStatus={{
+        regridComplete: !!property?.screenshot_url,
+        regridLastFetched: undefined, // TODO: Get from property data
+        screenshotComplete: !!property?.screenshot_url,
+        screenshotCount: property?.screenshot_url ? 1 : 0,
+        validationStatus: "pending", // TODO: Get from property data
+      }}
+      onFetchRegrid={handleFetchRegrid}
+      onCaptureScreenshots={handleCaptureScreenshots}
+      isRegridLoading={isRegridLoading}
+      isScreenshotLoading={isScreenshotLoading}
+      allowRefresh={!isEditing}
+
+      // Notes and activity
+      notes={notes}
+      onNotesChange={handleNotesChange}
+      currentUserName="User" // TODO: Get from auth context
+      images={images}
+      activityLog={activityLog}
+
+      // Regrid screenshot for map view
+      regridScreenshotUrl={property?.screenshot_url}
     />
   );
 }

@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
     const countyId = searchParams.get("county_id")
     const saleStatus = searchParams.get("sale_status")
 
-    // Build query
+    // Build query with LEFT JOINs to counties and regrid_data
+    // regrid_data provides enriched property information from Regrid.com
     let query = supabase
       .from("properties")
       .select(`
@@ -43,6 +44,22 @@ export async function GET(request: NextRequest) {
         counties (
           county_name,
           state_code
+        ),
+        regrid_data (
+          property_type,
+          land_use,
+          zoning,
+          lot_size_sqft,
+          lot_size_acres,
+          building_sqft,
+          year_built,
+          bedrooms,
+          bathrooms,
+          assessed_value,
+          market_value,
+          latitude,
+          longitude,
+          additional_fields
         )
       `, { count: "exact" })
       .order("updated_at", { ascending: false })

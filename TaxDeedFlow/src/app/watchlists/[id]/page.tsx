@@ -25,7 +25,6 @@ import {
   ShieldAlert,
   ShieldX,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { formatDate } from "@/lib/utils"
 
@@ -245,7 +244,6 @@ export default function WatchlistDetailPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
@@ -260,7 +258,6 @@ export default function WatchlistDetailPage() {
   if (!watchlist) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <p className="text-slate-500 mb-4">Watchlist not found</p>
@@ -281,8 +278,6 @@ export default function WatchlistDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
-
       {/* Hero section */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

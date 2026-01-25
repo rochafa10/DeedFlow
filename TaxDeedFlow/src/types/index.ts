@@ -57,5 +57,37 @@ export type { User } from './auth';
 // ============================================
 export type { DashboardStats } from './dashboard';
 
+// ============================================
+// Property Management Types
+// ============================================
+export type {
+  NoteType,
+  PropertyNote,
+  CreatePropertyNoteRequest,
+  UpdatePropertyNoteRequest,
+  NoteTypeConfig,
+  ActivityLogEntry,
+  ActivityAction,
+  PropertyImage,
+  PropertyImageDetailed,
+  ValidationStatus,
+  ValidationStatusConfig,
+  EnrichmentSourceStatus,
+  ScreenshotEnrichmentStatus,
+  ValidationEnrichmentStatus,
+  DataEnrichmentStatus,
+  PropertyNotesPanelProps,
+  PropertyHistoryTimelineProps,
+  ImageGalleryProps,
+  DataEnrichmentStatusProps,
+  PropertyActionBarProps,
+} from './property-management';
+
+export {
+  NOTE_TYPE_CONFIG,
+  VALIDATION_STATUS_CONFIG,
+  DEFAULT_ENRICHMENT_STATUS,
+} from './property-management';
+
 // NOTE: Removed ShareConfig, SharePermissions, PropertyScore, ScoreWeights
 // as they do not exist in their respective source modules

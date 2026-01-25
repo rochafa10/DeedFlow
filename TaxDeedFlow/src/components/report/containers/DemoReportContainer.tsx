@@ -585,6 +585,7 @@ function DemoReportContainerContent() {
       marketAnalysis,
       isShowingRealData: !!propertyReport,
       reportDate: new Date(),
+      regridScreenshotUrl: activePropertyDetails.imageUrl || undefined,
     };
   }, [
     activePropertyDetails,

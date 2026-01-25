@@ -88,23 +88,35 @@ export async function POST(request: NextRequest) {
         property_id,
         regrid_id: data.regrid_id,
         ll_uuid: data.ll_uuid,
+        // Address fields (Track 2.2)
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        // Property classification
         property_type: data.property_type,
         property_class: data.property_class,
         land_use: data.land_use,
         zoning: data.zoning,
+        // Lot information
         lot_size_sqft: data.lot_size_sqft,
         lot_size_acres: data.lot_size_acres,
         lot_dimensions: data.lot_dimensions,
+        // Building information
         building_sqft: data.building_sqft,
         year_built: data.year_built,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
+        // Valuation
         assessed_value: data.assessed_value,
         market_value: data.market_value,
+        // Location
         latitude: data.latitude,
         longitude: data.longitude,
+        // Utilities
         water_service: data.water_service,
         sewer_service: data.sewer_service,
+        // Additional data
         additional_fields: data.additional_fields,
         raw_html: data.raw_html,
         scraped_at: new Date().toISOString(),
@@ -269,29 +281,44 @@ function generatePlaceholderRegridData(
   return {
     regrid_id: `rg_${parcelId.replace(/[^a-zA-Z0-9]/g, "_")}`,
     ll_uuid: `ll_${hash.toString(16)}`,
+    // Address fields - use input values as fallbacks, real scraper will populate
+    address: address || null,
+    city: null,              // Will be populated by real Regrid scraper
+    state: state || null,    // Use input state as fallback
+    zip: null,               // Will be populated by real Regrid scraper
+    // Property classification
     property_type: propertyType,
     property_class: propertyType === "Residential" ? "Single Family" : "Commercial",
     land_use: propertyType === "Residential" ? "RESIDENTIAL" : "COMMERCIAL",
     zoning: propertyType === "Residential" ? "R-1" : "C-1",
+    // Lot information
     lot_size_sqft: 5000 + (hash % 15000),
     lot_size_acres: (5000 + (hash % 15000)) / 43560,
     lot_dimensions: `${50 + (hash % 50)}x${80 + (hash % 80)}`,
+    // Building information
     building_sqft: propertyType === "Residential" ? 1000 + (hash % 2000) : null,
     year_built: propertyType === "Residential" ? 1950 + (hash % 70) : null,
     bedrooms: propertyType === "Residential" ? 2 + (hash % 3) : null,
     bathrooms: propertyType === "Residential" ? 1 + (hash % 2) : null,
+    // Valuation
     assessed_value: 20000 + (hash % 180000),
     market_value: 30000 + (hash % 270000),
+    // Location
     latitude: baseLat,
     longitude: baseLng,
+    // Utilities
     water_service: "PUBLIC",
     sewer_service: "PUBLIC",
+    // Additional fields - store address components for backup/fallback access
     additional_fields: {
       source: "placeholder",
       county,
       state,
       original_parcel_id: parcelId,
+      // Address components stored in additional_fields for backup
       address: address || null,
+      city: null,
+      zip: null,
     },
     raw_html: null,
     data_quality_score: 0.50, // Lower score for placeholder data (0.00-1.00 scale)
@@ -332,27 +359,40 @@ function determinePropertyType(parcelId: string, address: string | undefined): s
 
 /**
  * Type definition for Regrid data
+ * Includes address fields added in Track 2.2 for storing scraped address components
  */
 interface RegridData {
   regrid_id: string | null
   ll_uuid: string | null
+  // Address fields - populated by the Regrid scraper script
+  address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  // Property classification fields
   property_type: string | null
   property_class: string | null
   land_use: string | null
   zoning: string | null
+  // Lot information
   lot_size_sqft: number | null
   lot_size_acres: number | null
   lot_dimensions: string | null
+  // Building information
   building_sqft: number | null
   year_built: number | null
   bedrooms: number | null
   bathrooms: number | null
+  // Valuation
   assessed_value: number | null
   market_value: number | null
+  // Location
   latitude: number | null
   longitude: number | null
+  // Utilities
   water_service: string | null
   sewer_service: string | null
+  // Additional data
   additional_fields: Record<string, unknown> | null
   raw_html: string | null
   data_quality_score: number

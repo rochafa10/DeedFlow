@@ -7,11 +7,23 @@
  * - Better JPEG quality (90 vs 75)
  * - Device scale factor 1.5 for sharper images
  * - PNG option for maximum quality
+ * - NEW: Property address extraction (address, city, state, zip)
  *
  * Usage: node regrid-screenshot-v16-test.js <parcel_id> <county> <state> <property_id> [quality]
  *   quality: "high" (PNG), "medium" (JPEG 90), "low" (JPEG 75)
- * 
+ *
  * Output: JSON with success/error, base64 screenshot, and regrid_data object
+ *
+ * regrid_data fields include:
+ *   - regrid_id, ll_uuid: Regrid identifiers
+ *   - address, city, state, zip: Property address components
+ *   - property_type, property_class, land_use, zoning: Property classification
+ *   - lot_size_sqft, lot_size_acres, lot_dimensions: Land measurements
+ *   - building_sqft, year_built, bedrooms, bathrooms: Building details
+ *   - assessed_value, assessed_land_value, assessed_improvement_value, market_value: Values
+ *   - latitude, longitude, elevation_ft: Location data
+ *   - water_service, sewer_service: Utilities
+ *   - data_quality_score: 0.0-1.0 score based on required fields populated
  */
 
 const { chromium } = require('playwright');
@@ -59,6 +71,12 @@ async function extractPropertyData(page) {
     const result = {
       regrid_id: null,
       ll_uuid: null,
+      // Address fields
+      address: null,          // Full street address
+      city: null,             // City name
+      state: null,            // State code
+      zip: null,              // ZIP code
+      // Property characteristics
       property_type: null,
       property_class: null,
       land_use: null,
@@ -127,6 +145,9 @@ async function extractPropertyData(page) {
 
     // Extract data using regex patterns (improved based on actual panel structure)
     const patterns = {
+      // Address patterns - try multiple formats
+      address: /(?:Situs\s+Address|Property\s+Address|Address)[:\s]+([^\n]+)/i,
+      // Property characteristics
       property_type: /Property\s+Type[:\s]+([^\n]+)/i,
       property_class: /Zoning\s+Type[:\s]+([^\n]+)/i,
       land_use: /Parcel\s+Use\s+Code[:\s]+"?([^"\n]+)"?/i,
@@ -185,14 +206,57 @@ async function extractPropertyData(page) {
       }
     }
 
+    // Parse address components (city, state, zip) from full address
+    // Expected formats: "123 Main St, Altoona, PA 16601" or "123 Main St, Altoona, PA"
+    if (result.address) {
+      // Clean up the address first
+      result.address = result.address.trim();
+
+      // Try to extract city, state, zip from address like "123 Main St, Altoona, PA 16601"
+      const addressParts = result.address.match(/,\s*([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/i);
+      if (addressParts) {
+        result.city = addressParts[1]?.trim() || null;
+        result.state = addressParts[2]?.toUpperCase().trim() || null;
+        result.zip = addressParts[3]?.trim() || null;
+      } else {
+        // Try alternate format: "City, ST ZIP" at end
+        const altParts = result.address.match(/,\s*([A-Za-z\s]+)\s+([A-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/i);
+        if (altParts) {
+          result.city = altParts[1]?.trim() || null;
+          result.state = altParts[2]?.toUpperCase().trim() || null;
+          result.zip = altParts[3]?.trim() || null;
+        }
+      }
+    }
+
+    // Fallback address extraction: Look for address in panel header or title area
+    // Regrid often shows address prominently at top of Property Details panel
+    if (!result.address) {
+      // Try to find address pattern in search text (street number + street name + city, state zip)
+      const fullAddressMatch = searchText.match(/(\d+\s+[A-Za-z0-9\s]+(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Way|Ct|Court|Pl|Place|Cir|Circle)[.,]?\s*(?:[A-Za-z\s]+,\s*)?[A-Z]{2}\s*\d{5}(?:-\d{4})?)/i);
+      if (fullAddressMatch) {
+        result.address = fullAddressMatch[1].trim();
+        // Re-parse components from this address
+        const addressParts = result.address.match(/,\s*([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/i);
+        if (addressParts) {
+          result.city = addressParts[1]?.trim() || null;
+          result.state = addressParts[2]?.toUpperCase().trim() || null;
+          result.zip = addressParts[3]?.trim() || null;
+        }
+      }
+    }
+
     // Calculate data quality score (0.0 to 1.0)
+    // Include address as a required field for completeness
     let score = 0.0;
     const requiredFields = [
-      'regrid_id', 'property_type', 'land_use', 'lot_size_acres', 
-      'assessed_value', 'latitude', 'longitude', 'water_service'
+      'regrid_id', 'property_type', 'land_use', 'lot_size_acres',
+      'assessed_value', 'latitude', 'longitude', 'water_service', 'address'
     ];
+    // Each field contributes ~0.111 to the score (1.0 / 9 fields)
+    const fieldWeight = 1.0 / requiredFields.length;
     requiredFields.forEach(field => {
-      if (result[field] !== null && result[field] !== '') score += 0.125;
+      if (result[field] !== null && result[field] !== '') score += fieldWeight;
     });
     result.data_quality_score = Math.min(score, 1.0);
 

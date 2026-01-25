@@ -1,7 +1,8 @@
 /**
  * Report Section Components
  *
- * All 12 sections of the Property Analysis Report
+ * All 12 sections of the Property Analysis Report plus
+ * the Property Management section (excluded from PDF printing)
  *
  * @module report/sections
  */
@@ -121,3 +122,15 @@ export {
   type LegalReference,
   type DisclaimersProps,
 } from "./Disclaimers";
+
+// Property Management Section (Print Excluded)
+export {
+  PropertyManagementSection,
+  type PropertyManagementSectionProps,
+} from "./PropertyManagementSection";
+
+// Lazy-loaded Property Management Section
+export {
+  LazyPropertyManagementSection,
+  PropertyManagementSkeleton,
+} from "./LazyPropertyManagement";

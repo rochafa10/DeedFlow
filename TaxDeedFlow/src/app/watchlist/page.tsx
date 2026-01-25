@@ -18,7 +18,6 @@ import {
   Calendar,
   FileText,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { WatchlistManager, WatchlistSummary } from "@/components/watchlist/WatchlistManager"
 import { CreateListModal } from "@/components/watchlist/CreateListModal"
@@ -293,7 +292,6 @@ export default function WatchlistPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left sidebar - Watchlist Manager */}
@@ -568,11 +566,11 @@ export default function WatchlistPage() {
                       {/* Actions */}
                       <div className="flex flex-col gap-2">
                         <a
-                          href={`/properties/${item.property_id}`}
+                          href={`/report/${item.property_id}`}
                           className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         >
                           <ExternalLink className="h-4 w-4" />
-                          View
+                          View Report
                         </a>
                         <button
                           onClick={() => removeFromWatchlist(item.id)}

@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, Suspense, useEffect } from "react"
 import { Search, UserPlus, Users, Shield, User, Settings, Building2 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useOrganization } from "@/contexts/OrganizationContext"
 import { useRouter } from "next/navigation"
@@ -16,8 +15,7 @@ import { InviteMemberDialog } from "@/components/team/InviteMemberDialog"
 function LoadingSkeleton() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-      <main className="container mx-auto px-4 py-8">
+            <main className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
           <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
@@ -64,8 +62,7 @@ function TeamOrganizationContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-      <main className="container mx-auto px-4 py-8">
+            <main className="container mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -208,8 +205,7 @@ export default function TeamPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-          <Header />
-          <div className="container mx-auto px-4 py-8">
+                    <div className="container mx-auto px-4 py-8">
             <div className="animate-pulse space-y-4">
               <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
               <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded"></div>

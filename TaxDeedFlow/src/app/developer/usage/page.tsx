@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { authFetch } from "@/lib/api/authFetch"
 import type { ApiUsageStats, RateLimitTier } from "@/types/api"
@@ -113,7 +112,6 @@ export default function UsageDashboardPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex items-center gap-3 text-slate-500">
@@ -130,7 +128,6 @@ export default function UsageDashboardPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -173,8 +170,6 @@ export default function UsageDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

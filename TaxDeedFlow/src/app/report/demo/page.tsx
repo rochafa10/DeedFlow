@@ -22,6 +22,7 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
+  AlertCircle,
   CheckCircle,
   MapPin,
   Building,
@@ -3157,7 +3158,7 @@ function PropertyReportDemoPageContent() {
         </section>
 
         {/* ===== SECTION 4: Property Visualization (Maps) ===== */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Map View - Using Google Maps Static API */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
@@ -3213,6 +3214,29 @@ function PropertyReportDemoPageContent() {
                 showExternalLink={true}
                 altText={`Street view of ${activePropertyDetails.address}`}
               />
+            </div>
+          </div>
+          {/* Regrid Aerial View */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+              <Map className="h-5 w-5" />
+              Regrid View
+            </h3>
+            <div className="aspect-video relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
+              {activePropertyDetails.imageUrl && activePropertyDetails.imageUrl !== "/placeholder-property.jpg" ? (
+                <img
+                  src={activePropertyDetails.imageUrl}
+                  alt={`Regrid aerial view of ${activePropertyDetails.address}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400">
+                  <AlertCircle className="h-8 w-8 mb-2 text-amber-500" />
+                  <p className="font-medium">No Regrid Image</p>
+                  <p className="text-sm">Screenshot not yet captured</p>
+                </div>
+              )}
             </div>
           </div>
         </section>

@@ -35,7 +35,6 @@ import {
   MinusSquare,
   Loader2,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
@@ -57,6 +56,13 @@ interface Property {
   saleType: string
   validation: string | null
   saleDate: string
+  // Regrid data fields
+  yearBuilt: number | null
+  bedrooms: number | null
+  bathrooms: number | null
+  buildingSqft: number | null
+  assessedValue: number | null
+  lotSizeAcres: number | null
 }
 
 // Date range options for filtering
@@ -193,6 +199,7 @@ function PropertiesContent() {
         }
         const result = await response.json()
         // Transform API data to match component's expected format
+        // API response type includes regrid_data for enriched property information
         const transformedProperties: Property[] = (result.data || []).map((p: {
           id: string
           parcel_id?: string
@@ -217,20 +224,54 @@ function PropertiesContent() {
           validation?: string | null
           sale_date?: string
           saleDate?: string
+          // Regrid enrichment data - provides fallback values for property details
+          regrid_data?: {
+            property_type?: string
+            land_use?: string
+            zoning?: string
+            lot_size_sqft?: number
+            lot_size_acres?: number
+            building_sqft?: number
+            year_built?: number
+            bedrooms?: number
+            bathrooms?: number
+            assessed_value?: number
+            market_value?: number
+            latitude?: number
+            longitude?: number
+            additional_fields?: {
+              address?: string
+              city?: string
+              state?: string
+              zip?: string
+              [key: string]: unknown
+            }
+          } | null
         }) => ({
           id: p.id,
           parcelId: p.parcel_id || p.parcelId || "",
-          address: p.property_address || p.address || "Address not available",
-          city: p.city || "",
+          // Address fallback chain: property_address -> address -> regrid address -> default
+          address: p.property_address || p.address || p.regrid_data?.additional_fields?.address || "Address not available",
+          // City fallback: city -> regrid city -> empty
+          city: p.city || p.regrid_data?.additional_fields?.city || "",
           county: p.counties?.county_name || p.county || "Unknown",
-          state: p.counties?.state_code || p.state || "PA",
+          state: p.counties?.state_code || p.state || p.regrid_data?.additional_fields?.state || "PA",
           totalDue: p.total_due || p.totalDue || 0,
           status: p.auction_status || p.status || "parsed",
-          propertyType: p.property_type || p.propertyType || "Unknown",
-          lotSize: p.lot_size || p.lotSize || "Unknown",
+          // Property type fallback: property_type -> propertyType -> regrid property_type -> default
+          propertyType: p.property_type || p.propertyType || p.regrid_data?.property_type || "Unknown",
+          // Lot size fallback: lot_size -> lotSize -> formatted regrid acres -> default
+          lotSize: p.lot_size || p.lotSize || (p.regrid_data?.lot_size_acres ? `${p.regrid_data.lot_size_acres.toFixed(2)} acres` : "Unknown"),
           saleType: p.sale_type || p.saleType || "Tax Deed",
           validation: p.visual_validation_status?.toLowerCase() || p.validation || null,
           saleDate: p.sale_date || p.saleDate || "",
+          // Regrid data fields
+          yearBuilt: p.regrid_data?.year_built || null,
+          bedrooms: p.regrid_data?.bedrooms || null,
+          bathrooms: p.regrid_data?.bathrooms || null,
+          buildingSqft: p.regrid_data?.building_sqft || null,
+          assessedValue: p.regrid_data?.assessed_value || null,
+          lotSizeAcres: p.regrid_data?.lot_size_acres || null,
         }))
         setProperties(transformedProperties)
       } catch (error) {
@@ -604,7 +645,6 @@ function PropertiesContent() {
   if (isLoadingProperties) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -619,7 +659,6 @@ function PropertiesContent() {
   if (loadError) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-3 text-center">
             <AlertTriangle className="h-10 w-10 text-red-500" />
@@ -813,11 +852,15 @@ function PropertiesContent() {
     const selectedProps = sortedProperties.filter(p => selectedProperties.has(p.id))
     const headers = [
       "Parcel ID", "Address", "City", "State", "County", "Total Due",
+      "Year Built", "Bedrooms", "Bathrooms", "Building Sq Ft", "Assessed Value",
       "Sale Date", "Sale Type", "Property Type", "Lot Size", "Stage", "Validation"
     ]
     const rows = selectedProps.map(property => [
       property.parcelId, property.address, property.city, property.state,
-      property.county, property.totalDue.toFixed(2), property.saleDate,
+      property.county, property.totalDue.toFixed(2),
+      property.yearBuilt || "", property.bedrooms || "", property.bathrooms || "",
+      property.buildingSqft || "", property.assessedValue || "",
+      property.saleDate,
       property.saleType, property.propertyType, property.lotSize,
       STATUS_CONFIG[property.status as PropertyStatus].label,
       property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending"
@@ -854,6 +897,11 @@ function PropertiesContent() {
       "State",
       "County",
       "Total Due",
+      "Year Built",
+      "Bedrooms",
+      "Bathrooms",
+      "Building Sq Ft",
+      "Assessed Value",
       "Sale Date",
       "Sale Type",
       "Property Type",
@@ -870,6 +918,11 @@ function PropertiesContent() {
       property.state,
       property.county,
       property.totalDue.toFixed(2),
+      property.yearBuilt || "",
+      property.bedrooms || "",
+      property.bathrooms || "",
+      property.buildingSqft || "",
+      property.assessedValue || "",
       property.saleDate,
       property.saleType,
       property.propertyType,
@@ -906,8 +959,6 @@ function PropertiesContent() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Title */}
@@ -1401,10 +1452,10 @@ function PropertiesContent() {
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                       <button
-                        onClick={() => router.push(`/properties/${property.id}`)}
+                        onClick={() => router.push(`/report/${property.id}`)}
                         className="flex-1 min-h-[44px] px-4 py-2 flex items-center justify-center gap-2 text-sm text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 rounded-lg font-medium transition-colors"
                       >
-                        View Details
+                        View Report
                         <ExternalLink className="h-4 w-4" />
                       </button>
                       <button
@@ -1528,6 +1579,18 @@ function PropertiesContent() {
                     </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Year Built
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Bed/Bath
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Sq Ft
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Assessed Value
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     <button
                       onClick={() => handleSort("saleDate")}
                       className="flex items-center gap-1 hover:text-slate-700 transition-colors"
@@ -1608,6 +1671,36 @@ function PropertiesContent() {
                           </span>
                         </div>
                       </td>
+                      {/* Year Built */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.yearBuilt || "-"}
+                        </span>
+                      </td>
+                      {/* Bed/Bath */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.bedrooms && property.bathrooms
+                            ? `${property.bedrooms}/${property.bathrooms}`
+                            : "-"}
+                        </span>
+                      </td>
+                      {/* Sq Ft */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.buildingSqft
+                            ? property.buildingSqft.toLocaleString()
+                            : "-"}
+                        </span>
+                      </td>
+                      {/* Assessed Value */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.assessedValue
+                            ? `$${property.assessedValue.toLocaleString()}`
+                            : "-"}
+                        </span>
+                      </td>
                       {/* Sale Date */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-1.5">
@@ -1661,10 +1754,10 @@ function PropertiesContent() {
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => router.push(`/properties/${property.id}`)}
+                            onClick={() => router.push(`/report/${property.id}`)}
                             className="min-h-[44px] px-2 flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
                           >
-                            View
+                            View Report
                             <ExternalLink className="h-3.5 w-3.5" />
                           </button>
                           <button
@@ -1682,7 +1775,7 @@ function PropertiesContent() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={14}
                       className="px-4 py-16 text-center"
                     >
                       <div className="flex flex-col items-center justify-center">

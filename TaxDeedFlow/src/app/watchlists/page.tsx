@@ -18,7 +18,6 @@ import {
   Building2,
   Loader2,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { formatDate } from "@/lib/utils"
 
@@ -207,7 +206,6 @@ export default function WatchlistsPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
@@ -221,8 +219,6 @@ export default function WatchlistsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
-
       {/* Hero section */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

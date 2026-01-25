@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, Suspense, useEffect } from "react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { PipelineBoard } from "@/components/deal-pipeline/PipelineBoard"
@@ -253,7 +252,6 @@ function PipelineContent() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <Header />
         <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
@@ -315,8 +313,6 @@ function PipelineContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Header />
-
       {/* Hero Section */}
       <div className="border-b bg-gradient-to-r from-blue-600 to-purple-600 py-12 text-white">
         <div className="container mx-auto px-4">

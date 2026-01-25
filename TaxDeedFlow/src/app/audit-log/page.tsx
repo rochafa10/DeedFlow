@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, Suspense, useEffect } from "react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { AuditLogTable } from "@/components/audit/AuditLogTable"
@@ -272,7 +271,6 @@ function AuditLogContent() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <Header />
         <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
@@ -316,8 +314,6 @@ function AuditLogContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Header />
-
       {/* Hero Section */}
       <div className="border-b bg-gradient-to-r from-purple-600 to-blue-600 py-12 text-white">
         <div className="container mx-auto px-4">

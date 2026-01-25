@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -130,7 +129,6 @@ export default function CountiesPage() {
   if (isLoadingCounties) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -145,7 +143,6 @@ export default function CountiesPage() {
   if (loadError) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-3 text-center">
             <AlertTriangle className="h-10 w-10 text-red-500" />
@@ -184,8 +181,6 @@ export default function CountiesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Title */}

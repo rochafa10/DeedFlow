@@ -23,7 +23,6 @@ import {
   Play,
   X,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs"
 
@@ -263,7 +262,6 @@ export default function CountyDetailPage() {
   if (error || !county) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <AlertTriangle className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
@@ -301,7 +299,6 @@ export default function CountyDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
       <Breadcrumbs
         items={[
           { label: "Counties", href: "/counties" },

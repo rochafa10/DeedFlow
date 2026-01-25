@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, Suspense, useEffect } from "react"
 import { Settings, Building2, Save, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { useOrganization } from "@/contexts/OrganizationContext"
 import { useRouter } from "next/navigation"
@@ -15,8 +14,7 @@ import type { OrganizationSettings } from "@/types/team"
 function LoadingSkeleton() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-      <main className="container mx-auto px-4 py-8">
+            <main className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
           <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded"></div>
@@ -112,8 +110,7 @@ function TeamSettingsOrganizationContent() {
   if (!currentOrganization) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
+                <main className="container mx-auto px-4 py-8">
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
             <p className="text-sm text-red-800 dark:text-red-300">
               No organization selected. Please select an organization first.
@@ -126,8 +123,7 @@ function TeamSettingsOrganizationContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+            <main className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Page Header */}
         <div className="mb-8">
           <button

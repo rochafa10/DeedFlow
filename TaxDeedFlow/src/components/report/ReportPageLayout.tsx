@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Printer, Share2, FileText, CheckCircle, Map, Mountain, Building } from "lucide-react";
+import { Printer, Share2, FileText, CheckCircle, Map, Mountain, Building, ArrowLeft, Home, ChevronRight, AlertCircle } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DataSourceBadge } from "@/components/ui/data-source-badge";
@@ -13,11 +14,20 @@ import { LocationAnalysis, type NeighborhoodStats, type NearbyAmenity, type Mark
 import { MarketAnalysis, type MarketMetrics } from "./sections/MarketAnalysis";
 import { ComparablesSection, type ComparableProperty, type ComparablesAnalysis } from "./sections/ComparablesSection";
 import { Disclaimers } from "./sections/Disclaimers";
+import { PropertyManagementSection } from "./sections/PropertyManagementSection";
 import { RiskOverviewCard } from "./risk/RiskOverviewCard";
 import { InsuranceEstimateCard } from "./risk/InsuranceEstimateCard";
 import { FinancialDashboard } from "../financial/FinancialDashboard";
 import { GoogleMapStatic } from "./maps/GoogleMapStatic";
 import { GoogleStreetViewStatic } from "./maps/GoogleStreetViewStatic";
+
+// Import property management components
+import {
+  PropertyActionBar,
+  type PropertyNote,
+  type PropertyImage,
+  type ActivityLogEntry,
+} from "@/components/property-management";
 
 // Import types
 import type { Grade, RiskLevel } from "@/types/report";
@@ -178,6 +188,69 @@ export interface ReportPageLayoutProps {
 
   /** Additional CSS classes */
   className?: string;
+
+  // ============================================
+  // Property Management Props (all optional for backwards compatibility)
+  // ============================================
+
+  /** Property ID for management features */
+  propertyId?: string;
+
+  /** Whether user can edit this property */
+  canEdit?: boolean;
+  /** Whether user can delete this property */
+  canDelete?: boolean;
+  /** Whether property is in edit mode */
+  isEditing?: boolean;
+  /** Whether property is on watchlist */
+  isOnWatchlist?: boolean;
+  /** Whether save is in progress */
+  isSaving?: boolean;
+  /** Whether delete is in progress */
+  isDeleting?: boolean;
+  /** Property version for edit mode */
+  propertyVersion?: number;
+  /** Last modified timestamp */
+  lastModified?: string;
+
+  /** Edit callbacks */
+  onEdit?: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
+  onWatchlistToggle?: () => void;
+  onDelete?: () => void;
+
+  /** Data enrichment status */
+  enrichmentStatus?: {
+    regridComplete: boolean;
+    regridLastFetched?: string;
+    screenshotComplete: boolean;
+    screenshotCount: number;
+    validationStatus: "pending" | "approved" | "caution" | "rejected";
+  };
+  /** Enrichment callbacks */
+  onFetchRegrid?: () => void;
+  onCaptureScreenshots?: () => void;
+  isRegridLoading?: boolean;
+  isScreenshotLoading?: boolean;
+  allowRefresh?: boolean;
+
+  /** Property notes */
+  notes?: PropertyNote[];
+  onNotesChange?: (notes: PropertyNote[]) => void;
+  currentUserName?: string;
+
+  /** Property images */
+  images?: PropertyImage[];
+
+  /** Activity log */
+  activityLog?: ActivityLogEntry[];
+
+  /** Regrid aerial screenshot URL */
+  regridScreenshotUrl?: string;
+
+  /** Whether to show management features */
+  showManagementFeatures?: boolean;
 }
 
 /**
@@ -194,6 +267,7 @@ export interface ReportPageLayoutProps {
  * - Responsive grid layouts
  * - Dark mode support
  * - Accessibility features
+ * - Optional property management features (breadcrumbs, action bar, management section)
  *
  * @example
  * ```tsx
@@ -207,6 +281,10 @@ export interface ReportPageLayoutProps {
  *   investmentScore={scoreData}
  *   locationAnalysis={locationData}
  *   // ... other props
+ *   showManagementFeatures={true}
+ *   propertyId="abc123"
+ *   canEdit={true}
+ *   onEdit={handleEdit}
  * />
  * ```
  */
@@ -233,10 +311,65 @@ export function ReportPageLayout({
   onExportPDF,
   onShare,
   className,
+  // Property management props with defaults
+  propertyId,
+  canEdit = false,
+  canDelete = false,
+  isEditing = false,
+  isOnWatchlist = false,
+  isSaving = false,
+  isDeleting = false,
+  propertyVersion,
+  lastModified,
+  onEdit,
+  onSave,
+  onCancel,
+  onWatchlistToggle,
+  onDelete,
+  enrichmentStatus,
+  onFetchRegrid,
+  onCaptureScreenshots,
+  isRegridLoading = false,
+  isScreenshotLoading = false,
+  allowRefresh = true,
+  notes,
+  onNotesChange,
+  currentUserName = "User",
+  images,
+  activityLog,
+  regridScreenshotUrl,
+  showManagementFeatures = false,
 }: ReportPageLayoutProps) {
   return (
     <div className={cn("min-h-screen bg-slate-50 dark:bg-slate-900 py-8", className)}>
       <div className="container mx-auto px-4 max-w-7xl">
+        {/* ===== BREADCRUMBS (when management features enabled) ===== */}
+        {showManagementFeatures && (
+          <nav
+            className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-4"
+            aria-label="Breadcrumb"
+          >
+            <Link
+              href="/"
+              className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+            >
+              <Home className="h-4 w-4" />
+              <span className="sr-only">Home</span>
+            </Link>
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <Link
+              href="/properties"
+              className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+            >
+              Properties
+            </Link>
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <span className="text-slate-900 dark:text-slate-100 font-medium">
+              Analysis Report
+            </span>
+          </nav>
+        )}
+
         {/* ===== HEADER SECTION ===== */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
@@ -304,6 +437,26 @@ export function ReportPageLayout({
           </div>
         </div>
 
+        {/* ===== PROPERTY ACTION BAR (when management features enabled) ===== */}
+        {showManagementFeatures && (
+          <PropertyActionBar
+            isEditing={isEditing}
+            isOnWatchlist={isOnWatchlist}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            isSaving={isSaving}
+            isDeleting={isDeleting}
+            version={propertyVersion}
+            lastModified={lastModified}
+            onEdit={onEdit ?? (() => {})}
+            onSave={onSave ?? (() => {})}
+            onCancel={onCancel ?? (() => {})}
+            onWatchlistToggle={onWatchlistToggle ?? (() => {})}
+            onDelete={onDelete ?? (() => {})}
+            className="mb-6"
+          />
+        )}
+
         {/* ===== MAIN CONTENT SECTIONS ===== */}
         <div className="space-y-6">
           {/* Section 1: Property Summary */}
@@ -340,8 +493,8 @@ export function ReportPageLayout({
             />
           )}
 
-          {/* Section 4: Property Visualization (Maps) */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Section 4: Property Visualization (Maps) - 2x2 Grid */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Map View */}
             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
               <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
@@ -399,6 +552,30 @@ export function ReportPageLayout({
                   showExternalLink={true}
                   altText={`Street view of ${locationDetails.address}`}
                 />
+              </div>
+            </div>
+
+            {/* Regrid Aerial View */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                <Map className="h-5 w-5" />
+                Regrid View
+              </h3>
+              <div className="aspect-video relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
+                {regridScreenshotUrl ? (
+                  <img
+                    src={regridScreenshotUrl}
+                    alt={`Regrid aerial view of ${locationDetails.address}`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400">
+                    <AlertCircle className="h-8 w-8 mb-2 text-amber-500" />
+                    <p className="font-medium">No Regrid Image</p>
+                    <p className="text-sm">Screenshot not yet captured</p>
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -687,6 +864,31 @@ export function ReportPageLayout({
 
           {/* Section 12: Disclaimers */}
           <Disclaimers reportDate={reportDate} />
+
+          {/* Section 13: Property Management (when management features enabled) */}
+          {showManagementFeatures && propertyId && (
+            <PropertyManagementSection
+              propertyId={propertyId}
+              notes={notes ?? []}
+              onNotesChange={onNotesChange ?? (() => {})}
+              canEditNotes={canEdit}
+              currentUserName={currentUserName}
+              images={images ?? []}
+              activityLog={activityLog ?? []}
+              enrichmentStatus={enrichmentStatus ?? {
+                regridComplete: false,
+                screenshotComplete: false,
+                screenshotCount: 0,
+                validationStatus: "pending",
+              }}
+              onFetchRegrid={onFetchRegrid}
+              onCaptureScreenshots={onCaptureScreenshots}
+              isRegridLoading={isRegridLoading}
+              isScreenshotLoading={isScreenshotLoading}
+              allowRefresh={allowRefresh}
+              defaultExpanded={false}
+            />
+          )}
         </div>
       </div>
     </div>
