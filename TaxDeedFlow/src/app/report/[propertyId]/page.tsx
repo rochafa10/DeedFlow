@@ -39,6 +39,7 @@ import {
   Share2,
   ArrowLeft,
   RefreshCw,
+  Image,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { exportReportToPDF, generateReportFilename } from "@/lib/pdf-export";
@@ -2378,8 +2379,8 @@ export default function PropertyReportPage() {
           </div>
         </section>
 
-        {/* ===== SECTION 4: Property Visualization (Maps) ===== */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* ===== SECTION 4: Property Visualization (Maps) - 2x2 Grid ===== */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Map View */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
@@ -2435,6 +2436,43 @@ export default function PropertyReportPage() {
                 showExternalLink={true}
                 altText={`Street view of ${propertyDetails.address}`}
               />
+            </div>
+          </div>
+          {/* Regrid Aerial View */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+              <Image className="h-5 w-5" />
+              Regrid View
+            </h3>
+            <div className="aspect-video relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
+              {property?.screenshot_url ? (
+                <>
+                  <img
+                    src={property.screenshot_url}
+                    alt={`Regrid aerial view of ${propertyDetails.address}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <a
+                    href={`https://regrid.com/parcel/${property?.parcel_id?.replace(/\./g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open in Regrid
+                  </a>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <Image className="h-10 w-10 text-slate-400 dark:text-slate-500 mb-3" />
+                  <p className="text-slate-600 dark:text-slate-300 font-medium mb-1">
+                    Regrid Image Not Available
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    No aerial screenshot captured for this property
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </section>

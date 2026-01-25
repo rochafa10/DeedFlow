@@ -21,7 +21,6 @@ import {
   Info,
   Download,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
 import { AuctionRulesViewer } from "@/components/auctions/AuctionRulesViewer"
@@ -228,7 +227,6 @@ export default function AuctionDetailPage() {
   if (error || !auction) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <button
             onClick={() => router.push("/auctions")}
@@ -315,8 +313,6 @@ export default function AuctionDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Header />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button

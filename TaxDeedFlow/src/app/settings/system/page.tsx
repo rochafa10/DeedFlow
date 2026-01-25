@@ -23,7 +23,6 @@ import {
   HardDrive,
   Activity,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
 
@@ -130,8 +129,6 @@ export default function SettingsSystemPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
-
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button

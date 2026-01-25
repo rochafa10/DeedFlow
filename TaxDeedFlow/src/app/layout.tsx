@@ -6,6 +6,7 @@ import { Providers } from "./providers"
 import { OfflineBanner } from "@/components/pwa/OfflineBanner"
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration"
 import { BottomNav } from "@/components/layout/BottomNav"
+import { AppShell } from "@/components/layout/AppShell"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -45,7 +46,9 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         <OfflineBanner />
         <Providers>
-          {children}
+          <AppShell>
+            {children}
+          </AppShell>
           <BottomNav />
         </Providers>
       </body>

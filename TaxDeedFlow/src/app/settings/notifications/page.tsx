@@ -15,7 +15,6 @@ import {
   FileText,
   CheckCircle,
 } from "lucide-react"
-import { Header } from "@/components/layout/Header"
 import { useAuth } from "@/contexts/AuthContext"
 
 type DigestFrequency = "realtime" | "daily" | "weekly" | "never"
@@ -114,8 +113,6 @@ export default function SettingsNotificationsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
-
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button

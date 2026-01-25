@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, LogOut, User, ChevronDown, Bell, Check, X, Menu } from "lucide-react"
+import { Building2, LogOut, User, ChevronDown, Bell, Check, X, Menu, PanelLeft, PanelLeftClose } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useSidebar } from "@/contexts/SidebarContext"
+import { OrganizationSwitcher } from "@/components/team/OrganizationSwitcher"
 import { useRouter } from "next/navigation"
 import { SkipLink } from "./SkipLink"
 import {
@@ -25,6 +27,7 @@ interface Notification {
 
 export function Header() {
   const { user, logout, isAuthenticated } = useAuth()
+  const { isCollapsed, toggleSidebar, isMobile } = useSidebar()
   const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -218,18 +221,29 @@ export function Header() {
             </button>
             <Building2 className="h-8 w-8 text-primary" aria-hidden="true" />
             <span className="text-xl font-bold text-slate-900 dark:text-white">Tax Deed Flow</span>
+
+            {/* Sidebar Toggle Button - Desktop Only */}
+            {!isMobile && (
+              <button
+                onClick={toggleSidebar}
+                className="hidden md:flex items-center justify-center h-10 w-10 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-4"
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {isCollapsed ? (
+                  <PanelLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+                ) : (
+                  <PanelLeftClose className="h-5 w-5 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+                )}
+              </button>
+            )}
           </div>
-          <nav className="hidden md:flex items-center gap-6">
-            <a href="/" className="text-sm font-medium text-primary">Dashboard</a>
-            <a href="/properties" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Properties</a>
-            <a href="/counties" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Counties</a>
-            <a href="/auctions" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Auctions</a>
-            <a href="/batch-jobs" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Batch Jobs</a>
-            <a href="/orchestration" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Orchestration</a>
-            <a href="/data-integrity" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Data Integrity</a>
-          </nav>
           {isAuthenticated && (
             <div className="flex items-center gap-2">
+              {/* Organization Switcher */}
+              <div className="hidden lg:block">
+                <OrganizationSwitcher />
+              </div>
+
               {/* Notification Bell */}
               <div className="relative">
                 <button
@@ -470,6 +484,34 @@ export function Header() {
                 className="flex items-center gap-3 px-4 py-3 min-h-[44px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 Auctions
+              </a>
+              <a
+                href="/watchlists"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 min-h-[44px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                Watchlists
+              </a>
+              <a
+                href="/pipeline"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 min-h-[44px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                Pipeline
+              </a>
+              <a
+                href="/team"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 min-h-[44px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                Team
+              </a>
+              <a
+                href="/audit-log"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-4 py-3 min-h-[44px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                Audit Log
               </a>
               <a
                 href="/batch-jobs"

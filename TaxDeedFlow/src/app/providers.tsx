@@ -4,6 +4,7 @@ import { ReactNode, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ThemeProvider } from "next-themes"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { SidebarProvider } from "@/contexts/SidebarContext"
 import { Toaster } from "sonner"
 import { InstallPrompt } from "@/components/pwa/InstallPrompt"
 
@@ -30,20 +31,22 @@ export function Providers({ children }: { children: ReactNode }) {
         disableTransitionOnChange
       >
         <AuthProvider>
-          {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              classNames: {
-                success: 'bg-green-50 border-green-200 text-green-800',
-                error: 'bg-red-50 border-red-200 text-red-800',
-                warning: 'bg-amber-50 border-amber-200 text-amber-800',
-                info: 'bg-blue-50 border-blue-200 text-blue-800',
-              },
-            }}
-            richColors
-          />
-          <InstallPrompt />
+          <SidebarProvider>
+            {children}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                classNames: {
+                  success: 'bg-green-50 border-green-200 text-green-800',
+                  error: 'bg-red-50 border-red-200 text-red-800',
+                  warning: 'bg-amber-50 border-amber-200 text-amber-800',
+                  info: 'bg-blue-50 border-blue-200 text-blue-800',
+                },
+              }}
+              richColors
+            />
+            <InstallPrompt />
+          </SidebarProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
