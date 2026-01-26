@@ -15,7 +15,13 @@ import { createServerClient } from "@/lib/supabase/client"
  * - limit: number (default: 100, max: 500)
  * - offset: number (default: 0)
  * - county_id: string (filter by county UUID)
+ * - sale_id: string (filter by upcoming_sale UUID - shows properties for a specific auction)
  * - sale_status: string (filter by status: upcoming, sold, unsold, withdrawn)
+ * - auction_status: string (filter by auction status: active, expired, unknown, all)
+ *   - If not specified, defaults to 'active' (hides expired properties)
+ *   - Use 'all' to show all properties regardless of auction status
+ * - date_range: string (filter by sale date range: thisWeek, 7days, 30days, 90days, 6months, all)
+ * - sale_type: string (filter by sale type: upset, judicial, repository, all)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -33,7 +39,11 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Number(searchParams.get("limit")) || 100, 500)
     const offset = Number(searchParams.get("offset")) || 0
     const countyId = searchParams.get("county_id")
+    const saleId = searchParams.get("sale_id")
     const saleStatus = searchParams.get("sale_status")
+    const auctionStatus = searchParams.get("auction_status")
+    const dateRange = searchParams.get("date_range")
+    const saleType = searchParams.get("sale_type")
 
     // Build query with LEFT JOINs to counties and regrid_data
     // regrid_data provides enriched property information from Regrid.com
@@ -69,8 +79,80 @@ export async function GET(request: NextRequest) {
     if (countyId) {
       query = query.eq("county_id", countyId)
     }
+    if (saleId) {
+      query = query.eq("sale_id", saleId)
+    }
     if (saleStatus) {
       query = query.eq("sale_status", saleStatus)
+    }
+
+    // Apply sale_type filter (upset, judicial, repository)
+    if (saleType && saleType !== "all") {
+      query = query.eq("sale_type", saleType)
+    }
+
+    // Apply auction_status filter
+    // Default to 'active' if no auction_status specified (hides expired properties)
+    // Use 'all' to bypass the filter and show all properties
+    if (auctionStatus && auctionStatus !== "all") {
+      query = query.eq("auction_status", auctionStatus)
+    } else if (!auctionStatus) {
+      // Default: only show active properties to prevent showing expired auctions
+      query = query.eq("auction_status", "active")
+    }
+
+    // Apply date range filter on sale_date
+    // This filters properties to only those with sale_date within the specified range
+    if (dateRange && dateRange !== "all") {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Start of today
+
+      let endDate: Date | null = null
+
+      switch (dateRange) {
+        case "thisWeek": {
+          // Get the start of the current week (Sunday)
+          const startOfWeek = new Date(today)
+          startOfWeek.setDate(today.getDate() - today.getDay())
+          // Get the end of the current week (Saturday)
+          endDate = new Date(startOfWeek)
+          endDate.setDate(startOfWeek.getDate() + 6)
+          endDate.setHours(23, 59, 59, 999)
+          // Filter: sale_date >= startOfWeek AND sale_date <= endOfWeek
+          query = query
+            .gte("sale_date", startOfWeek.toISOString())
+            .lte("sale_date", endDate.toISOString())
+          break
+        }
+        case "7days":
+          endDate = new Date(today)
+          endDate.setDate(today.getDate() + 7)
+          query = query
+            .gte("sale_date", today.toISOString())
+            .lte("sale_date", endDate.toISOString())
+          break
+        case "30days":
+          endDate = new Date(today)
+          endDate.setDate(today.getDate() + 30)
+          query = query
+            .gte("sale_date", today.toISOString())
+            .lte("sale_date", endDate.toISOString())
+          break
+        case "90days":
+          endDate = new Date(today)
+          endDate.setDate(today.getDate() + 90)
+          query = query
+            .gte("sale_date", today.toISOString())
+            .lte("sale_date", endDate.toISOString())
+          break
+        case "6months":
+          endDate = new Date(today)
+          endDate.setDate(today.getDate() + 180)
+          query = query
+            .gte("sale_date", today.toISOString())
+            .lte("sale_date", endDate.toISOString())
+          break
+      }
     }
 
     const { data, error, count } = await query

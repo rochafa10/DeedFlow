@@ -67,13 +67,22 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get property counts per county
-    const { data: propertyCounts, error: propCountError } = await supabase
-      .from("properties")
-      .select("county_id")
+    // Get property counts per county using SQL aggregation (avoids 1000 row limit)
+    let propertyCountsData: { county_id: string; count?: number }[] | null = null
+
+    const { data: rpcCounts, error: propCountError } = await supabase
+      .rpc('get_property_counts_by_county')
 
     if (propCountError) {
       console.error("[API Counties] Property count error:", propCountError)
+      // Fallback: try direct query with high limit
+      const { data: fallbackCounts } = await supabase
+        .from("properties")
+        .select("county_id")
+        .limit(50000)
+      propertyCountsData = fallbackCounts
+    } else {
+      propertyCountsData = rpcCounts
     }
 
     // Get upcoming sales per county
@@ -95,15 +104,18 @@ export async function GET(request: NextRequest) {
     const { data: documents, error: docsError } = await supabase
       .from("documents")
       .select("county_id")
+      .limit(10000)
 
     if (docsError) {
       console.error("[API Counties] Documents error:", docsError)
     }
 
     // Get regrid and validation counts per county for progress calculation
+    // Use high limit to avoid Supabase default 1000 row limit
     const { data: progressData, error: progressError } = await supabase
       .from("properties")
       .select("county_id, has_regrid_data, visual_validation_status")
+      .limit(50000)
 
     if (progressError) {
       console.error("[API Counties] Progress error:", progressError)
@@ -111,10 +123,16 @@ export async function GET(request: NextRequest) {
 
     // Count properties per county
     const propertyCountMap = new Map<string, number>()
-    if (propertyCounts) {
-      propertyCounts.forEach((p: { county_id: string }) => {
-        const count = propertyCountMap.get(p.county_id) || 0
-        propertyCountMap.set(p.county_id, count + 1)
+    if (propertyCountsData) {
+      propertyCountsData.forEach((p: { county_id: string; count?: number }) => {
+        if (p.count !== undefined) {
+          // RPC format: { county_id, count }
+          propertyCountMap.set(p.county_id, Number(p.count))
+        } else {
+          // Fallback format: { county_id } - increment count
+          const count = propertyCountMap.get(p.county_id) || 0
+          propertyCountMap.set(p.county_id, count + 1)
+        }
       })
     }
 

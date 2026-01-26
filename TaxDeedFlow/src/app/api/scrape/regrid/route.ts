@@ -81,42 +81,97 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Upsert regrid_data record
+    // Upsert regrid_data record with ALL comprehensive fields
     const { data: regridRecord, error: upsertError } = await supabase
       .from("regrid_data")
       .upsert({
         property_id,
         regrid_id: data.regrid_id,
         ll_uuid: data.ll_uuid,
-        // Address fields (Track 2.2)
+
+        // ===== ADDRESS FIELDS =====
         address: data.address,
         city: data.city,
         state: data.state,
         zip: data.zip,
-        // Property classification
+
+        // ===== OWNER INFORMATION =====
+        owner_name: data.owner_name,
+        mailing_address: data.mailing_address,
+        mailing_city: data.mailing_city,
+        mailing_state: data.mailing_state,
+        mailing_zip: data.mailing_zip,
+
+        // ===== PROPERTY CLASSIFICATION =====
         property_type: data.property_type,
         property_class: data.property_class,
         land_use: data.land_use,
         zoning: data.zoning,
-        // Lot information
+        parcel_use_code: data.parcel_use_code,
+
+        // ===== LOT INFORMATION =====
         lot_size_sqft: data.lot_size_sqft,
         lot_size_acres: data.lot_size_acres,
         lot_dimensions: data.lot_dimensions,
-        // Building information
+        deed_acres: data.deed_acres,
+        lot_type: data.lot_type,
+        terrain: data.terrain,
+        land_description: data.land_description,
+
+        // ===== BUILDING INFORMATION =====
         building_sqft: data.building_sqft,
         year_built: data.year_built,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
-        // Valuation
+        number_of_stories: data.number_of_stories,
+        building_count: data.building_count,
+        building_footprint_sqft: data.building_footprint_sqft,
+
+        // ===== VALUATION =====
         assessed_value: data.assessed_value,
         market_value: data.market_value,
-        // Location
+        total_parcel_value: data.total_parcel_value,
+        improvement_value: data.improvement_value,
+        land_value: data.land_value,
+        last_sale_price: data.last_sale_price,
+        last_sale_date: data.last_sale_date,
+
+        // ===== LOCATION =====
         latitude: data.latitude,
         longitude: data.longitude,
-        // Utilities
+
+        // ===== UTILITIES =====
         water_service: data.water_service,
         sewer_service: data.sewer_service,
-        // Additional data
+        gas_availability: data.gas_availability,
+        electric_service: data.electric_service,
+        road_type: data.road_type,
+
+        // ===== GEOGRAPHIC & CENSUS =====
+        opportunity_zone: data.opportunity_zone,
+        census_tract: data.census_tract,
+        census_block: data.census_block,
+        census_blockgroup: data.census_blockgroup,
+        neighborhood_code: data.neighborhood_code,
+
+        // ===== SCHOOL & DISTRICT =====
+        school_district: data.school_district,
+        school_district_code: data.school_district_code,
+        district_number: data.district_number,
+        ward_number: data.ward_number,
+        map_number: data.map_number,
+
+        // ===== IDENTIFIERS =====
+        regrid_uuid: data.regrid_uuid,
+        alt_parcel_id: data.alt_parcel_id,
+        control_number: data.control_number,
+
+        // ===== CLEAN & GREEN (PA) =====
+        clean_green_land_value: data.clean_green_land_value,
+        clean_green_building_value: data.clean_green_building_value,
+        clean_green_total_value: data.clean_green_total_value,
+
+        // ===== METADATA =====
         additional_fields: data.additional_fields,
         raw_html: data.raw_html,
         scraped_at: new Date().toISOString(),
@@ -260,7 +315,7 @@ async function fetchRegridDataWithFallback(
 
 /**
  * Generates placeholder Regrid data for testing
- * In production, this would be replaced with actual API data
+ * In production, this would be replaced with actual scraped/API data
  */
 function generatePlaceholderRegridData(
   parcelId: string,
@@ -277,51 +332,103 @@ function generatePlaceholderRegridData(
 
   // Determine property type based on parcel structure
   const propertyType = determinePropertyType(parcelId, address)
+  const isResidential = propertyType === "Residential"
 
   return {
     regrid_id: `rg_${parcelId.replace(/[^a-zA-Z0-9]/g, "_")}`,
     ll_uuid: `ll_${hash.toString(16)}`,
-    // Address fields - use input values as fallbacks, real scraper will populate
+
+    // ===== ADDRESS FIELDS =====
     address: address || null,
     city: null,              // Will be populated by real Regrid scraper
-    state: state || null,    // Use input state as fallback
+    state: state || null,
     zip: null,               // Will be populated by real Regrid scraper
-    // Property classification
+
+    // ===== OWNER INFORMATION =====
+    owner_name: null,        // Will be populated by real scraper
+    mailing_address: null,
+    mailing_city: null,
+    mailing_state: null,
+    mailing_zip: null,
+
+    // ===== PROPERTY CLASSIFICATION =====
     property_type: propertyType,
-    property_class: propertyType === "Residential" ? "Single Family" : "Commercial",
-    land_use: propertyType === "Residential" ? "RESIDENTIAL" : "COMMERCIAL",
-    zoning: propertyType === "Residential" ? "R-1" : "C-1",
-    // Lot information
+    property_class: isResidential ? "Single Family" : "Commercial",
+    land_use: isResidential ? "RESIDENTIAL" : "COMMERCIAL",
+    zoning: isResidential ? "R-1" : "C-1",
+    parcel_use_code: isResidential ? "100" : "400",
+
+    // ===== LOT INFORMATION =====
     lot_size_sqft: 5000 + (hash % 15000),
     lot_size_acres: (5000 + (hash % 15000)) / 43560,
     lot_dimensions: `${50 + (hash % 50)}x${80 + (hash % 80)}`,
-    // Building information
-    building_sqft: propertyType === "Residential" ? 1000 + (hash % 2000) : null,
-    year_built: propertyType === "Residential" ? 1950 + (hash % 70) : null,
-    bedrooms: propertyType === "Residential" ? 2 + (hash % 3) : null,
-    bathrooms: propertyType === "Residential" ? 1 + (hash % 2) : null,
-    // Valuation
+    deed_acres: (5000 + (hash % 15000)) / 43560,
+    lot_type: "Interior",
+    terrain: "Level",
+    land_description: null,
+
+    // ===== BUILDING INFORMATION =====
+    building_sqft: isResidential ? 1000 + (hash % 2000) : null,
+    year_built: isResidential ? 1950 + (hash % 70) : null,
+    bedrooms: isResidential ? 2 + (hash % 3) : null,
+    bathrooms: isResidential ? 1 + (hash % 2) : null,
+    number_of_stories: isResidential ? 1 + (hash % 2) : null,
+    building_count: isResidential ? 1 : 0,
+    building_footprint_sqft: isResidential ? 800 + (hash % 1200) : null,
+
+    // ===== VALUATION =====
     assessed_value: 20000 + (hash % 180000),
     market_value: 30000 + (hash % 270000),
-    // Location
+    total_parcel_value: 25000 + (hash % 200000),
+    improvement_value: isResidential ? 15000 + (hash % 150000) : 0,
+    land_value: 5000 + (hash % 50000),
+    last_sale_price: null,   // Will be populated by real scraper
+    last_sale_date: null,
+
+    // ===== LOCATION =====
     latitude: baseLat,
     longitude: baseLng,
-    // Utilities
-    water_service: "PUBLIC",
-    sewer_service: "PUBLIC",
-    // Additional fields - store address components for backup/fallback access
+
+    // ===== UTILITIES =====
+    water_service: "Public",
+    sewer_service: "Public",
+    gas_availability: null,
+    electric_service: null,
+    road_type: "Paved",
+
+    // ===== GEOGRAPHIC & CENSUS =====
+    opportunity_zone: false,
+    census_tract: null,
+    census_block: null,
+    census_blockgroup: null,
+    neighborhood_code: null,
+
+    // ===== SCHOOL & DISTRICT =====
+    school_district: null,
+    school_district_code: null,
+    district_number: null,
+    ward_number: null,
+    map_number: null,
+
+    // ===== IDENTIFIERS =====
+    regrid_uuid: `${hash.toString(16)}-${(hash >> 16).toString(16)}-${Date.now().toString(16)}`,
+    alt_parcel_id: null,
+    control_number: null,
+
+    // ===== CLEAN & GREEN (PA) =====
+    clean_green_land_value: null,
+    clean_green_building_value: null,
+    clean_green_total_value: null,
+
+    // ===== METADATA =====
     additional_fields: {
       source: "placeholder",
       county,
       state,
       original_parcel_id: parcelId,
-      // Address components stored in additional_fields for backup
-      address: address || null,
-      city: null,
-      zip: null,
     },
     raw_html: null,
-    data_quality_score: 0.50, // Lower score for placeholder data (0.00-1.00 scale)
+    data_quality_score: 0.30, // Lower score for placeholder data (0.00-1.00 scale)
   }
 }
 
@@ -358,40 +465,105 @@ function determinePropertyType(parcelId: string, address: string | undefined): s
 }
 
 /**
- * Type definition for Regrid data
- * Includes address fields added in Track 2.2 for storing scraped address components
+ * Comprehensive type definition for Regrid data
+ * Includes ALL fields extracted from Regrid Property Details panel
+ *
+ * Fields are organized by section as they appear in Regrid:
+ * - Parcel Highlights
+ * - Owner Information
+ * - Property Sales & Value
+ * - Structure Details
+ * - Lot & Land Details
+ * - Utilities
+ * - Geographic & Census
+ * - School & District
+ * - Additional Items (county-specific)
  */
 interface RegridData {
+  // Identifiers
   regrid_id: string | null
   ll_uuid: string | null
-  // Address fields - populated by the Regrid scraper script
+  regrid_uuid: string | null
+  alt_parcel_id: string | null
+  control_number: string | null
+
+  // Address fields
   address: string | null
   city: string | null
   state: string | null
   zip: string | null
-  // Property classification fields
+
+  // Owner information
+  owner_name: string | null
+  mailing_address: string | null
+  mailing_city: string | null
+  mailing_state: string | null
+  mailing_zip: string | null
+
+  // Property classification
   property_type: string | null
   property_class: string | null
   land_use: string | null
   zoning: string | null
+  parcel_use_code: string | null
+
   // Lot information
   lot_size_sqft: number | null
   lot_size_acres: number | null
   lot_dimensions: string | null
+  deed_acres: number | null
+  lot_type: string | null
+  terrain: string | null
+  land_description: string | null
+
   // Building information
   building_sqft: number | null
   year_built: number | null
   bedrooms: number | null
   bathrooms: number | null
+  number_of_stories: number | null
+  building_count: number | null
+  building_footprint_sqft: number | null
+
   // Valuation
   assessed_value: number | null
   market_value: number | null
+  total_parcel_value: number | null
+  improvement_value: number | null
+  land_value: number | null
+  last_sale_price: number | null
+  last_sale_date: string | null
+
   // Location
   latitude: number | null
   longitude: number | null
+
   // Utilities
   water_service: string | null
   sewer_service: string | null
+  gas_availability: string | null
+  electric_service: string | null
+  road_type: string | null
+
+  // Geographic & Census
+  opportunity_zone: boolean | null
+  census_tract: string | null
+  census_block: string | null
+  census_blockgroup: string | null
+  neighborhood_code: string | null
+
+  // School & District
+  school_district: string | null
+  school_district_code: string | null
+  district_number: string | null
+  ward_number: string | null
+  map_number: string | null
+
+  // Clean & Green (PA-specific)
+  clean_green_land_value: number | null
+  clean_green_building_value: number | null
+  clean_green_total_value: number | null
+
   // Additional data
   additional_fields: Record<string, unknown> | null
   raw_html: string | null
@@ -406,13 +578,27 @@ export async function GET() {
   return NextResponse.json({
     status: "ok",
     service: "Regrid Scraper API",
-    version: "1.0.0",
+    version: "2.0.0",
     endpoints: {
       "POST /api/scrape/regrid": {
         description: "Scrape Regrid data for a property",
         required_fields: ["property_id", "parcel_id"],
         optional_fields: ["address", "county", "state", "job_id"],
       }
+    },
+    fields_captured: {
+      address: ["address", "city", "state", "zip"],
+      owner: ["owner_name", "mailing_address", "mailing_city", "mailing_state", "mailing_zip"],
+      classification: ["property_type", "property_class", "land_use", "zoning", "parcel_use_code"],
+      lot: ["lot_size_sqft", "lot_size_acres", "lot_dimensions", "deed_acres", "lot_type", "terrain", "land_description"],
+      building: ["building_sqft", "year_built", "bedrooms", "bathrooms", "number_of_stories", "building_count", "building_footprint_sqft"],
+      valuation: ["assessed_value", "market_value", "total_parcel_value", "improvement_value", "land_value", "last_sale_price", "last_sale_date"],
+      location: ["latitude", "longitude"],
+      utilities: ["water_service", "sewer_service", "gas_availability", "electric_service", "road_type"],
+      geographic: ["opportunity_zone", "census_tract", "census_block", "census_blockgroup", "neighborhood_code"],
+      school: ["school_district", "school_district_code", "district_number", "ward_number", "map_number"],
+      identifiers: ["regrid_id", "ll_uuid", "regrid_uuid", "alt_parcel_id", "control_number"],
+      pa_specific: ["clean_green_land_value", "clean_green_building_value", "clean_green_total_value"],
     },
     note: "Currently using placeholder data. Configure REGRID_API_KEY for real data.",
   })

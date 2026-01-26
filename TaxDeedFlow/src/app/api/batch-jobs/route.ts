@@ -373,6 +373,21 @@ async function calculateTotalItems(
           .eq("auction_status", "active")
         break
 
+      case "county_research":
+        // County research counts counties needing research, not properties
+        // Counties need research if last_researched_at is NULL or older than 7 days
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        const { count: countyCount, error: countyError } = await supabase
+          .from("counties")
+          .select("*", { count: "exact", head: true })
+          .or(`last_researched_at.is.null,last_researched_at.lt.${sevenDaysAgo}`)
+
+        if (countyError) {
+          logger.error("[API Batch Jobs] County research count error:", { error: countyError.message, code: countyError.code })
+          return 0
+        }
+        return countyCount || 0
+
       default:
         // Default: count all active properties in county
         query = supabase

@@ -34,6 +34,7 @@ import {
   Heart,
   MinusSquare,
   Loader2,
+  Database,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -51,6 +52,7 @@ interface Property {
   state: string
   totalDue: number
   status: string
+  auctionStatus: string
   propertyType: string
   lotSize: string
   saleType: string
@@ -63,6 +65,8 @@ interface Property {
   buildingSqft: number | null
   assessedValue: number | null
   lotSizeAcres: number | null
+  // Regrid enrichment indicator
+  hasRegridData: boolean
 }
 
 // Date range options for filtering
@@ -110,6 +114,40 @@ const STATUS_CONFIG: Record<
     label: "Unknown",
     color: "bg-slate-100 text-slate-500",
     icon: <Clock className="h-3 w-3" />,
+  },
+}
+
+// Auction status configuration for the separate auction status filter/display
+type AuctionStatusType = "active" | "expired" | "unknown" | "sold" | "withdrawn" | "all"
+
+const AUCTION_STATUS_CONFIG: Record<
+  Exclude<AuctionStatusType, "all">,
+  { label: string; color: string; icon: React.ReactNode }
+> = {
+  active: {
+    label: "Active",
+    color: "bg-green-100 text-green-800",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+  },
+  expired: {
+    label: "Expired",
+    color: "bg-red-100 text-red-800",
+    icon: <Clock className="h-3 w-3" />,
+  },
+  unknown: {
+    label: "Unknown",
+    color: "bg-gray-100 text-gray-800",
+    icon: <AlertTriangle className="h-3 w-3" />,
+  },
+  sold: {
+    label: "Sold",
+    color: "bg-blue-100 text-blue-800",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+  },
+  withdrawn: {
+    label: "Withdrawn",
+    color: "bg-yellow-100 text-yellow-800",
+    icon: <AlertTriangle className="h-3 w-3" />,
   },
 }
 
@@ -169,8 +207,10 @@ function PropertiesContent() {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<PropertyStatus | "all">("all")
+  const [auctionStatusFilter, setAuctionStatusFilter] = useState<AuctionStatusType>("active")
   const [countyFilter, setCountyFilter] = useState<string>("all")
   const [dateRangeFilter, setDateRangeFilter] = useState<string>("all")
+  const [saleTypeFilter, setSaleTypeFilter] = useState<string>("all")
   const [showFilters, setShowFilters] = useState(false)
   const [sortField, setSortField] = useState<SortField>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
@@ -186,6 +226,14 @@ function PropertiesContent() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [allCounties, setAllCounties] = useState<string[]>([])
+  const [scrapingPropertyId, setScrapingPropertyId] = useState<string | null>(null)
+
+  // Sale ID filter (for filtering properties by specific auction)
+  const saleIdFilter = searchParams.get("sale_id")
+
+  // Read saleType directly from URL params for the fetch (to avoid race condition)
+  const saleTypeParam = searchParams.get("saleType")
 
   // Fetch properties from API
   useEffect(() => {
@@ -193,7 +241,31 @@ function PropertiesContent() {
       try {
         setIsLoadingProperties(true)
         setLoadError(null)
-        const response = await authFetch("/api/properties")
+        // Build query params - pass auction_status filter to API
+        const params = new URLSearchParams()
+        // Request more properties to get all counties represented
+        params.append('limit', '500')
+        // Pass auction_status to API (defaults to 'active' on server if not provided)
+        // 'all' means show all properties regardless of auction status
+        if (auctionStatusFilter) {
+          params.append('auction_status', auctionStatusFilter)
+        }
+        // Pass sale_id filter to API (for filtering by specific auction)
+        if (saleIdFilter) {
+          params.append('sale_id', saleIdFilter)
+        }
+        // Pass date_range filter to API for server-side filtering
+        // This ensures properties within the date range are fetched from database
+        if (dateRangeFilter && dateRangeFilter !== 'all') {
+          params.append('date_range', dateRangeFilter)
+        }
+        // Pass sale_type filter to API for server-side filtering
+        // Use saleTypeParam (from URL) to avoid race condition with state initialization
+        if (saleTypeParam && saleTypeParam !== 'all') {
+          params.append('sale_type', saleTypeParam)
+        }
+        const queryString = params.toString()
+        const response = await authFetch(`/api/properties?${queryString}`)
         if (!response.ok) {
           throw new Error("Failed to fetch properties")
         }
@@ -265,6 +337,7 @@ function PropertiesContent() {
           saleType: p.sale_type || p.saleType || "Tax Deed",
           validation: p.visual_validation_status?.toLowerCase() || p.validation || null,
           saleDate: p.sale_date || p.saleDate || "",
+          auctionStatus: p.auction_status || "unknown",
           // Regrid data fields
           yearBuilt: p.regrid_data?.year_built || null,
           bedrooms: p.regrid_data?.bedrooms || null,
@@ -272,6 +345,8 @@ function PropertiesContent() {
           buildingSqft: p.regrid_data?.building_sqft || null,
           assessedValue: p.regrid_data?.assessed_value || null,
           lotSizeAcres: p.regrid_data?.lot_size_acres || null,
+          // Regrid enrichment indicator - true if regrid_data exists
+          hasRegridData: !!p.regrid_data,
         }))
         setProperties(transformedProperties)
       } catch (error) {
@@ -282,6 +357,26 @@ function PropertiesContent() {
       }
     }
     fetchProperties()
+  }, [auctionStatusFilter, saleIdFilter, dateRangeFilter, saleTypeParam]) // Re-fetch when auction status, sale_id, date range, or sale type filter changes
+
+  // Fetch all counties for the filter dropdown (separate from properties)
+  useEffect(() => {
+    const fetchCounties = async () => {
+      try {
+        const response = await authFetch('/api/counties?has_properties=true')
+        if (response.ok) {
+          const result = await response.json()
+          const countyNames = (result.data || [])
+            .map((c: { name: string }) => c.name)
+            .filter((name: string) => name && name !== 'Unknown')
+            .sort()
+          setAllCounties(countyNames)
+        }
+      } catch (error) {
+        console.error("Error fetching counties:", error)
+      }
+    }
+    fetchCounties()
   }, [])
 
   // Handle delete property
@@ -312,14 +407,68 @@ function PropertiesContent() {
     }
   }
 
-  // Get unique counties for filter dropdown
-  const uniqueCounties = Array.from(new Set(properties.map(p => p.county))).sort()
+  // Handle scrape Regrid data for a single property
+  // Uses the screenshot API which captures real Regrid data via Playwright
+  const handleScrapeRegrid = async (propertyId: string) => {
+    setScrapingPropertyId(propertyId)
+    try {
+      // Find the property to get its details
+      const property = properties.find(p => p.id === propertyId)
+      if (!property) {
+        alert("Property not found")
+        return
+      }
+
+      // Build the Regrid URL from property data
+      // Format: https://app.regrid.com/us/{state}/{county}
+      const stateSlug = property.state?.toLowerCase() || ''
+      const countySlug = property.county?.toLowerCase().replace(/\s+/g, '-') || ''
+      const regridUrl = `https://app.regrid.com/us/${stateSlug}/${countySlug}`
+
+      // Call the screenshot API which uses Playwright to capture real Regrid data
+      // Note: This may take 15-30 seconds as it uses browser automation
+      const response = await authFetch("/api/scrape/screenshot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          property_id: propertyId,
+          regrid_url: regridUrl,
+          parcel_id: property.parcelId,
+          property_address: property.address,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Update local state to reflect that property now has Regrid data
+        setProperties(prev => prev.map(p =>
+          p.id === propertyId ? { ...p, hasRegridData: true } : p
+        ))
+        alert("Regrid data captured successfully!")
+      } else {
+        alert(data.error || "Failed to scrape Regrid data")
+      }
+    } catch (error) {
+      console.error("Error scraping Regrid:", error)
+      alert("Failed to scrape Regrid data. Please try again.")
+    } finally {
+      setScrapingPropertyId(null)
+    }
+  }
+
+  // Get unique counties for filter dropdown - use allCounties from API, fallback to properties
+  const uniqueCounties = allCounties.length > 0
+    ? allCounties
+    : Array.from(new Set(properties.map(p => p.county))).filter(c => c && c !== 'Unknown').sort()
 
   // Valid status values for URL param validation
   const validStatuses: PropertyStatus[] = ["active", "pending", "expired", "sold", "withdrawn", "unknown"]
 
   // Function to update URL parameters
-  const updateUrlParams = useCallback((updates: { stage?: string | null; county?: string | null; dateRange?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null; pageSize?: number | null }) => {
+  const updateUrlParams = useCallback((updates: { stage?: string | null; auctionStatus?: string | null; county?: string | null; dateRange?: string | null; saleType?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null; pageSize?: number | null }) => {
     const params = new URLSearchParams(searchParams.toString())
 
     if (updates.stage !== undefined) {
@@ -327,6 +476,14 @@ function PropertiesContent() {
         params.set("stage", updates.stage)
       } else {
         params.delete("stage")
+      }
+    }
+
+    if (updates.auctionStatus !== undefined) {
+      if (updates.auctionStatus && updates.auctionStatus !== "all") {
+        params.set("auctionStatus", updates.auctionStatus)
+      } else {
+        params.delete("auctionStatus")
       }
     }
 
@@ -343,6 +500,14 @@ function PropertiesContent() {
         params.set("dateRange", updates.dateRange)
       } else {
         params.delete("dateRange")
+      }
+    }
+
+    if (updates.saleType !== undefined) {
+      if (updates.saleType && updates.saleType !== "all") {
+        params.set("saleType", updates.saleType)
+      } else {
+        params.delete("saleType")
       }
     }
 
@@ -411,6 +576,18 @@ function PropertiesContent() {
     }
   }, [searchParams])
 
+  // Read auction status from URL params (default to "active" if not set)
+  useEffect(() => {
+    const auctionStatusParam = searchParams.get("auctionStatus")
+    const validAuctionStatuses: AuctionStatusType[] = ["active", "expired", "unknown", "sold", "withdrawn", "all"]
+    if (auctionStatusParam && validAuctionStatuses.includes(auctionStatusParam as AuctionStatusType)) {
+      setAuctionStatusFilter(auctionStatusParam as AuctionStatusType)
+    } else if (!auctionStatusParam) {
+      // Default to "active" to show only active properties by default
+      setAuctionStatusFilter("active")
+    }
+  }, [searchParams])
+
   // Read date range from URL params
   useEffect(() => {
     const dateRangeParam = searchParams.get("dateRange")
@@ -419,6 +596,17 @@ function PropertiesContent() {
       setDateRangeFilter(dateRangeParam)
     } else if (!dateRangeParam) {
       setDateRangeFilter("all")
+    }
+  }, [searchParams])
+
+  // Read sale type from URL params
+  useEffect(() => {
+    const saleTypeParam = searchParams.get("saleType")
+    const validSaleTypes = ["all", "upset", "judicial", "repository"]
+    if (saleTypeParam && validSaleTypes.includes(saleTypeParam)) {
+      setSaleTypeFilter(saleTypeParam)
+    } else if (!saleTypeParam) {
+      setSaleTypeFilter("all")
     }
   }, [searchParams])
 
@@ -437,7 +625,8 @@ function PropertiesContent() {
     const hasStage = searchParams.get("stage")
     const hasCounty = searchParams.get("county")
     const hasDateRange = searchParams.get("dateRange")
-    if (hasStage || hasCounty || hasDateRange) {
+    const hasSaleType = searchParams.get("saleType")
+    if (hasStage || hasCounty || hasDateRange || hasSaleType) {
       setShowFilters(true)
     }
   }, [searchParams])
@@ -592,7 +781,7 @@ function PropertiesContent() {
   }
 
   // Check if current filters match a saved filter
-  const hasActiveFilters = statusFilter !== "all" || countyFilter !== "all" || dateRangeFilter !== "all" || searchQuery.trim() !== ""
+  const hasActiveFilters = statusFilter !== "all" || auctionStatusFilter !== "active" || countyFilter !== "all" || dateRangeFilter !== "all" || searchQuery.trim() !== "" || !!saleIdFilter
 
   // Set filter as default
   const handleSetAsDefault = (filterId: string) => {
@@ -712,7 +901,7 @@ function PropertiesContent() {
     }
   }
 
-  // Filter properties based on search, status, county, and date range
+  // Filter properties based on search, status, auction status, county, and date range
   const trimmedSearch = searchQuery.trim().toLowerCase()
   const filteredProperties = properties.filter((property) => {
     const matchesSearch =
@@ -725,16 +914,19 @@ function PropertiesContent() {
     const matchesStatus =
       statusFilter === "all" || property.status === statusFilter
 
+    const matchesAuctionStatus =
+      auctionStatusFilter === "all" || property.auctionStatus === auctionStatusFilter
+
     const matchesCounty =
       countyFilter === "all" || property.county === countyFilter
 
     const matchesDateRange = isWithinDateRange(property.saleDate, dateRangeFilter)
 
-    return matchesSearch && matchesStatus && matchesCounty && matchesDateRange
+    return matchesSearch && matchesStatus && matchesAuctionStatus && matchesCounty && matchesDateRange
   })
 
-  // Count active filters
-  const activeFilterCount = [statusFilter !== "all", countyFilter !== "all", dateRangeFilter !== "all"].filter(Boolean).length
+  // Count active filters (auctionStatus "active" is the default, so only count if different)
+  const activeFilterCount = [statusFilter !== "all", auctionStatusFilter !== "active", countyFilter !== "all", dateRangeFilter !== "all", saleTypeFilter !== "all", !!saleIdFilter].filter(Boolean).length
 
   // Sort properties if a sort field is selected
   const sortedProperties = [...filteredProperties].sort((a, b) => {
@@ -853,7 +1045,7 @@ function PropertiesContent() {
     const headers = [
       "Parcel ID", "Address", "City", "State", "County", "Total Due",
       "Year Built", "Bedrooms", "Bathrooms", "Building Sq Ft", "Assessed Value",
-      "Sale Date", "Sale Type", "Property Type", "Lot Size", "Stage", "Validation"
+      "Sale Date", "Sale Type", "Property Type", "Lot Size", "Stage", "Auction Status", "Validation"
     ]
     const rows = selectedProps.map(property => [
       property.parcelId, property.address, property.city, property.state,
@@ -863,6 +1055,7 @@ function PropertiesContent() {
       property.saleDate,
       property.saleType, property.propertyType, property.lotSize,
       STATUS_CONFIG[property.status as PropertyStatus].label,
+      AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus,
       property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending"
     ])
 
@@ -907,6 +1100,7 @@ function PropertiesContent() {
       "Property Type",
       "Lot Size",
       "Stage",
+      "Auction Status",
       "Validation"
     ]
 
@@ -928,6 +1122,7 @@ function PropertiesContent() {
       property.propertyType,
       property.lotSize,
       STATUS_CONFIG[property.status as PropertyStatus].label,
+      AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus,
       property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending"
     ])
 
@@ -1124,7 +1319,7 @@ function PropertiesContent() {
               <div className="flex flex-wrap gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">
-                    Status
+                    Pipeline Stage
                   </label>
                   <select
                     value={statusFilter}
@@ -1136,13 +1331,33 @@ function PropertiesContent() {
                     }}
                     className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="all">All Statuses</option>
+                    <option value="all">All Stages</option>
                     <option value="active">Active</option>
                     <option value="pending">Pending</option>
                     <option value="expired">Expired</option>
                     <option value="sold">Sold</option>
                     <option value="withdrawn">Withdrawn</option>
                     <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Auction Status
+                  </label>
+                  <select
+                    value={auctionStatusFilter}
+                    onChange={(e) => {
+                      const newValue = e.target.value as AuctionStatusType
+                      setAuctionStatusFilter(newValue)
+                      setCurrentPage(1)
+                      updateUrlParams({ auctionStatus: newValue, page: null })
+                    }}
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="active">Active</option>
+                    <option value="expired">Expired</option>
+                    <option value="unknown">Unknown</option>
+                    <option value="all">All</option>
                   </select>
                 </div>
                 <div>
@@ -1188,15 +1403,37 @@ function PropertiesContent() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Sale Type
+                  </label>
+                  <select
+                    value={saleTypeFilter}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setSaleTypeFilter(newValue)
+                      setCurrentPage(1)
+                      updateUrlParams({ saleType: newValue, page: null })
+                    }}
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="upset">Upset</option>
+                    <option value="judicial">Judicial</option>
+                    <option value="repository">Repository</option>
+                  </select>
+                </div>
                 {activeFilterCount > 0 && (
                   <div className="flex items-end">
                     <button
                       onClick={() => {
                         setStatusFilter("all")
+                        setAuctionStatusFilter("active")
                         setCountyFilter("all")
                         setDateRangeFilter("all")
+                        setSaleTypeFilter("all")
                         setCurrentPage(1)
-                        updateUrlParams({ stage: null, county: null, dateRange: null, page: null })
+                        updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, page: null })
                       }}
                       className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 underline"
                     >
@@ -1240,6 +1477,22 @@ function PropertiesContent() {
                       </button>
                     </span>
                   )}
+                  {saleIdFilter && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
+                      <Gavel className="h-3 w-3" />
+                      Filtered by Auction
+                      <button
+                        onClick={() => {
+                          setCurrentPage(1)
+                          router.push("/properties")
+                        }}
+                        className="min-w-[24px] min-h-[24px] hover:bg-amber-200 rounded-full flex items-center justify-center"
+                        aria-label="Remove auction filter"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                   {dateRangeFilter !== "all" && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
                       Sale Date: {DATE_RANGES.find(r => r.value === dateRangeFilter)?.label}
@@ -1251,6 +1504,38 @@ function PropertiesContent() {
                         }}
                         className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
                         aria-label="Remove date range filter"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {saleTypeFilter !== "all" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                      Sale Type: {saleTypeFilter.charAt(0).toUpperCase() + saleTypeFilter.slice(1)}
+                      <button
+                        onClick={() => {
+                          setSaleTypeFilter("all")
+                          setCurrentPage(1)
+                          updateUrlParams({ saleType: null, page: null })
+                        }}
+                        className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
+                        aria-label="Remove sale type filter"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {auctionStatusFilter !== "active" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                      Auction: {AUCTION_STATUS_CONFIG[auctionStatusFilter as Exclude<AuctionStatusType, "all">]?.label || "All"}
+                      <button
+                        onClick={() => {
+                          setAuctionStatusFilter("active")
+                          setCurrentPage(1)
+                          updateUrlParams({ auctionStatus: null, page: null })
+                        }}
+                        className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
+                        aria-label="Remove auction status filter"
                       >
                         ×
                       </button>
@@ -1372,6 +1657,15 @@ function PropertiesContent() {
                           {STATUS_CONFIG[property.status as PropertyStatus].icon}
                           {STATUS_CONFIG[property.status as PropertyStatus].label}
                         </span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                            AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.color || "bg-gray-100 text-gray-800"
+                          )}
+                        >
+                          {AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.icon || <AlertTriangle className="h-3 w-3" />}
+                          {AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus}
+                        </span>
                         {property.validation ? (
                           <span
                             className={cn(
@@ -1451,6 +1745,25 @@ function PropertiesContent() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                      {!property.hasRegridData && (
+                        <button
+                          onClick={() => handleScrapeRegrid(property.id)}
+                          className="flex-1 min-h-[44px] px-4 py-2 flex items-center justify-center gap-2 text-sm text-white bg-amber-600 hover:bg-amber-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+                          disabled={scrapingPropertyId === property.id}
+                        >
+                          {scrapingPropertyId === property.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Scraping...
+                            </>
+                          ) : (
+                            <>
+                              <Database className="h-4 w-4" />
+                              Scrape
+                            </>
+                          )}
+                        </button>
+                      )}
                       <button
                         onClick={() => router.push(`/report/${property.id}`)}
                         className="flex-1 min-h-[44px] px-4 py-2 flex items-center justify-center gap-2 text-sm text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 rounded-lg font-medium transition-colors"
@@ -1495,15 +1808,17 @@ function PropertiesContent() {
                         )}
                       </ul>
                     </div>
-                    {(trimmedSearch || statusFilter !== "all" || countyFilter !== "all" || dateRangeFilter !== "all") && (
+                    {(trimmedSearch || statusFilter !== "all" || auctionStatusFilter !== "active" || countyFilter !== "all" || dateRangeFilter !== "all" || saleTypeFilter !== "all") && (
                       <button
                         onClick={() => {
                           setSearchQuery("")
                           setStatusFilter("all")
+                          setAuctionStatusFilter("active")
                           setCountyFilter("all")
                           setDateRangeFilter("all")
+                          setSaleTypeFilter("all")
                           setCurrentPage(1)
-                          updateUrlParams({ stage: null, county: null, dateRange: null, q: null, page: null })
+                          updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, q: null, page: null })
                         }}
                         className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 dark:text-blue-400 dark:hover:text-blue-300 border border-primary/30 dark:border-blue-500/30 rounded-lg hover:bg-primary/5 dark:hover:bg-blue-500/10 transition-colors"
                       >
@@ -1610,7 +1925,13 @@ function PropertiesContent() {
                     Stage
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Auction Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Validation
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Regrid
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Actions
@@ -1706,7 +2027,9 @@ function PropertiesContent() {
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 text-slate-400" />
                           <span className="text-sm text-slate-700">
-                            {formatDate(property.saleDate, dateFormatPreference)}
+                            {property.saleType?.toLowerCase() === "repository"
+                              ? <span className="text-green-600 font-medium">Available Now</span>
+                              : formatDate(property.saleDate, dateFormatPreference)}
                           </span>
                         </div>
                       </td>
@@ -1730,6 +2053,18 @@ function PropertiesContent() {
                           {STATUS_CONFIG[property.status as PropertyStatus].label}
                         </span>
                       </td>
+                      {/* Auction Status */}
+                      <td className="px-4 py-4">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                            AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.color || "bg-gray-100 text-gray-800"
+                          )}
+                        >
+                          {AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.icon || <AlertTriangle className="h-3 w-3" />}
+                          {AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus}
+                        </span>
+                      </td>
                       {/* Validation */}
                       <td className="px-4 py-4">
                         {property.validation ? (
@@ -1750,9 +2085,43 @@ function PropertiesContent() {
                           </span>
                         )}
                       </td>
+                      {/* Regrid Data Indicator */}
+                      <td className="px-4 py-4">
+                        {property.hasRegridData ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            <Database className="h-3 w-3" />
+                            Enriched
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                            <Database className="h-3 w-3" />
+                            Pending
+                          </span>
+                        )}
+                      </td>
                       {/* Actions */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
+                          {!property.hasRegridData && (
+                            <button
+                              onClick={() => handleScrapeRegrid(property.id)}
+                              className="min-h-[44px] px-2 flex items-center gap-1 text-sm text-amber-600 hover:text-amber-700 font-medium disabled:opacity-50"
+                              disabled={scrapingPropertyId === property.id}
+                              title="Scrape Regrid data for this property"
+                            >
+                              {scrapingPropertyId === property.id ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Scraping...
+                                </>
+                              ) : (
+                                <>
+                                  <Database className="h-3.5 w-3.5" />
+                                  Scrape
+                                </>
+                              )}
+                            </button>
+                          )}
                           <button
                             onClick={() => router.push(`/report/${property.id}`)}
                             className="min-h-[44px] px-2 flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
@@ -1775,7 +2144,7 @@ function PropertiesContent() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={14}
+                      colSpan={16}
                       className="px-4 py-16 text-center"
                     >
                       <div className="flex flex-col items-center justify-center">
@@ -1802,15 +2171,17 @@ function PropertiesContent() {
                             )}
                           </ul>
                         </div>
-                        {(trimmedSearch || statusFilter !== "all" || countyFilter !== "all" || dateRangeFilter !== "all") && (
+                        {(trimmedSearch || statusFilter !== "all" || auctionStatusFilter !== "active" || countyFilter !== "all" || dateRangeFilter !== "all" || saleTypeFilter !== "all") && (
                           <button
                             onClick={() => {
                               setSearchQuery("")
                               setStatusFilter("all")
+                              setAuctionStatusFilter("active")
                               setCountyFilter("all")
                               setDateRangeFilter("all")
+                              setSaleTypeFilter("all")
                               setCurrentPage(1)
-                              updateUrlParams({ stage: null, county: null, dateRange: null, q: null, page: null })
+                              updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, q: null, page: null })
                             }}
                             className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors"
                           >
@@ -1956,9 +2327,19 @@ function PropertiesContent() {
                         County: {countyFilter}
                       </span>
                     )}
+                    {saleIdFilter && (
+                      <span className="px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                        Filtered by Auction
+                      </span>
+                    )}
                     {dateRangeFilter !== "all" && (
                       <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
                         Date: {DATE_RANGES.find(r => r.value === dateRangeFilter)?.label}
+                      </span>
+                    )}
+                    {saleTypeFilter !== "all" && (
+                      <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
+                        Sale Type: {saleTypeFilter.charAt(0).toUpperCase() + saleTypeFilter.slice(1)}
                       </span>
                     )}
                     {searchQuery.trim() && (

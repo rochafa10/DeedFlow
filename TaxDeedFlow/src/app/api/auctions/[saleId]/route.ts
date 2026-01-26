@@ -95,8 +95,8 @@ export async function GET(
         .order("created_at", { ascending: false })
         .limit(10),
 
-      // Get properties for this auction (limited for performance)
-      countyId ? supabase
+      // Get properties linked to this auction via sale_id
+      supabase
         .from("properties")
         .select(`
           id,
@@ -110,10 +110,9 @@ export async function GET(
           visual_validation_status,
           auction_status
         `)
-        .eq("county_id", countyId)
-        .eq("auction_status", "active")
+        .eq("sale_id", saleId)
         .order("total_due", { ascending: false })
-        .limit(50) : Promise.resolve({ data: [], error: null }),
+        .limit(50),
 
       // Get documents for this county
       countyId ? supabase

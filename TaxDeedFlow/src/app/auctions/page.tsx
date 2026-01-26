@@ -197,14 +197,27 @@ export default function AuctionsPage() {
     return matchesSearch
   })
 
+  // Calculate auctions for the viewed month (not current calendar month)
+  const viewedMonthAuctions = auctions.filter((auction) => {
+    const auctionDate = new Date(auction.date)
+    return (
+      auctionDate.getMonth() === currentMonth.getMonth() &&
+      auctionDate.getFullYear() === currentMonth.getFullYear()
+    )
+  })
+
   // Get auctions for current month view
+  // Normalizes dates to YYYY-MM-DD format for calendar cell matching
   const getAuctionDates = () => {
     const dates: Record<string, Auction[]> = {}
     auctions.forEach((auction) => {
-      if (!dates[auction.date]) {
-        dates[auction.date] = []
+      // Normalize date to YYYY-MM-DD format (handles timestamps with time/timezone)
+      const auctionDate = new Date(auction.date)
+      const dateKey = `${auctionDate.getFullYear()}-${String(auctionDate.getMonth() + 1).padStart(2, "0")}-${String(auctionDate.getDate()).padStart(2, "0")}`
+      if (!dates[dateKey]) {
+        dates[dateKey] = []
       }
-      dates[auction.date].push(auction)
+      dates[dateKey].push(auction)
     })
     return dates
   }
@@ -466,8 +479,10 @@ export default function AuctionsPage() {
                 <div className="text-sm text-slate-500">Upcoming Auctions</div>
               </div>
               <div className="bg-white rounded-lg border border-slate-200 p-4">
-                <div className="text-2xl font-bold text-red-600">{stats.thisMonth}</div>
-                <div className="text-sm text-slate-500">This Month</div>
+                <div className="text-2xl font-bold text-blue-600">{viewedMonthAuctions.length}</div>
+                <div className="text-sm text-slate-500">
+                  {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                </div>
               </div>
             </div>
           </div>

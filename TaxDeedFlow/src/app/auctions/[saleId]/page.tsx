@@ -20,6 +20,9 @@ import {
   ClipboardList,
   Info,
   Download,
+  Eye,
+  Search,
+  Loader2,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
@@ -132,6 +135,7 @@ export default function AuctionDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isResearching, setIsResearching] = useState(false)
 
   const saleId = params.saleId as string
 
@@ -200,6 +204,37 @@ export default function AuctionDetailPage() {
       localStorage.setItem(`auction-checklist-${saleId}`, JSON.stringify(Array.from(newSet)))
       return newSet
     })
+  }
+
+  /**
+   * Handle "Research Property List" button click
+   * Queues the auction for property list research via the Research Agent
+   */
+  const handleResearchPropertyList = async () => {
+    if (!auction) return
+
+    setIsResearching(true)
+    try {
+      const response = await fetch("/api/auction-research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saleId: auction.id })
+      })
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success(data.message || "Queued for property list research", {
+          description: data.county ? `${data.county} - ${auction.type}` : undefined
+        })
+      } else {
+        toast.error(data.error || "Failed to queue research")
+      }
+    } catch (err) {
+      pageLogger.error("Error queueing research", { error: err })
+      toast.error("Failed to queue research")
+    } finally {
+      setIsResearching(false)
+    }
   }
 
   // Redirect to login if not authenticated
@@ -380,6 +415,20 @@ export default function AuctionDetailPage() {
                   View County
                 </button>
               )}
+              {/* Track 6.2: View Properties Button */}
+              <button
+                onClick={() => router.push(`/properties?sale_id=${auction.id}`)}
+                disabled={auction.propertyStats?.total === 0}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+                  auction.propertyStats?.total === 0
+                    ? "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                    : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                )}
+              >
+                <Eye className="h-4 w-4" />
+                View Properties ({auction.propertyStats?.total || 0})
+              </button>
             </div>
           </div>
         </div>
@@ -433,6 +482,48 @@ export default function AuctionDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Track 6.4: Research Property List Card - shown when no properties */}
+        {auction.propertyStats?.total === 0 && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 p-6 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-800 dark:text-amber-300 text-lg">
+                  No Property List Available
+                </h3>
+                <p className="text-amber-700 dark:text-amber-400 mt-1">
+                  This auction does not have a parsed property list yet. Click the button to queue
+                  this auction for property list research by the Research Agent.
+                </p>
+              </div>
+              <button
+                onClick={handleResearchPropertyList}
+                disabled={isResearching}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap",
+                  isResearching
+                    ? "bg-amber-200 dark:bg-amber-800 text-amber-600 dark:text-amber-400 cursor-not-allowed"
+                    : "bg-amber-600 hover:bg-amber-700 text-white"
+                )}
+              >
+                {isResearching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Researching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    Research Property List
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Key Dates Section */}
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 mb-6">
