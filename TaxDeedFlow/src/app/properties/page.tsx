@@ -54,6 +54,7 @@ interface Property {
   status: string
   auctionStatus: string
   propertyType: string
+  propertyClass: string | null // Property class from Regrid (Residence, Lot, etc.)
   lotSize: string
   saleType: string
   validation: string | null
@@ -65,6 +66,9 @@ interface Property {
   buildingSqft: number | null
   assessedValue: number | null
   lotSizeAcres: number | null
+  lotDimensions: string | null
+  waterService: string | null
+  sewerService: string | null
   // Regrid enrichment indicator
   hasRegridData: boolean
 }
@@ -288,6 +292,7 @@ function PropertiesContent() {
           status?: string
           property_type?: string
           propertyType?: string
+          property_class?: string
           lot_size?: string
           lotSize?: string
           sale_type?: string
@@ -303,12 +308,15 @@ function PropertiesContent() {
             zoning?: string
             lot_size_sqft?: number
             lot_size_acres?: number
+            lot_dimensions?: string
             building_sqft?: number
             year_built?: number
             bedrooms?: number
             bathrooms?: number
             assessed_value?: number
             market_value?: number
+            water_service?: string
+            sewer_service?: string
             latitude?: number
             longitude?: number
             additional_fields?: {
@@ -332,19 +340,24 @@ function PropertiesContent() {
           status: p.auction_status || p.status || "parsed",
           // Property type fallback: property_type -> propertyType -> regrid property_type -> default
           propertyType: p.property_type || p.propertyType || p.regrid_data?.property_type || "Unknown",
+          // Property class from database (Residence, Lot, Commercial, etc.)
+          propertyClass: p.property_class || null,
           // Lot size fallback: lot_size -> lotSize -> formatted regrid acres -> default
           lotSize: p.lot_size || p.lotSize || (p.regrid_data?.lot_size_acres ? `${p.regrid_data.lot_size_acres.toFixed(2)} acres` : "Unknown"),
           saleType: p.sale_type || p.saleType || "Tax Deed",
           validation: p.visual_validation_status?.toLowerCase() || p.validation || null,
           saleDate: p.sale_date || p.saleDate || "",
           auctionStatus: p.auction_status || "unknown",
-          // Regrid data fields
-          yearBuilt: p.regrid_data?.year_built || null,
-          bedrooms: p.regrid_data?.bedrooms || null,
-          bathrooms: p.regrid_data?.bathrooms || null,
-          buildingSqft: p.regrid_data?.building_sqft || null,
-          assessedValue: p.regrid_data?.assessed_value || null,
-          lotSizeAcres: p.regrid_data?.lot_size_acres || null,
+          // Regrid data fields - read from synced properties columns first, fallback to regrid_data
+          yearBuilt: p.year_built || p.regrid_data?.year_built || null,
+          bedrooms: p.bedrooms || p.regrid_data?.bedrooms || null,
+          bathrooms: p.bathrooms || p.regrid_data?.bathrooms || null,
+          buildingSqft: p.building_sqft || p.regrid_data?.building_sqft || null,
+          assessedValue: p.assessed_value || p.regrid_data?.assessed_value || null,
+          lotSizeAcres: p.lot_size_acres || p.regrid_data?.lot_size_acres || null,
+          lotDimensions: p.lot_dimensions || p.regrid_data?.lot_dimensions || null,
+          waterService: p.water_service || p.regrid_data?.water_service || null,
+          sewerService: p.sewer_service || p.regrid_data?.sewer_service || null,
           // Regrid enrichment indicator - true if regrid_data exists
           hasRegridData: !!p.regrid_data,
         }))
@@ -408,7 +421,7 @@ function PropertiesContent() {
   }
 
   // Handle scrape Regrid data for a single property
-  // Uses the screenshot API which captures real Regrid data via Playwright
+  // Calls the n8n webhook "TDF - Single Property Scraper" which uses pwrunner to extract 50+ fields
   const handleScrapeRegrid = async (propertyId: string) => {
     setScrapingPropertyId(propertyId)
     try {
@@ -419,35 +432,52 @@ function PropertiesContent() {
         return
       }
 
-      // Build the Regrid URL from property data
-      // Format: https://app.regrid.com/us/{state}/{county}
-      const stateSlug = property.state?.toLowerCase() || ''
+      // Get county slug for Regrid search
       const countySlug = property.county?.toLowerCase().replace(/\s+/g, '-') || ''
-      const regridUrl = `https://app.regrid.com/us/${stateSlug}/${countySlug}`
+      const stateSlug = property.state?.toLowerCase() || 'pa'
 
-      // Call the screenshot API which uses Playwright to capture real Regrid data
-      // Note: This may take 15-30 seconds as it uses browser automation
-      const response = await authFetch("/api/scrape/screenshot", {
+      // Call the n8n webhook which triggers the full Regrid scraper workflow
+      // This uses the pwrunner container with the v17 script to extract 50+ fields
+      // Note: This may take 30-60 seconds as it uses browser automation on the VPS
+      const response = await fetch("https://n8n.lfb-investments.com/webhook/scrape-property", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           property_id: propertyId,
-          regrid_url: regridUrl,
           parcel_id: property.parcelId,
-          property_address: property.address,
+          county: countySlug,
+          state: stateSlug,
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        // Update local state to reflect that property now has Regrid data
-        setProperties(prev => prev.map(p =>
-          p.id === propertyId ? { ...p, hasRegridData: true } : p
-        ))
-        alert("Regrid data captured successfully!")
+        // Update local state with all the new data from Regrid
+        setProperties(prev => prev.map(p => {
+          if (p.id === propertyId) {
+            const regridData = data.regrid_data || {}
+            return {
+              ...p,
+              hasRegridData: true,
+              hasScreenshot: true,
+              // Update address if found and property didn't have one
+              address: regridData.address || p.address,
+              // Update other fields from regrid_data if available
+              yearBuilt: regridData.year_built || p.yearBuilt,
+              bedrooms: regridData.bedrooms || p.bedrooms,
+              bathrooms: regridData.bathrooms || p.bathrooms,
+              buildingSqft: regridData.building_sqft || p.buildingSqft,
+              assessedValue: regridData.assessed_value || p.assessedValue,
+            }
+          }
+          return p
+        }))
+
+        const extractedFields = data.regrid_data ? Object.keys(data.regrid_data).filter(k => data.regrid_data[k] !== null).length : 0
+        alert(`Regrid data captured successfully! Extracted ${extractedFields} fields.`)
       } else {
         alert(data.error || "Failed to scrape Regrid data")
       }
@@ -1044,19 +1074,23 @@ function PropertiesContent() {
     const selectedProps = sortedProperties.filter(p => selectedProperties.has(p.id))
     const headers = [
       "Parcel ID", "Address", "City", "State", "County", "Total Due",
-      "Year Built", "Bedrooms", "Bathrooms", "Building Sq Ft", "Assessed Value",
-      "Sale Date", "Sale Type", "Property Type", "Lot Size", "Stage", "Auction Status", "Validation"
+      "Property Class", "Year Built", "Bedrooms", "Bathrooms", "Building Sq Ft", "Assessed Value",
+      "Lot Dimensions", "Water Service", "Sewer Service",
+      "Sale Date", "Sale Type", "Property Type", "Lot Size", "Stage", "Auction Status", "Validation", "Has Regrid Data"
     ]
     const rows = selectedProps.map(property => [
       property.parcelId, property.address, property.city, property.state,
       property.county, property.totalDue.toFixed(2),
+      property.propertyClass || "",
       property.yearBuilt || "", property.bedrooms || "", property.bathrooms || "",
       property.buildingSqft || "", property.assessedValue || "",
+      property.lotDimensions || "", property.waterService || "", property.sewerService || "",
       property.saleDate,
       property.saleType, property.propertyType, property.lotSize,
       STATUS_CONFIG[property.status as PropertyStatus].label,
       AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus,
-      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending"
+      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending",
+      property.hasRegridData ? "Yes" : "No"
     ])
 
     const csvContent = [
@@ -1090,18 +1124,23 @@ function PropertiesContent() {
       "State",
       "County",
       "Total Due",
+      "Property Class",
       "Year Built",
       "Bedrooms",
       "Bathrooms",
       "Building Sq Ft",
       "Assessed Value",
+      "Lot Dimensions",
+      "Water Service",
+      "Sewer Service",
       "Sale Date",
       "Sale Type",
       "Property Type",
       "Lot Size",
       "Stage",
       "Auction Status",
-      "Validation"
+      "Validation",
+      "Has Regrid Data"
     ]
 
     // CSV rows from sorted properties (respects current sort order)
@@ -1112,18 +1151,23 @@ function PropertiesContent() {
       property.state,
       property.county,
       property.totalDue.toFixed(2),
+      property.propertyClass || "",
       property.yearBuilt || "",
       property.bedrooms || "",
       property.bathrooms || "",
       property.buildingSqft || "",
       property.assessedValue || "",
+      property.lotDimensions || "",
+      property.waterService || "",
+      property.sewerService || "",
       property.saleDate,
       property.saleType,
       property.propertyType,
       property.lotSize,
       STATUS_CONFIG[property.status as PropertyStatus].label,
       AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus,
-      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending"
+      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending",
+      property.hasRegridData ? "Yes" : "No"
     ])
 
     // Combine headers and rows
@@ -1700,13 +1744,13 @@ function PropertiesContent() {
                       </div>
                     </div>
 
-                    {/* County + Total Due (side by side) */}
+                    {/* Property Type + Total Due (side by side) */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">County</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Type</div>
                         <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                          <span className="text-sm text-slate-900 dark:text-slate-100">{property.county}</span>
+                          <Building2 className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm text-slate-900 dark:text-slate-100">{property.propertyClass || "-"}</span>
                         </div>
                       </div>
                       <div>
@@ -1720,6 +1764,15 @@ function PropertiesContent() {
                             })}
                           </span>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* County */}
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">County</div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                        <span className="text-sm text-slate-900 dark:text-slate-100">{property.county}</span>
                       </div>
                     </div>
 
@@ -1894,6 +1947,9 @@ function PropertiesContent() {
                     </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Year Built
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -1904,6 +1960,15 @@ function PropertiesContent() {
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Assessed Value
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Lot Size
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Water
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Sewer
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     <button
@@ -1992,6 +2057,12 @@ function PropertiesContent() {
                           </span>
                         </div>
                       </td>
+                      {/* Property Type/Class */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.propertyClass || "-"}
+                        </span>
+                      </td>
                       {/* Year Built */}
                       <td className="px-4 py-4">
                         <span className="text-sm text-slate-600">
@@ -2020,6 +2091,24 @@ function PropertiesContent() {
                           {property.assessedValue
                             ? `$${property.assessedValue.toLocaleString()}`
                             : "-"}
+                        </span>
+                      </td>
+                      {/* Lot Size/Dimensions */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.lotDimensions || property.lotSize || "-"}
+                        </span>
+                      </td>
+                      {/* Water Service */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.waterService || "-"}
+                        </span>
+                      </td>
+                      {/* Sewer Service */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-slate-600">
+                          {property.sewerService || "-"}
                         </span>
                       </td>
                       {/* Sale Date */}
@@ -2144,7 +2233,7 @@ function PropertiesContent() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={16}
+                      colSpan={20}
                       className="px-4 py-16 text-center"
                     >
                       <div className="flex flex-col items-center justify-center">
