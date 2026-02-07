@@ -73,4 +73,8 @@ export interface PropertyDatabaseRow {
   owner_name?: string;
   /** URL to the property screenshot */
   screenshot_url?: string;
+  /** Regrid scrape method (e.g., 'placeholder', 'n8n_playwright') */
+  regrid_scrape_method?: string;
+  /** Regrid data quality score (0.0 to 1.0) */
+  regrid_data_quality?: number;
 }

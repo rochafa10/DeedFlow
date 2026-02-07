@@ -249,6 +249,9 @@ export interface ReportPageLayoutProps {
   /** Regrid aerial screenshot URL */
   regridScreenshotUrl?: string;
 
+  /** Whether Regrid data is placeholder (scraper timed out) */
+  isRegridPlaceholder?: boolean;
+
   /** Whether to show management features */
   showManagementFeatures?: boolean;
 }
@@ -338,6 +341,7 @@ export function ReportPageLayout({
   images,
   activityLog,
   regridScreenshotUrl,
+  isRegridPlaceholder = false,
   showManagementFeatures = false,
 }: ReportPageLayoutProps) {
   return (
@@ -562,7 +566,13 @@ export function ReportPageLayout({
                 Regrid View
               </h3>
               <div className="aspect-video relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
-                {regridScreenshotUrl ? (
+                {isRegridPlaceholder ? (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400">
+                    <AlertCircle className="h-8 w-8 mb-2 text-amber-500" />
+                    <p className="font-medium">Placeholder Data</p>
+                    <p className="text-sm">Scraper timed out - screenshot may be inaccurate</p>
+                  </div>
+                ) : regridScreenshotUrl ? (
                   <img
                     src={regridScreenshotUrl}
                     alt={`Regrid aerial view of ${locationDetails.address}`}

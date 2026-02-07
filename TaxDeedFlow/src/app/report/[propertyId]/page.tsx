@@ -108,6 +108,8 @@ interface PropertyData {
   auction_status?: string;
   owner_name?: string;
   screenshot_url?: string;
+  regrid_scrape_method?: string;
+  regrid_data_quality?: number;
 }
 
 interface ApiDataSource {
@@ -871,6 +873,8 @@ export default function PropertyReportPage() {
           auction_status: apiData.status || apiData.auction_status,
           owner_name: apiData.ownerName || apiData.regridData?.ownerName || apiData.owner_name,
           screenshot_url: apiData.regridData?.screenshotUrl || apiData.images?.[0]?.url,
+          regrid_scrape_method: apiData.regridData?.scrapeMethod,
+          regrid_data_quality: apiData.regridData?.dataQualityScore,
         };
         setProperty(mapped);
       } catch (error) {
@@ -1062,6 +1066,10 @@ export default function PropertyReportPage() {
     return { text: "PASS", color: "red" };
   };
   const recommendation = getRecommendation(totalScore);
+
+  // Detect placeholder Regrid data (scraper timed out, data is low quality)
+  const isPlaceholderRegrid = property?.regrid_scrape_method === 'placeholder'
+    || (property?.regrid_data_quality != null && property.regrid_data_quality < 0.5);
 
   // Property address for filename generation
   const fullAddress = `${propertyDetails.address}, ${propertyDetails.city}, ${propertyDetails.state} ${propertyDetails.zip}`;
@@ -2445,7 +2453,26 @@ export default function PropertyReportPage() {
               Regrid View
             </h3>
             <div className="aspect-video relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
-              {property?.screenshot_url ? (
+              {isPlaceholderRegrid ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <AlertTriangle className="h-10 w-10 text-amber-500 mb-3" />
+                  <p className="text-slate-600 dark:text-slate-300 font-medium mb-1">
+                    Placeholder Data
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                    Regrid scraper timed out. Screenshot may be inaccurate.
+                  </p>
+                  <a
+                    href={`https://app.regrid.com/us/${(property?.state || 'pa').toLowerCase()}/${(property?.county_name || '').toLowerCase().replace(/\s+/g, '-')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-md hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    View on Regrid
+                  </a>
+                </div>
+              ) : property?.screenshot_url ? (
                 <>
                   <img
                     src={property.screenshot_url}
@@ -2453,7 +2480,7 @@ export default function PropertyReportPage() {
                     className="w-full h-full object-cover"
                   />
                   <a
-                    href={`https://regrid.com/parcel/${property?.parcel_id?.replace(/\./g, '')}`}
+                    href={`https://app.regrid.com/us/${(property?.state || 'pa').toLowerCase()}/${(property?.county_name || '').toLowerCase().replace(/\s+/g, '-')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors"
