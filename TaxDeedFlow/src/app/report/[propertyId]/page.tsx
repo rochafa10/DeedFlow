@@ -2792,14 +2792,32 @@ export default function PropertyReportPage() {
                   </a>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center p-4">
-                  <Image className="h-10 w-10 text-slate-400 dark:text-slate-500 mb-3" />
-                  <p className="text-slate-600 dark:text-slate-300 font-medium mb-1">
-                    Regrid Image Not Available
+                <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50">
+                  <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mb-4">
+                    <Image className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <p className="text-slate-700 dark:text-slate-200 font-semibold mb-1">
+                    Regrid Parcel View
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No aerial screenshot captured for this property
+                  {property?.parcel_id && (
+                    <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mb-3">
+                      {property.parcel_id}
+                    </p>
+                  )}
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                    Click &quot;Scrape&quot; above to capture parcel data and screenshot
                   </p>
+                  <a
+                    href={propertyDetails.coordinates && propertyDetails.coordinates.lat !== 0
+                      ? `https://app.regrid.com/us#map=18/${propertyDetails.coordinates.lat}/${propertyDetails.coordinates.lng}`
+                      : `https://app.regrid.com/us`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 rounded-lg shadow-sm transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open in Regrid
+                  </a>
                 </div>
               )}
             </div>

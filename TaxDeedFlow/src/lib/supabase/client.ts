@@ -26,17 +26,17 @@ export const isSupabaseConfigured = (): boolean => {
 // Server-side client with service role (for API routes)
 // Falls back to anon key if service role key is not configured
 export function createServerClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const key = serviceRoleKey || anonKey
 
-  if (!supabaseUrl || !key) {
+  if (!url || !key) {
     supabaseLogger.warn('Missing Supabase credentials')
     return null
   }
 
-  return createClient(supabaseUrl, key, {
+  return createClient(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

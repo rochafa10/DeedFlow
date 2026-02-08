@@ -187,24 +187,42 @@ export function GoogleStreetViewStatic({
     altText ||
     `Street view of ${address || `location at ${lat}, ${lng}`} facing ${getCardinalDirection(currentHeading)}`;
 
-  // No API key configured
+  // No API key configured - show placeholder with direct Street View link
   if (!apiKey) {
     return (
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800",
+          "relative w-full overflow-hidden rounded-lg bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50",
           className
         )}
         style={{ height }}
       >
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-          <AlertCircle className="h-10 w-10 text-amber-500 mb-3" />
-          <p className="text-slate-600 dark:text-slate-300 font-medium mb-1">
-            API Key Not Configured
+        <div className="flex flex-col items-center justify-center h-full text-center p-6">
+          <div className="w-14 h-14 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center mb-4">
+            <Eye className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+          </div>
+          <p className="text-slate-700 dark:text-slate-200 font-semibold mb-1">
+            Street View
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in environment
+          {address && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 max-w-[250px] truncate">
+              {address}
+            </p>
+          )}
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+            See the property from street level on Google Maps
           </p>
+          <a
+            href={directLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleLinkClick}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 rounded-lg shadow-sm transition-colors"
+          >
+            <Eye className="h-4 w-4" />
+            Open Street View
+            <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+          </a>
         </div>
       </div>
     );

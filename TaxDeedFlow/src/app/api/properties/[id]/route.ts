@@ -131,13 +131,14 @@ export async function GET(
         ? new Date(property.sale_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
         : "TBD",
       minimumBid: property.total_due || 0,
-      latitude: regridData?.latitude || null,
-      longitude: regridData?.longitude || null,
+      latitude: parseFloat(regridData?.latitude) || parseFloat(property.latitude) || null,
+      longitude: parseFloat(regridData?.longitude) || parseFloat(property.longitude) || null,
       ownerName: property.owner_name || regridData?.raw_data?.owner_name || null,
       isVacantLot: property.is_vacant_lot || false,
       isLikelyMobileHome: property.is_likely_mobile_home || false,
 
-      // Regrid data
+      // Regrid data (with property fallbacks for screenshot)
+      // Only use screenshot URL if has_screenshot flag is true (failed captures store wrong images)
       regridData: regridData ? {
         lotSizeAcres: regridData.lot_size_acres,
         lotSizeSqFt: regridData.lot_size_sqft,
@@ -150,7 +151,7 @@ export async function GET(
         lastSalePrice: null,
         ownerName: regridData.raw_data?.owner_name || property.owner_name,
         ownerAddress: null,
-        screenshotUrl: regridData.screenshot_url,
+        screenshotUrl: property.has_screenshot ? (regridData.screenshot_url || property.screenshot_url) : null,
         scrapeMethod: regridData.additional_fields?._scrape_method || 'unknown',
         dataQualityScore: regridData.data_quality_score ?? null,
       } : null,
@@ -171,10 +172,10 @@ export async function GET(
         lotShape: validationData.lot_shape,
       } : null,
 
-      // Images
-      images: regridData?.screenshot_url ? [
+      // Images - only include if has_screenshot is true (failed captures store wrong images)
+      images: (property.has_screenshot && (regridData?.screenshot_url || property.screenshot_url)) ? [
         {
-          url: regridData.screenshot_url,
+          url: regridData?.screenshot_url || property.screenshot_url,
           caption: "Regrid Aerial View",
           source: "Regrid",
         }

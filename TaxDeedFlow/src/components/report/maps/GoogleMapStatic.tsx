@@ -172,8 +172,10 @@ export function GoogleMapStatic({
   const imageAltText =
     altText || `Map of ${address || `location at ${lat}, ${lng}`}`;
 
-  // No API key configured
+  // No API key configured - use free Google Maps embed iframe
   if (!apiKey) {
+    const mapTypeParam = mapType === "satellite" || mapType === "hybrid" ? "k" : "m";
+    const embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&t=${mapTypeParam}&z=${currentZoom}&output=embed`;
     return (
       <div
         className={cn(
@@ -182,15 +184,39 @@ export function GoogleMapStatic({
         )}
         style={{ height }}
       >
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-          <AlertCircle className="h-10 w-10 text-amber-500 mb-3" />
-          <p className="text-slate-600 dark:text-slate-300 font-medium mb-1">
-            API Key Not Configured
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in environment
-          </p>
-        </div>
+        <iframe
+          src={embedUrl}
+          className="w-full h-full border-0"
+          title={altText || `Map of ${address || `${lat}, ${lng}`}`}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+        {showExternalLink && (
+          <div className="absolute bottom-3 right-3 z-10">
+            <a
+              href={directLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleLinkClick}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5",
+                "text-xs font-medium",
+                "bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm",
+                "text-slate-700 dark:text-slate-200",
+                "border border-slate-200 dark:border-slate-700",
+                "rounded-md shadow-sm",
+                "hover:bg-white dark:hover:bg-slate-900",
+                "transition-colors"
+              )}
+              title="Open in Google Maps"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              Open in Maps
+              <ExternalLink className="h-3 w-3 opacity-50" />
+            </a>
+          </div>
+        )}
       </div>
     );
   }
