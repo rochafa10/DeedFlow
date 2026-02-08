@@ -306,7 +306,7 @@ function PropertiesContent() {
           county: p.counties?.county_name || p.county || "Unknown",
           state: p.counties?.state_code || p.state || p.regrid_data?.additional_fields?.state || "PA",
           totalDue: p.total_due || p.totalDue || 0,
-          status: p.auction_status || p.status || "parsed",
+          status: p.auction_status || p.status || "unknown",
           // Property type fallback: property_type -> propertyType -> regrid property_type -> default
           propertyType: p.property_type || p.propertyType || p.regrid_data?.property_type || "Unknown",
           // Property class from database (Residence, Lot, Commercial, etc.)
@@ -1787,11 +1787,11 @@ function PropertiesContent() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                            STATUS_CONFIG[property.status as PropertyStatus].color
+                            STATUS_CONFIG[property.status as PropertyStatus]?.color || "bg-slate-100 text-slate-500"
                           )}
                         >
-                          {STATUS_CONFIG[property.status as PropertyStatus].icon}
-                          {STATUS_CONFIG[property.status as PropertyStatus].label}
+                          {STATUS_CONFIG[property.status as PropertyStatus]?.icon}
+                          {STATUS_CONFIG[property.status as PropertyStatus]?.label || property.status}
                         </span>
                         <span
                           className={cn(
@@ -1806,11 +1806,11 @@ function PropertiesContent() {
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                              VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].color
+                              VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>]?.color || "bg-slate-100 text-slate-500"
                             )}
                           >
-                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].icon}
-                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label}
+                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>]?.icon}
+                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>]?.label || property.validation}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-400 dark:text-slate-500">
