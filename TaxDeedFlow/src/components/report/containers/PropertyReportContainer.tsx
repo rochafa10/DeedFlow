@@ -212,6 +212,8 @@ export function PropertyReportContainer({ propertyId }: PropertyReportContainerP
           auction_status: apiData.status || apiData.auction_status,
           owner_name: apiData.ownerName || apiData.regridData?.ownerName || apiData.owner_name,
           screenshot_url: apiData.regridData?.screenshotUrl || apiData.images?.[0]?.url,
+          regrid_scrape_method: apiData.regridData?.scrapeMethod,
+          regrid_data_quality: apiData.regridData?.dataQualityScore,
         };
         setProperty(mapped);
       } catch (error) {
@@ -845,6 +847,10 @@ export function PropertyReportContainer({ propertyId }: PropertyReportContainerP
 
       // Regrid screenshot for map view
       regridScreenshotUrl={property?.screenshot_url}
+      isRegridPlaceholder={
+        property?.regrid_scrape_method === 'placeholder'
+        || (property?.regrid_data_quality != null && property.regrid_data_quality < 0.5)
+      }
     />
   );
 }

@@ -151,6 +151,8 @@ export async function GET(
         ownerName: regridData.raw_data?.owner_name || property.owner_name,
         ownerAddress: null,
         screenshotUrl: regridData.screenshot_url,
+        scrapeMethod: regridData.additional_fields?._scrape_method || 'unknown',
+        dataQualityScore: regridData.data_quality_score ?? null,
       } : null,
 
       // Validation data

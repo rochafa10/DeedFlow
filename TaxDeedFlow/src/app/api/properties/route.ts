@@ -69,7 +69,24 @@ export async function GET(request: NextRequest) {
           market_value,
           latitude,
           longitude,
-          additional_fields
+          additional_fields,
+          last_sale_price,
+          last_sale_date,
+          land_value,
+          improvement_value,
+          assessed_land_value,
+          assessed_improvement_value,
+          opportunity_zone,
+          school_district,
+          census_tract,
+          number_of_stories,
+          building_count,
+          building_footprint_sqft,
+          lot_type,
+          terrain,
+          deed_acres,
+          lot_dimensions,
+          owner_name
         )
       `, { count: "exact" })
       .order("updated_at", { ascending: false })

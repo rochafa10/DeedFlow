@@ -176,6 +176,10 @@ export async function POST(request: NextRequest) {
         raw_html: data.raw_html,
         scraped_at: new Date().toISOString(),
         data_quality_score: data.data_quality_score,
+        // Clear stale screenshot when using placeholder fallback
+        ...(data.additional_fields?._scrape_method === 'placeholder'
+          ? { screenshot_url: null }
+          : {}),
       }, {
         onConflict: "property_id",
       })
@@ -192,10 +196,14 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Update property has_regrid_data flag
+    // Update property flags — clear screenshot flag if placeholder
+    const isPlaceholder = data.additional_fields?._scrape_method === 'placeholder'
     await supabase
       .from("properties")
-      .update({ has_regrid_data: true })
+      .update({
+        has_regrid_data: true,
+        ...(isPlaceholder ? { has_screenshot: false } : {}),
+      })
       .eq("id", property_id)
 
     logger.log(`[Regrid Scraper] Successfully processed ${parcel_id}`)

@@ -1,0 +1,1307 @@
+
+<a class="close"><i class="fas fa-times" aria-hidden="true"></i></a>
+<a class="expand-vertical nomobile"><i class="fas fa-arrows-up-down" aria-hidden="true"></i></a>
+<div class="empty-hint centered hide">
+<i class="fas fa-search"></i>
+<p class="lead">Parcel details and data will appear here when you search for a property or select one on the map.</p>
+</div>
+
+<h3 class="h4 margin-none">Property Details</h3>
+<h3 class="address margin-none">94 Madison Rd</h3>
+<div class="search-results"><div class="property-detail " data-path="/us/pa/blair/martinsburg/68148">
+  <div class="flex-row-between margin-top-md margin-btm-md">
+    <a href="#" class="btn btn-round btn-primary btn-sm bookmarking add">
+      <!--?xml version="1.0" encoding="UTF-8" standalone="no"?-->
+
+<svg class="regrid-icon white" width="100%" height="100%" viewBox="0 0 300 300" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <path d="M0,0L186,0C248.92,0 300,51.08 300,114L300,300L0,300L0,0ZM149.495,47.545L174.839,125.544L256.852,125.544L190.502,173.751L215.846,251.751L149.495,203.544L83.145,251.751L108.488,173.751L42.138,125.544L124.151,125.544L149.495,47.545Z"></path>
+</svg>
+
+      <span class="add-bookmark">Follow</span>
+      <span class="remove-bookmark">Unfollow</span>
+    </a>
+    <div id="property-actions" class="btn-group">
+      <a class="btn btn-round btn-default btn-sm dropdown-toggle" data-toggle="dropdown">
+        <span class="">Actions</span>
+        <div class="caret"></div>
+      </a>
+      <ul class="dropdown-menu dropdown-menu-right">
+        <li>
+          <a href="/us/pa/blair/martinsburg/68148.pdf" class="print-property" target="_blank" data-upsell="print">
+            <i class="fas fa-print"></i>
+            Print Parcel PDF
+          </a>
+        </li>
+        <li>
+          <a href="#add-content" class="add-content hide">
+            <i class="fas fa-plus"></i>
+            Add Survey
+          </a>
+        </li>
+        <li>
+          <a href="#" class="copy-parcel-link">
+            <i class="fas fa-link"></i>
+            Copy Parcel Link
+          </a>
+        </li>
+        <li>
+          <a href="#" class="report-parcel-link">
+            <i class="fas fa-exclamation-triangle"></i>
+            Report Parcel Issue
+          </a>
+        </li>
+        <li>
+        <a href="/users/edit" id="custom-view-link" data-upsell="custom_view">
+          <i class="fas fa-gear"></i>
+          Customize View
+        </a>
+      </li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="property-image" class="property-image margin-btm-md" data-react-class="Parcels/Components/PropertyImageWrapper" data-turbolinks-permanent="true" data-react-cache-id="d959f431-12a5-f475-b0d8-20d1c8d6c8ae" data-react-props="{&quot;cacheId&quot;:&quot;d959f431-12a5-f475-b0d8-20d1c8d6c8ae&quot;,&quot;nodeId&quot;:&quot;property-image&quot;,&quot;streetview&quot;:&quot;https://app.regrid.com/us/pa/blair/martinsburg/68148/streetside.jpg&quot;,&quot;birdseye&quot;:&quot;https://app.regrid.com/us/pa/blair/martinsburg/68148/birdseye.jpg&quot;,&quot;currentUserID&quot;:389594,&quot;reactMapComponent&quot;:true}"><div class="streetview-container "><a href="https://app.regrid.com/us/pa/blair/martinsburg/68148/streetside.jpg" target="llstreetside"><img src="/packs/static/bing-streetside-d559b5341d3734341d3d.jpg" class="streetview imagery-placeholder disabled" data-placeholder="true" alt="Property photo"></a></div><div class="birdseye-container hide"><a href="https://app.regrid.com/us/pa/blair/martinsburg/68148/birdseye.jpg" target="llbirdseye"><img src="/packs/static/bing-birdseye-a7da7cfb4e222ced17b9.jpg" class="birdseye imagery-placeholder disabled" data-placeholder="true" alt="Property photo"></a><div class="birdseye-buttons" data-angle="0" data-base-url="https://app.regrid.com/us/pa/blair/martinsburg/68148/birdseye.jpg"><a class="btn btn-sm btn-default" href="#" title="Rotate left"><i class="fas fa-undo"></i></a><a class="btn btn-sm btn-default" href="#" title="Rotate right"><i class="fas fa-redo"></i></a></div></div><div class="imagery-disabled lead flex-row-center margin-btm-none">Imagery is unavailable here</div><div class="property-image-toggle small rounded"><a role="button" id="toggle-birdseye">Show bird's eye</a></div></div>
+
+  <ul class="nav nav-tabs property-tabs">
+  <li class="property-nav-tab active in">
+
+      <a href="#property-basic" data-toggle="tab" class="btn-sm padded">Parcel Data</a>
+    </li>
+    <li class="property-nav-tab inactive" data-original-title="" title="">
+      <a href="#user-datasets" data-toggle="tab" class="btn-sm blext-tab padded disabled">Datasets</a>
+    </li>
+    <li class="property-nav-tab">
+      <a href="#property-bookmarks" data-toggle="tab" class="btn-sm padded disabled">Follows</a>
+    </li>
+  </ul>
+  <script>
+    $(document).ready(function() {
+      let $tabTooltip = $('.property-nav-tab.inactive');
+      let $tabLink = $('.property-nav-tab.inactive a');
+
+      $tabLink.addClass('disabled');
+      $tabTooltip.each(function() {
+        let tabName = $(this).find('a').text().trim();
+        let title = `This property is not associated with any of your ${tabName}.`;
+
+        $(this).tooltip({
+          title: title,
+          trigger: 'hover',
+        });
+      });
+      setTimeout(function() { $tabTooltip.tooltip('hide'); }, 5000);
+
+      $('#bookmarks-parcel-details').on('click', function (e) {
+        e.preventDefault();
+        $('#map-nav-following').tab('show')
+      });
+    });
+  </script>
+
+  <div class="tab-content">
+    <div class="tab-pane fade active in" id="property-basic">
+      <div class="action-buttons">
+      </div>
+
+      <div class="add-post-wrapper"></div>
+
+      <div id="parcel-details" class="margin-top-md" data-react-class="Parcels/Containers/ParcelDetails" data-turbolinks-permanent="true" data-react-cache-id="aa0ed3dc-c3c1-c870-b229-91fcfeaeaa20" data-react-props="{&quot;cacheId&quot;:&quot;aa0ed3dc-c3c1-c870-b229-91fcfeaeaa20&quot;,&quot;nodeId&quot;:&quot;parcel-details&quot;}"><div id="property-highlights" class="panel panel-default margin-btm-md plan-color"><h2 class="hide"><address class="bold margin-none"><p class="margin-none">94 Madison Rd,</p><p class="margin-none">Martinsburg, PA 16662</p></address></h2><div class="panel-heading plan-color" role="tab" id="heading-parcel-highlights" data-toggle="collapse" href="#collapse-parcel-highlights" aria-expanded="true" aria-controls="collapse-parcel-highlights"><h4 class="panel-title"><button class="no-btn width-100"><span class="pull-left">Parcel Highlights</span><i id="caret-dd-parcel-highlights" class="fa fa-angle-up pull-right"></i></button></h4></div><div id="collapse-parcel-highlights" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading-parcel-highlights"><div class="panel-heading plan-color"><div class="flex-row-between"><div class="field flex-col-start margin-btm-sm width-100"><div class="field-label subtle small">Full Address</div><div class="field-value value"><address class="bold margin-none"><p class="margin-none">94 Madison Rd,</p><p class="margin-none">Martinsburg, PA 16662</p></address></div></div><button title="Copy to Clipboard" class="btn btn-default btn-round margin-left-md" data-tip="true" data-for="copyTooltip" currentitem="false"><i class="fas fa-copy"></i></button><div class="__react_component_tooltip t4a3e25c0-8493-432b-91b1-01665a63161d place-top type-dark" id="copyTooltip" data-id="tooltip"><style aria-hidden="true">
+  	.t4a3e25c0-8493-432b-91b1-01665a63161d {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.t4a3e25c0-8493-432b-91b1-01665a63161d.place-top {
+        margin-top: -10px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-bottom {
+        margin-top: 10px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-left {
+        margin-left: -10px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-right {
+        margin-left: 10px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t4a3e25c0-8493-432b-91b1-01665a63161d.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style>Copy to Clipboard</div></div><div class="flex-row-between"><div class="field flex-col-start margin-btm-sm width-100"><div class="field-label subtle small">Measurements</div><div class="field-value value"><div id="conversion"><span class="conversion-value">0.02 Acres</span><button data-tip="Change measurement units" class="dropdown-toggle btn btn-default btn-round margin-left-md" data-for="measurements-tool-tip" currentitem="false"><i class="fas fa-cog"></i><i class="fas fa-caret-down small" style="transition: transform 0.3s; transform: rotate(0deg);"></i><div class="__react_component_tooltip t6df8a692-be0b-4527-a919-f8cda2907211 place-top type-dark" id="measurements-tool-tip" data-id="tooltip"><style aria-hidden="true">
+  	.t6df8a692-be0b-4527-a919-f8cda2907211 {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.t6df8a692-be0b-4527-a919-f8cda2907211.place-top {
+        margin-top: -10px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-bottom {
+        margin-top: 10px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-left {
+        margin-left: -10px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-right {
+        margin-left: 10px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t6df8a692-be0b-4527-a919-f8cda2907211.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style></div></button></div></div></div></div><div class="flex-row-between"><div class="field flex-col-start margin-btm-sm width-100"><div class="field-label subtle small">Owner</div><div class="field-value value">DETWILER GLENN</div></div><div class="owner-filter-container"><button class="btn btn-round margin-left-md btn-default" data-tip="true" data-for="highlightFilter-highlights" currentitem="false"><i class="fa fa-filter"></i></button><div class="__react_component_tooltip ta3ad974f-ac6b-49f6-abd7-117353ed3eac place-top type-dark" id="highlightFilter-highlights" data-id="tooltip"><style aria-hidden="true">
+  	.ta3ad974f-ac6b-49f6-abd7-117353ed3eac {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-top {
+        margin-top: -10px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-bottom {
+        margin-top: 10px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-left {
+        margin-left: -10px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-right {
+        margin-left: 10px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .ta3ad974f-ac6b-49f6-abd7-117353ed3eac.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style>Highlights owner's other properties on map</div></div></div></div></div></div><div class="panel panel-default margin-btm-md"><div class="panel-heading" role="tab" id="heading-dd-parcel-address" data-toggle="collapse" href="#collapse-dd-parcel-address" aria-expanded="true" aria-controls="collapse-dd-parcel-address"><h4 class="panel-title"><button class="no-btn width-100"><span class="pull-left">Parcel Details</span><i id="caret-dd-parcel-address" class="fa fa-angle-up pull-right"></i></button></h4></div><div id="collapse-dd-parcel-address" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading-dd-parcel-address"><div class="panel-body"><div class="field"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Parcel ID </div></div><div class="field-value"><div class="value"><div class="flex-row-between"><span style="flex: 3 1 0%;">15.00-03..-041.00-034</span></div></div></div></div><div class="field"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Parcel Address </div></div><div class="field-value"><div class="value"><div class="flex-row-between"><span style="flex: 3 1 0%;">94 MADISON RD</span></div></div></div></div><div class="field"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Parcel Address City </div></div><div class="field-value"><div class="value"><div class="flex-row-between"><span style="flex: 3 1 0%;">MARTINSBURG</span></div></div></div></div><div class="field"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Parcel Address Zip Code </div></div><div class="field-value"><div class="value"><div class="flex-row-between"><span style="flex: 3 1 0%;">16662-1470</span></div></div></div></div><div class="field"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Regrid UUID </div></div><div class="field-value"><div class="value"><div class="flex-row-between"><span style="flex: 3 1 0%;">1acb9f88-49b8-466f-a4eb-d7eeaa2229a5</span></div></div></div></div></div></div></div><div class="panel panel-default margin-btm-md"><div class="panel-heading" role="tab" id="heading-dd-owner-information" data-toggle="collapse" href="#collapse-dd-owner-information" aria-expanded="true" aria-controls="collapse-dd-owner-information"><h4 class="panel-title"><button class="no-btn width-100"><span class="pull-left">Owner Information</span><i id="caret-dd-owner-information" class="fa fa-angle-up pull-right"></i></button></h4></div><div id="collapse-dd-owner-information" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading-dd-owner-information"><div class="panel-body"><div class="field premium"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Enhanced Owner <a href="https://regrid.com/enhanced-ownership" target="llext"><i class="fas fa-info-circle margin-xs fa-xs" data-tip="Regrid's Enhanced Ownership dataset provides the most current ownership information available.
+&lt;br/&gt;Update frequency for this field is approximately daily; click on this info box to view our full Support documentation.
+&lt;br/&gt;Due to licensing restrictions, this information can be accessed on our site, but is not available for export.
+" data-for="eo_owner" currentitem="false"></i><div class="__react_component_tooltip t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6 place-right type-dark allow_hover" id="eo_owner" data-id="tooltip"><style aria-hidden="true">
+  	.t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6 {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-top {
+        margin-top: -10px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-bottom {
+        margin-top: 10px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-left {
+        margin-left: -10px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-right {
+        margin-left: 10px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t6f9d6fd2-064a-4660-9abb-2d024a9ce8c6.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style></div></a></div><span class="badge badge-addon" data-tip="Additional value as an add-on to our parcel data, and available as a licensed product from Regrid." data-for="tt-eo_owner-addon" currentitem="false" style="flex: 1 1 0%;">Add-On<div class="__react_component_tooltip tbe387747-38cd-46fd-8a9e-2f6d248e37cd place-right type-dark allow_hover allow_click" id="tt-eo_owner-addon" data-id="tooltip"><style aria-hidden="true">
+  	.tbe387747-38cd-46fd-8a9e-2f6d248e37cd {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-top {
+        margin-top: -10px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-bottom {
+        margin-top: 10px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-left {
+        margin-left: -10px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-right {
+        margin-left: 10px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .tbe387747-38cd-46fd-8a9e-2f6d248e37cd.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style><div class="tooltip-inner margin-btm-md"><p>Additional value as an add-on to our parcel data, and available as a licensed product from Regrid.</p><a role="button" class="small"><i class="fas fa-arrow-right margin-right-md"></i>About this Add-On</a></div></div></span></div><div class="field-value"><div class="value"><div class="flex-row-between"><span style="flex: 3 1 0%;">GLENN DETWILER</span></div></div></div></div><div class="field premium"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Deeded Owner <a href="https://regrid.com/enhanced-ownership" target="llext"><i class="fas fa-info-circle margin-xs fa-xs" data-tip="Part of our Enhanced Ownership dataset, this field shows the owner's name as recorded on the deed.
+&lt;br/&gt;Update frequency for this field is approximately daily; click on this info box to view our full Support documentation.
+&lt;br/&gt;Due to licensing restrictions, this information can be accessed on our site, but is not available for export." data-for="eo_deedowner" currentitem="false"></i><div class="__react_component_tooltip t5489ec48-c1cf-4782-80bc-2058b28166ea place-right type-dark allow_hover" id="eo_deedowner" data-id="tooltip"><style aria-hidden="true">
+  	.t5489ec48-c1cf-4782-80bc-2058b28166ea {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.t5489ec48-c1cf-4782-80bc-2058b28166ea.place-top {
+        margin-top: -10px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-bottom {
+        margin-top: 10px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-left {
+        margin-left: -10px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-right {
+        margin-left: 10px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t5489ec48-c1cf-4782-80bc-2058b28166ea.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style></div></a></div><span class="badge badge-addon" data-tip="Additional value as an add-on to our parcel data, and available as a licensed product from Regrid." data-for="tt-eo_deedowner-addon" currentitem="false" style="flex: 1 1 0%;">Add-On<div class="__react_component_tooltip t4719076b-6f7a-4b89-81e6-a3167dac42e2 place-right type-dark allow_hover allow_click" id="tt-eo_deedowner-addon" data-id="tooltip"><style aria-hidden="true">
+  	.t4719076b-6f7a-4b89-81e6-a3167dac42e2 {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-top {
+        margin-top: -10px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-bottom {
+        margin-top: 10px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-left {
+        margin-left: -10px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-right {
+        margin-left: 10px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t4719076b-6f7a-4b89-81e6-a3167dac42e2.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style><div class="tooltip-inner margin-btm-md"><p>Additional value as an add-on to our parcel data, and available as a licensed product from Regrid.</p><a role="button" class="small"><i class="fas fa-arrow-right margin-right-md"></i>About this Add-On</a></div></div></span></div><div class="field-value"><div class="value"><div class="flex-row-between"><a href="https://luciana-lopes-rocha389594.regrid.com/settings/billing?plan_change=team_flex" target="_blank" class="small margin-btm-none unlock-link" rel="noreferrer"><span style="flex: 3 1 0%;"><span class="unlock-text" style="flex: 3 1 0%;">Unlock with 
+             Team
+          </span></span><span class="badge badge-team" data-tip="Available with a Team subscription." data-for="tt-eo_deedowner-team" currentitem="false" style="flex: 1 1 0%;">Team<i class="fas fa-lock margin-left-md margin-right-sm" aria-hidden="true"></i><div class="__react_component_tooltip t33621221-b72b-4b17-9ce8-5243cfd86e93 place-right type-dark allow_hover allow_click" id="tt-eo_deedowner-team" data-id="tooltip"><style aria-hidden="true">
+  	.t33621221-b72b-4b17-9ce8-5243cfd86e93 {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.t33621221-b72b-4b17-9ce8-5243cfd86e93.place-top {
+        margin-top: -10px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-bottom {
+        margin-top: 10px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-left {
+        margin-left: -10px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-right {
+        margin-left: 10px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t33621221-b72b-4b17-9ce8-5243cfd86e93.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style><div class="tooltip-inner margin-btm-md"><p>Available with a Team subscription.</p><a href="https://luciana-lopes-rocha389594.regrid.com/settings/billing?plan_change=team_flex" class="small centered"><i class="fas fa-arrow-right margin-right-md"></i>Upgrade to Team</a></div></div></span></a></div></div></div></div><div class="field"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Owner Name (Assessor) <a href="https://support.regrid.com/parcel-data/schema#owner" target="llext"><i class="fas fa-info-circle margin-xs fa-xs" data-tip="The owner name as provided from Regrid's public data sources (generally Assessor), &lt;br/&gt;updated at the same frequency as the rest of this property's data. Source: Regrid" data-for="owner" currentitem="false"></i><div class="__react_component_tooltip td8229301-262c-4597-96ed-d00d25e72936 place-right type-dark allow_hover" id="owner" data-id="tooltip"><style aria-hidden="true">
+  	.td8229301-262c-4597-96ed-d00d25e72936 {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.td8229301-262c-4597-96ed-d00d25e72936.place-top {
+        margin-top: -10px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .td8229301-262c-4597-96ed-d00d25e72936.place-bottom {
+        margin-top: 10px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .td8229301-262c-4597-96ed-d00d25e72936.place-left {
+        margin-left: -10px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .td8229301-262c-4597-96ed-d00d25e72936.place-right {
+        margin-left: 10px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .td8229301-262c-4597-96ed-d00d25e72936.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style></div></a></div></div><div class="field-value"><div class="value"><div class="flex-row-between"><span style="flex: 3 1 0%;">DETWILER GLENN</span></div></div><span><div class="owner-filter-container"><button class="btn btn-round margin-left-md btn-default" data-tip="true" data-for="highlightFilter-" currentitem="false"><i class="fa fa-filter"></i></button><div class="__react_component_tooltip ta4bc6432-afd4-45f3-99a0-a47303c05b4e place-top type-dark" id="highlightFilter-" data-id="tooltip"><style aria-hidden="true">
+  	.ta4bc6432-afd4-45f3-99a0-a47303c05b4e {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-top {
+        margin-top: -10px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-bottom {
+        margin-top: 10px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-left {
+        margin-left: -10px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-left::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        right: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(45deg);
+    }
+
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-right {
+        margin-left: 10px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-right::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .ta4bc6432-afd4-45f3-99a0-a47303c05b4e.place-right::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        left: -6px;
+        top: 50%;
+        margin-top: -6px;
+        transform: rotate(-135deg);
+    }
+  </style>Highlights owner's other properties on map</div></div></span></div></div><div class="field"><div class="field-label"><div class="key subtle small" style="flex: 3 1 0%;">Mailing Address <i class="fas fa-info-circle margin-xs fa-xs" data-tip="The address where tax and other assessor's communications are sent. &lt;br/&gt;Please note that this info is the same age as Regrid's &quot;Owner Name (Assessor)&quot; field, and may not match the Enhanced Owner information." data-for="formatted_mailing_address" currentitem="false"></i><div class="__react_component_tooltip t618a89ed-0187-4044-8aeb-26bb2e12504c place-right type-dark allow_hover" id="formatted_mailing_address" data-id="tooltip"><style aria-hidden="true">
+  	.t618a89ed-0187-4044-8aeb-26bb2e12504c {
+	    color: #fff;
+	    background: #222;
+	    border: 1px solid transparent;
+	    border-radius: undefinedpx;
+	    padding: 8px 21px;
+  	}
+
+  	.t618a89ed-0187-4044-8aeb-26bb2e12504c.place-top {
+        margin-top: -10px;
+    }
+    .t618a89ed-0187-4044-8aeb-26bb2e12504c.place-top::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: 2;
+        width: 20px;
+        height: 12px;
+    }
+    .t618a89ed-0187-4044-8aeb-26bb2e12504c.place-top::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        bottom: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(135deg);
+    }
+
+    .t618a89ed-0187-4044-8aeb-26bb2e12504c.place-bottom {
+        margin-top: 10px;
+    }
+    .t618a89ed-0187-4044-8aeb-26bb2e12504c.place-bottom::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 18px;
+        height: 10px;
+    }
+    .t618a89ed-0187-4044-8aeb-26bb2e12504c.place-bottom::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-top-right-radius: undefinedpx;
+        border: 1px solid transparent;
+        background-color: #222;
+        z-index: -2;
+        top: -6px;
+        left: 50%;
+        margin-left: -6px;
+        transform: rotate(45deg);
+    }
+
+    .t618a89ed-0187-4044-8aeb-26bb2e12504c.place-left {
+        margin-left: -10px;
+    }
+    .t618a89ed-0187-4044-8aeb-26bb2e12504c.place-left::before {
+        content: "";
+        background-color: inherit;
+        position: absolute;
+        z-index: -1;
+        width: 10px;
+        height: 18px;
+    }
+    .t618a89ed-0187-4044-8ae
