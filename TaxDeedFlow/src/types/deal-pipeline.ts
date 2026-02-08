@@ -311,6 +311,12 @@ export interface DealWithMetrics {
   created_at: string
   updated_at: string
 
+  // Filter/categorization fields
+  county_id?: string
+  county_name?: string
+  state_code?: string
+  sale_type?: string
+
   // Financial metrics
   target_bid_amount?: number
   max_bid_amount?: number
@@ -402,6 +408,18 @@ export interface DealFilters {
   /** Filter by property */
   property_id?: string
 
+  /** Filter by state code (e.g., "PA", "FL") */
+  state_code?: string
+
+  /** Filter by county ID */
+  county_id?: string
+
+  /** Filter by sale type (e.g., "upset", "judicial", "repository") */
+  sale_type?: string
+
+  /** Filter by auction date range preset (e.g., "7days", "30days", "90days", "6months") */
+  date_range?: string
+
   /** Filter by auction date range */
   auction_date_from?: string
   auction_date_to?: string
@@ -421,6 +439,20 @@ export interface DealFilters {
   /** Pagination */
   page?: number
   limit?: number
+}
+
+/**
+ * Filter options returned by the API for populating filter dropdowns.
+ */
+export interface PipelineFilterOptions {
+  /** Available state codes */
+  states: string[]
+
+  /** Available counties with their state codes */
+  counties: { id: string; name: string; state: string }[]
+
+  /** Available sale types */
+  saleTypes: string[]
 }
 
 /**

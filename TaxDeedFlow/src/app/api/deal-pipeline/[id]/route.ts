@@ -367,7 +367,34 @@ export async function PATCH(
       return forbiddenResponse("You do not have access to this deal")
     }
 
-    // Build update object
+    // Check if this is a stage move (current_stage_id is being changed)
+    const requestBody = body as Record<string, unknown>
+    const newStageId = requestBody.current_stage_id as string | undefined
+    const moveNote = requestBody.note as string | undefined
+    let currentStageId = existingDeal.current_stage_id
+
+    if (newStageId && newStageId !== existingDeal.current_stage_id) {
+      // Use the move_deal_to_stage function which auto-creates a stage_change activity
+      const { data: moveResult, error: moveError } = await supabase
+        .rpc("move_deal_to_stage", {
+          p_deal_id: dealId,
+          p_new_stage_id: newStageId,
+          p_moved_by: userId,
+          p_note: moveNote || null,
+        })
+
+      if (moveError) {
+        console.error("[API Deal Pipeline] Move stage error:", moveError)
+        return NextResponse.json(
+          { error: "Failed to move deal to stage", message: moveError.message },
+          { status: 500 }
+        )
+      }
+
+      currentStageId = newStageId
+    }
+
+    // Build update object for non-stage fields
     const updates: any = {
       updated_at: new Date().toISOString(),
     }
@@ -399,18 +426,21 @@ export async function PATCH(
       }
     }
 
-    // Update the deal
-    const { error: updateError } = await supabase
-      .from("deals")
-      .update(updates)
-      .eq("id", dealId)
+    // Only run the direct update if there are non-stage fields to update
+    const hasNonStageUpdates = Object.keys(updates).length > 1 // more than just updated_at
+    if (hasNonStageUpdates) {
+      const { error: updateError } = await supabase
+        .from("deals")
+        .update(updates)
+        .eq("id", dealId)
 
-    if (updateError) {
-      console.error("[API Deal Pipeline] Update error:", updateError)
-      return NextResponse.json(
-        { error: "Failed to update deal", message: updateError.message },
-        { status: 500 }
-      )
+      if (updateError) {
+        console.error("[API Deal Pipeline] Update error:", updateError)
+        return NextResponse.json(
+          { error: "Failed to update deal", message: updateError.message },
+          { status: 500 }
+        )
+      }
     }
 
     // Create activity for status change
@@ -446,7 +476,7 @@ export async function PATCH(
     return NextResponse.json({
       deal_id: dealId,
       title: updateData.title || existingDeal.title,
-      current_stage_id: existingDeal.current_stage_id,
+      current_stage_id: currentStageId,
       message: "Deal updated successfully",
     })
   } catch (error) {

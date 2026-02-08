@@ -1,5 +1,5 @@
 "use client"
-
+// Force recompile
 import { useState, Suspense, useCallback } from "react"
 import { authFetch, authDelete } from "@/lib/api/authFetch"
 import {
@@ -35,7 +35,10 @@ import {
   MinusSquare,
   Loader2,
   Database,
+  Plus,
 } from "lucide-react"
+import { CreateDealDialog } from "@/components/deal-pipeline/CreateDealDialog"
+import type { PipelineStageWithMetrics } from "@/types/deal-pipeline"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
@@ -83,7 +86,7 @@ const DATE_RANGES = [
   { value: "6months", label: "Next 6 Months" },
 ]
 
-type PropertyStatus = "active" | "pending" | "expired" | "sold" | "withdrawn" | "unknown"
+type PropertyStatus = "active" | "pending" | "expired" | "sold" | "withdrawn" | "unknown" | "parsed"
 
 const STATUS_CONFIG: Record<
   PropertyStatus,
@@ -117,6 +120,11 @@ const STATUS_CONFIG: Record<
   unknown: {
     label: "Unknown",
     color: "bg-slate-100 text-slate-500",
+    icon: <Clock className="h-3 w-3" />,
+  },
+  parsed: {
+    label: "Parsed",
+    color: "bg-blue-100 text-blue-600",
     icon: <Clock className="h-3 w-3" />,
   },
 }
@@ -155,7 +163,7 @@ const AUCTION_STATUS_CONFIG: Record<
   },
 }
 
-type ValidationStatus = "approved" | "caution" | "rejected" | null
+type ValidationStatus = "approved" | "caution" | "rejected" | "reject" | null
 
 const VALIDATION_CONFIG: Record<
   NonNullable<ValidationStatus>,
@@ -172,6 +180,11 @@ const VALIDATION_CONFIG: Record<
     icon: <ShieldAlert className="h-3 w-3" />,
   },
   rejected: {
+    label: "Rejected",
+    color: "bg-red-100 text-red-700",
+    icon: <ShieldX className="h-3 w-3" />,
+  },
+  reject: {
     label: "Rejected",
     color: "bg-red-100 text-red-700",
     icon: <ShieldX className="h-3 w-3" />,
@@ -232,6 +245,18 @@ function PropertiesContent() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [allCounties, setAllCounties] = useState<string[]>([])
   const [scrapingPropertyId, setScrapingPropertyId] = useState<string | null>(null)
+
+  // Pipeline integration state
+  const [pipelineStatus, setPipelineStatus] = useState<Record<string, {
+    deal_id: string;
+    stage_name: string;
+    stage_color: string;
+    deal_status: string;
+    deal_priority: string;
+  } | null>>({})
+  const [pipelineDialogOpen, setPipelineDialogOpen] = useState(false)
+  const [selectedPropertyForPipeline, setSelectedPropertyForPipeline] = useState<Property | null>(null)
+  const [pipelineStages, setPipelineStages] = useState<PipelineStageWithMetrics[]>([])
 
   // Sale ID filter (for filtering properties by specific auction)
   const saleIdFilter = searchParams.get("sale_id")
@@ -391,6 +416,63 @@ function PropertiesContent() {
     }
     fetchCounties()
   }, [])
+
+  // Fetch pipeline status for displayed properties
+  useEffect(() => {
+    if (properties.length === 0) return
+
+    const fetchPipelineStatus = async () => {
+      try {
+        const propertyIds = properties.map(p => p.id).join(",")
+        const response = await authFetch(`/api/properties/pipeline-status?property_ids=${propertyIds}`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result.data) {
+            setPipelineStatus(result.data)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching pipeline status:", error)
+      }
+    }
+    fetchPipelineStatus()
+  }, [properties])
+
+  // Fetch pipeline stages (needed for CreateDealDialog)
+  useEffect(() => {
+    const fetchPipelineStages = async () => {
+      try {
+        const response = await authFetch("/api/deal-pipeline")
+        if (response.ok) {
+          const result = await response.json()
+          const stages = result.data?.stages || result.stages
+          if (stages) {
+            setPipelineStages(stages)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching pipeline stages:", error)
+      }
+    }
+    fetchPipelineStages()
+  }, [])
+
+  // Refresh pipeline status after a deal is created
+  const refreshPipelineStatus = useCallback(async () => {
+    if (properties.length === 0) return
+    try {
+      const propertyIds = properties.map(p => p.id).join(",")
+      const response = await authFetch(`/api/properties/pipeline-status?property_ids=${propertyIds}`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.data) {
+          setPipelineStatus(result.data)
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing pipeline status:", error)
+    }
+  }, [properties])
 
   // Handle delete property
   const handleDeleteProperty = async (propertyId: string) => {
@@ -1695,11 +1777,11 @@ function PropertiesContent() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                            STATUS_CONFIG[property.status as PropertyStatus].color
+                            STATUS_CONFIG[property.status as PropertyStatus]?.color || "bg-slate-100 text-slate-500"
                           )}
                         >
-                          {STATUS_CONFIG[property.status as PropertyStatus].icon}
-                          {STATUS_CONFIG[property.status as PropertyStatus].label}
+                          {STATUS_CONFIG[property.status as PropertyStatus]?.icon || <Clock className="h-3 w-3" />}
+                          {STATUS_CONFIG[property.status as PropertyStatus]?.label || property.status}
                         </span>
                         <span
                           className={cn(
@@ -1710,7 +1792,7 @@ function PropertiesContent() {
                           {AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.icon || <AlertTriangle className="h-3 w-3" />}
                           {AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus}
                         </span>
-                        {property.validation ? (
+                        {property.validation && VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>] ? (
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
@@ -1723,7 +1805,7 @@ function PropertiesContent() {
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-400 dark:text-slate-500">
                             <Shield className="h-3 w-3" />
-                            Pending
+                            {property.validation || "Pending"}
                           </span>
                         )}
                       </div>
@@ -1987,7 +2069,7 @@ function PropertiesContent() {
                     Sale Type
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Stage
+                    Pipeline
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Auction Status
@@ -2129,18 +2211,37 @@ function PropertiesContent() {
                           {property.saleType}
                         </span>
                       </td>
-                      {/* Stage (Status) */}
+                      {/* Pipeline Stage */}
                       <td className="px-4 py-4">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                            STATUS_CONFIG[property.status as PropertyStatus]
-                              .color
-                          )}
-                        >
-                          {STATUS_CONFIG[property.status as PropertyStatus].icon}
-                          {STATUS_CONFIG[property.status as PropertyStatus].label}
-                        </span>
+                        {pipelineStatus[property.id] ? (
+                          <button
+                            onClick={() => router.push("/pipeline")}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity"
+                            style={{
+                              backgroundColor: `${pipelineStatus[property.id]!.stage_color}20`,
+                              color: pipelineStatus[property.id]!.stage_color,
+                            }}
+                            title={`View in pipeline - ${pipelineStatus[property.id]!.stage_name}`}
+                          >
+                            <span
+                              className="inline-block w-2 h-2 rounded-full"
+                              style={{ backgroundColor: pipelineStatus[property.id]!.stage_color }}
+                            />
+                            {pipelineStatus[property.id]!.stage_name}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setSelectedPropertyForPipeline(property)
+                              setPipelineDialogOpen(true)
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Add this property to the deal pipeline"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Add to Pipeline
+                          </button>
+                        )}
                       </td>
                       {/* Auction Status */}
                       <td className="px-4 py-4">
@@ -2156,7 +2257,7 @@ function PropertiesContent() {
                       </td>
                       {/* Validation */}
                       <td className="px-4 py-4">
-                        {property.validation ? (
+                        {property.validation && VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>] ? (
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
@@ -2170,7 +2271,7 @@ function PropertiesContent() {
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs text-slate-400">
                             <Shield className="h-3 w-3" />
-                            Pending
+                            {property.validation || "Pending"}
                           </span>
                         )}
                       </td>
@@ -2527,6 +2628,20 @@ function PropertiesContent() {
             </div>
           </div>
         )}
+
+        {/* Create Deal Dialog (Add to Pipeline) */}
+        <CreateDealDialog
+          open={pipelineDialogOpen}
+          onOpenChange={setPipelineDialogOpen}
+          stages={pipelineStages}
+          onSuccess={() => {
+            refreshPipelineStatus()
+          }}
+          propertyId={selectedPropertyForPipeline?.id}
+          propertyAddress={selectedPropertyForPipeline?.address}
+          propertyAuctionDate={selectedPropertyForPipeline?.saleDate}
+          propertyEstimatedValue={selectedPropertyForPipeline?.assessedValue ?? undefined}
+        />
       </main>
     </div>
   )

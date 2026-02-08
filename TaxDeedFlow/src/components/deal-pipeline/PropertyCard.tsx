@@ -3,26 +3,22 @@
 /**
  * Property Card Component (Deal Card)
  *
- * Displays a single deal card within a pipeline stage. Shows deal title,
- * financial metrics, priority, status, assigned user, and important dates.
+ * Compact, information-dense deal card for the pipeline view.
+ * Shows priority border, financials, date pills, tags, and assignee.
  * Supports drag-and-drop for moving between stages.
  *
  * @component
  * @author Claude Code Agent
- * @date 2026-01-23
+ * @date 2026-02-07
  */
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  DollarSign,
-  TrendingUp,
+  ArrowRight,
   Calendar,
-  AlertTriangle,
-  User,
-  Tag,
-  Home,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DealWithMetrics } from "@/types/deal-pipeline";
@@ -40,20 +36,20 @@ interface PropertyCardProps {
   className?: string;
 }
 
-// Priority colors
+// Priority left-border colors
+const priorityBorderColors = {
+  urgent: "border-l-red-500",
+  high: "border-l-orange-500",
+  medium: "border-l-blue-500",
+  low: "border-l-slate-300",
+};
+
+// Priority badge colors
 const priorityColors = {
   low: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
   medium: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   high: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
   urgent: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-};
-
-// Status colors
-const statusColors = {
-  active: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  won: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  lost: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  abandoned: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
 };
 
 // ============================================
@@ -82,6 +78,7 @@ export function PropertyCard({
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
     const today = new Date();
     const daysUntil = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -89,32 +86,50 @@ export function PropertyCard({
       return {
         text: `${Math.abs(daysUntil)}d overdue`,
         isOverdue: true,
+        isUrgent: false,
       };
     } else if (daysUntil === 0) {
       return {
         text: "Today",
+        isOverdue: false,
         isUrgent: true,
       };
     } else if (daysUntil === 1) {
       return {
         text: "Tomorrow",
+        isOverdue: false,
         isUrgent: true,
       };
     } else if (daysUntil <= 7) {
       return {
         text: `${daysUntil}d`,
+        isOverdue: false,
         isUrgent: true,
       };
     } else {
       return {
         text: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        isOverdue: false,
         isUrgent: false,
       };
     }
   };
 
+  // Determine urgency color for a date pill
+  const getUrgencyColor = (dateInfo: { isOverdue?: boolean; isUrgent?: boolean } | null) => {
+    if (!dateInfo) return "text-slate-500 dark:text-slate-400";
+    if (dateInfo.isOverdue) return "text-red-600 dark:text-red-400";
+    if (dateInfo.isUrgent) return "text-orange-600 dark:text-orange-400";
+    return "text-slate-500 dark:text-slate-400";
+  };
+
   const auctionDate = formatDate(deal.auction_date);
   const registrationDate = formatDate(deal.registration_deadline);
+
+  // Determine border color: overdue overrides priority
+  const borderColor = deal.is_overdue
+    ? "border-l-red-500"
+    : priorityBorderColors[deal.priority] ?? "border-l-slate-300";
 
   return (
     <Card
@@ -123,166 +138,100 @@ export function PropertyCard({
       onDragEnd={handleDragEnd}
       onClick={() => onClick?.(deal)}
       className={cn(
-        "cursor-move hover:shadow-md transition-all",
+        "cursor-move border-l-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200",
+        borderColor,
         isDragging && "opacity-50",
-        deal.is_overdue && "border-red-500 dark:border-red-400",
+        deal.is_overdue && "bg-red-50/50 dark:bg-red-950/20",
         className
       )}
     >
-      <CardContent className="p-4">
-        {/* Header: Title and badges */}
-        <div className="mb-3">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h4 className="font-semibold text-sm leading-tight flex-1 line-clamp-2">
-              {deal.title}
-            </h4>
-            {deal.priority && (
-              <Badge
-                variant="secondary"
-                className={cn("text-xs", priorityColors[deal.priority])}
-              >
-                {deal.priority}
-              </Badge>
-            )}
-          </div>
-
-          {/* Status badge */}
-          {deal.status !== "active" && (
+      <CardContent className="p-3">
+        {/* Header: Title + Priority badge */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h4 className="font-semibold text-sm leading-tight flex-1 line-clamp-2">
+            {deal.title}
+          </h4>
+          {deal.priority && (
             <Badge
-              variant="outline"
-              className={cn("text-xs", statusColors[deal.status])}
+              variant="secondary"
+              className={cn(
+                "text-[10px] px-1.5 py-0 h-5 shrink-0",
+                priorityColors[deal.priority]
+              )}
             >
-              {deal.status}
+              {deal.priority}
             </Badge>
           )}
         </div>
 
-        {/* Property info (if linked) */}
-        {deal.property_id && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-3">
-            <Home className="h-3.5 w-3.5" />
-            <span className="truncate">Property linked</span>
-          </div>
-        )}
-
-        {/* Financial metrics */}
-        <div className="space-y-2 mb-3">
-          {/* Target bid */}
-          {deal.target_bid_amount && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5" />
-                Target
-              </span>
-              <span className="font-medium">
-                ${deal.target_bid_amount.toLocaleString()}
-              </span>
-            </div>
-          )}
-
-          {/* Estimated value */}
-          {deal.estimated_value && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <TrendingUp className="h-3.5 w-3.5" />
-                Value
-              </span>
-              <span className="font-medium">
+        {/* Financial row: target bid -> estimated value */}
+        {(deal.target_bid_amount || deal.estimated_value) && (
+          <div className="flex items-center gap-1.5 text-sm mb-2">
+            {deal.target_bid_amount ? (
+              <>
+                <span className="text-slate-600 dark:text-slate-400">
+                  ${deal.target_bid_amount.toLocaleString()}
+                </span>
+                {deal.estimated_value && (
+                  <>
+                    <ArrowRight className="h-3 w-3 text-slate-400" />
+                    <span className="font-medium text-green-600 dark:text-green-400">
+                      ${deal.estimated_value.toLocaleString()}
+                    </span>
+                  </>
+                )}
+              </>
+            ) : deal.estimated_value ? (
+              <span className="font-medium text-green-600 dark:text-green-400">
                 ${deal.estimated_value.toLocaleString()}
               </span>
-            </div>
-          )}
+            ) : null}
+          </div>
+        )}
 
-          {/* Estimated profit */}
-          {deal.estimated_profit && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <TrendingUp className="h-3.5 w-3.5" />
-                Profit
-              </span>
-              <span className="font-medium text-green-600 dark:text-green-400">
-                ${deal.estimated_profit.toLocaleString()}
-              </span>
-            </div>
-          )}
-
-          {/* ROI percentage */}
-          {deal.roi_percentage && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <TrendingUp className="h-3.5 w-3.5" />
-                ROI
-              </span>
-              <span className="font-medium text-green-600 dark:text-green-400">
-                {deal.roi_percentage.toFixed(1)}%
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Important dates */}
+        {/* Date pills row */}
         {(auctionDate || registrationDate) && (
-          <div className="space-y-1.5 mb-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-            {/* Auction date */}
+          <div className="flex items-center gap-3 text-xs mb-2">
             {auctionDate && (
-              <div className={cn(
-                "flex items-center gap-1.5 text-xs",
-                auctionDate.isOverdue && "text-red-600 dark:text-red-400",
-                auctionDate.isUrgent && "text-orange-600 dark:text-orange-400",
-                !auctionDate.isOverdue && !auctionDate.isUrgent && "text-slate-500 dark:text-slate-400"
-              )}>
-                <Calendar className="h-3.5 w-3.5" />
-                <span>Auction: {auctionDate.text}</span>
-                {auctionDate.isOverdue && <AlertTriangle className="h-3.5 w-3.5" />}
-              </div>
-            )}
-
-            {/* Registration deadline */}
-            {registrationDate && (
-              <div className={cn(
-                "flex items-center gap-1.5 text-xs",
-                registrationDate.isOverdue && "text-red-600 dark:text-red-400",
-                registrationDate.isUrgent && "text-orange-600 dark:text-orange-400",
-                !registrationDate.isOverdue && !registrationDate.isUrgent && "text-slate-500 dark:text-slate-400"
-              )}>
-                <Calendar className="h-3.5 w-3.5" />
-                <span>Reg: {registrationDate.text}</span>
-                {registrationDate.isOverdue && <AlertTriangle className="h-3.5 w-3.5" />}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tags */}
-        {deal.tags && deal.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {deal.tags.slice(0, 3).map((tag, index) => (
-              <Badge
-                key={index}
-                variant="outline"
-                className="text-xs"
-              >
-                <Tag className="h-3 w-3 mr-1" />
-                {tag}
-              </Badge>
-            ))}
-            {deal.tags.length > 3 && (
-              <Badge variant="outline" className="text-xs">
-                +{deal.tags.length - 3}
-              </Badge>
-            )}
-          </div>
-        )}
-
-        {/* Footer: Assigned user and days in stage */}
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200 dark:border-slate-700">
-          {/* Assigned user */}
-          {deal.assigned_to ? (
-            <div className="flex items-center gap-1">
-              <User className="h-3.5 w-3.5" />
-              <span className="truncate max-w-[120px]">
-                {deal.assigned_to}
+              <span className={cn("flex items-center gap-1", getUrgencyColor(auctionDate))}>
+                <Calendar className="h-3 w-3" />
+                {auctionDate.text}
               </span>
+            )}
+            {registrationDate && (
+              <span className={cn("flex items-center gap-1", getUrgencyColor(registrationDate))}>
+                <Clock className="h-3 w-3" />
+                Reg: {registrationDate.text}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Tags (max 2) */}
+        {deal.tags && deal.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {deal.tags.slice(0, 2).map((tag) => (
+              <span
+                key={tag}
+                className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded"
+              >
+                {tag}
+              </span>
+            ))}
+            {deal.tags.length > 2 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded">
+                +{deal.tags.length - 2}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Footer: User avatar + days in stage */}
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-700">
+          {/* Assigned user initial circle */}
+          {deal.assigned_to && deal.assigned_to.length > 0 ? (
+            <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-[10px] font-medium text-blue-700 dark:text-blue-300">
+              {deal.assigned_to.charAt(0).toUpperCase()}
             </div>
           ) : (
             <span className="text-slate-400 dark:text-slate-500">Unassigned</span>
@@ -293,14 +242,6 @@ export function PropertyCard({
             {deal.days_in_stage}d in stage
           </span>
         </div>
-
-        {/* Overdue indicator */}
-        {deal.is_overdue && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            <span>Overdue</span>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
