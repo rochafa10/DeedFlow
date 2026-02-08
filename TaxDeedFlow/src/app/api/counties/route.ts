@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/client"
 
+/** Force dynamic to prevent any static caching */
+export const dynamic = "force-dynamic"
+
 /**
  * GET /api/counties
  * Returns all counties with property counts, progress, and next auction dates
@@ -226,6 +229,10 @@ export async function GET(request: NextRequest) {
       data: transformedCounties,
       total: transformedCounties.length,
       source: "database",
+    }, {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
     })
   } catch (error) {
     console.error("[API Counties] Server error:", error)

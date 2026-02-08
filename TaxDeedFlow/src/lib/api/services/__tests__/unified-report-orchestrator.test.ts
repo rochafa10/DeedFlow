@@ -87,6 +87,9 @@ describe('UnifiedReportOrchestrator - Cache Functionality', () => {
       has_regrid_data: true,
       has_screenshot: true,
       screenshot_url: 'https://example.com/screenshot.jpg',
+      assessed_improvement_value: 85000,
+      is_vacant_lot: false,
+      is_likely_mobile_home: false,
     },
     scoreBreakdown: {
       id: 'score-1',

@@ -40,8 +40,10 @@ import {
   ArrowLeft,
   RefreshCw,
   Image,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { exportReportToPDF, generateReportFilename } from "@/lib/pdf-export";
 
 // Import report components
@@ -61,12 +63,14 @@ import { GoogleMapStatic } from "@/components/report/maps/GoogleMapStatic";
 import { FEMAFloodMap } from "@/components/report/maps/FEMAFloodMap";
 import { ShareButton } from "@/components/report/ShareButton";
 import { ComparablesCard } from "@/components/report/ComparablesCard";
+import { VisualValidation } from "@/components/report/sections/VisualValidation";
 
 // Import types
 import type { Grade } from "@/types/report";
 import type { CategoryScore } from "@/components/report/sections/InvestmentScore";
 import type { RiskAssessment, InsuranceEstimates } from "@/types/risk-analysis";
 import type { FinancialAnalysis, ComparableSale } from "@/lib/analysis/financial/types";
+import type { ElevationAnalysis } from "@/lib/api/services/elevation-service";
 import type { ComparableProperty, ComparablesAnalysis } from "@/components/report/sections/ComparablesSection";
 import type { MarketMetrics, MarketTrends, MarketSegment } from "@/components/report/sections/MarketAnalysis";
 import type {
@@ -76,6 +80,51 @@ import type {
   TitleIssue,
 } from "@/components/report/sections/TitleResearch";
 import type { RiskLevel } from "@/types/title";
+
+// ============================================
+// Property Type Labels (Regrid codes)
+// ============================================
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  // PA county assessment codes
+  "R": "Residential",
+  "R1": "Single Family",
+  "R2": "Multi-Family",
+  "R3": "Apartment",
+  "RA": "Residential Apartment",
+  "RO": "Residential Other",
+  "RT": "Townhouse",
+  "T": "Trailer/MH Lot",
+  "C": "Condo",
+  "C1": "Commercial",
+  "CL": "Commercial Land",
+  "CS": "Commercial Service",
+  "CG": "Commercial Garage",
+  "CH": "Commercial Hotel",
+  "CO": "Commercial",
+  "I": "Industrial",
+  "L1": "Vacant Lot",
+  "L2": "Agricultural",
+  "L3": "Vacant Land",
+  "LO": "Land Other",
+  "M": "Mobile Home",
+  "V": "Vacant",
+  // Full-text labels (from other data sources)
+  "Single Family Residential": "Single Family",
+  "Single Family": "Single Family",
+  "Multi Family": "Multi-Family",
+  "Townhouse": "Townhouse",
+  "Condo": "Condo",
+  "Commercial": "Commercial",
+  "Industrial": "Industrial",
+  "Vacant Land": "Vacant Land",
+  "Agricultural": "Agricultural",
+  "Mobile Home": "Mobile Home",
+};
+
+function getPropertyTypeLabel(code: string | undefined | null): string | null {
+  if (!code) return null;
+  return PROPERTY_TYPE_LABELS[code] || code;
+}
 
 // ============================================
 // Types
@@ -108,6 +157,9 @@ interface PropertyData {
   auction_status?: string;
   owner_name?: string;
   screenshot_url?: string;
+  is_vacant_lot?: boolean;
+  is_likely_mobile_home?: boolean;
+  assessed_improvement_value?: number | null;
 }
 
 interface ApiDataSource {
@@ -209,6 +261,11 @@ interface ApiReportData {
     publicTransit: number;
     total: number;
     walkabilityScore: number;
+    walkScore?: number;
+    transitScore?: number;
+    bikeScore?: number;
+    schoolRating?: number;
+    nearest?: Array<{ name: string; type: string; distance: number }>;
   };
   broadband?: {
     available: boolean;
@@ -816,6 +873,9 @@ export default function PropertyReportPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
+  // State for Regrid enrichment action
+  const [isEnriching, setIsEnriching] = useState(false);
+
   // State for real comparables from Realty API
   const [realComparables, setRealComparables] = useState<ComparableSale[] | null>(null);
   const [comparablesStats, setComparablesStats] = useState<{
@@ -825,64 +885,149 @@ export default function PropertyReportPage() {
     avg_price_per_sqft: number;
   } | null>(null);
 
-  // Fetch property from Supabase
-  useEffect(() => {
-    async function fetchProperty() {
-      if (!propertyId) return;
+  // LFB comp analysis ARV (from ComparablesCard callback)
+  const [lfbArv, setLfbArv] = useState<number | null>(null);
 
-      setIsLoadingProperty(true);
-      setPropertyError(null);
+  // Combined market data from /api/market (Realty + Zillow APIs)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [combinedMarketData, setCombinedMarketData] = useState<any>(null);
 
-      try {
-        const response = await fetch(`/api/properties/${propertyId}`);
-        if (!response.ok) {
-          throw new Error(`Property not found: ${response.status}`);
-        }
-        const json = await response.json();
-        // Map API response to PropertyData interface
-        // The API returns { data: { ... }, source: "database" }
-        const apiData = json.data || json;
-        const mapped: PropertyData = {
-          id: apiData.id,
-          parcel_id: apiData.parcelId || apiData.parcel_id,
-          property_address: apiData.address || apiData.property_address,
-          city: apiData.city || '',
-          state: apiData.state || 'PA',
-          zip: apiData.zipCode || apiData.zip_code || '',
-          county_name: apiData.county || apiData.county_name,
-          coordinates: apiData.latitude && apiData.longitude
-            ? { lat: apiData.latitude, lng: apiData.longitude }
-            : apiData.coordinates,
-          assessed_value: apiData.assessedValue || apiData.assessed_value,
-          market_value: apiData.regridData?.marketValue || apiData.market_value,
-          total_due: apiData.totalDue || apiData.total_due,
-          tax_amount: apiData.taxAmount || apiData.tax_amount,
-          lot_size_sqft: apiData.regridData?.lotSizeSqFt || apiData.lot_size_sqft,
-          lot_size_acres: apiData.regridData?.lotSizeAcres || (typeof apiData.lotSize === 'string' ? parseFloat(apiData.lotSize.replace(' acres', '')) : apiData.lotSize) || apiData.lot_size_acres,
-          building_sqft: apiData.squareFeet || apiData.regridData?.building_sqft || apiData.building_sqft,
-          year_built: apiData.yearBuilt || apiData.regridData?.year_built || apiData.year_built,
-          bedrooms: apiData.bedrooms || apiData.regridData?.bedrooms,
-          bathrooms: apiData.bathrooms || apiData.regridData?.bathrooms,
-          property_type: apiData.propertyType || apiData.regridData?.propertyClass || apiData.property_type,
-          zoning: apiData.regridData?.zoning || apiData.zoning,
-          land_use: apiData.regridData?.land_use || apiData.land_use,
-          sale_type: apiData.saleType || apiData.sale_type,
-          sale_date: apiData.saleDate || apiData.sale_date,
-          auction_status: apiData.status || apiData.auction_status,
-          owner_name: apiData.ownerName || apiData.regridData?.ownerName || apiData.owner_name,
-          screenshot_url: apiData.regridData?.screenshotUrl || apiData.images?.[0]?.url,
-        };
-        setProperty(mapped);
-      } catch (error) {
-        console.error('Failed to fetch property:', error);
-        setPropertyError(error instanceof Error ? error.message : 'Failed to fetch property');
-      } finally {
-        setIsLoadingProperty(false);
-      }
+  const handleLfbAnalysisComplete = useCallback((data: {
+    arv: number | null;
+    maoConservative: number | null;
+    maoAggressive: number | null;
+    confidenceLevel: string;
+    qualifiedCount: number;
+    extendedCount: number;
+    market?: Record<string, unknown>;
+  }) => {
+    if (data.arv && data.arv > 0) {
+      setLfbArv(data.arv);
     }
+  }, []);
 
-    fetchProperty();
+  // Fetch property from Supabase (extracted as useCallback so handleEnrichProperty can re-invoke)
+  const fetchProperty = useCallback(async () => {
+    if (!propertyId) return;
+
+    setIsLoadingProperty(true);
+    setPropertyError(null);
+
+    try {
+      const response = await fetch(`/api/properties/${propertyId}`);
+      if (!response.ok) {
+        throw new Error(`Property not found: ${response.status}`);
+      }
+      const json = await response.json();
+      // Map API response to PropertyData interface
+      // The API returns { data: { ... }, source: "database" }
+      const apiData = json.data || json;
+      const mapped: PropertyData = {
+        id: apiData.id,
+        parcel_id: apiData.parcelId || apiData.parcel_id,
+        property_address: apiData.address || apiData.property_address,
+        city: apiData.city || '',
+        state: apiData.state || 'PA',
+        zip: apiData.zipCode || apiData.zip_code || '',
+        county_name: apiData.county || apiData.county_name,
+        coordinates: apiData.latitude && apiData.longitude
+          ? { lat: apiData.latitude, lng: apiData.longitude }
+          : apiData.coordinates,
+        assessed_value: apiData.assessedValue || apiData.assessed_value,
+        market_value: apiData.regridData?.marketValue || apiData.market_value,
+        total_due: apiData.totalDue || apiData.total_due,
+        tax_amount: apiData.taxAmount || apiData.tax_amount,
+        lot_size_sqft: apiData.regridData?.lotSizeSqFt || apiData.lot_size_sqft,
+        lot_size_acres: apiData.regridData?.lotSizeAcres || (typeof apiData.lotSize === 'string' ? parseFloat(apiData.lotSize.replace(' acres', '')) : apiData.lotSize) || apiData.lot_size_acres,
+        building_sqft: apiData.squareFeet || apiData.regridData?.building_sqft || apiData.building_sqft,
+        year_built: apiData.yearBuilt || apiData.regridData?.year_built || apiData.year_built,
+        bedrooms: apiData.bedrooms || apiData.regridData?.bedrooms,
+        bathrooms: apiData.bathrooms || apiData.regridData?.bathrooms,
+        property_type: apiData.propertyType || apiData.regridData?.propertyClass || apiData.property_type,
+        zoning: apiData.regridData?.zoning || apiData.zoning,
+        land_use: apiData.regridData?.land_use || apiData.land_use,
+        sale_type: apiData.saleType || apiData.sale_type,
+        sale_date: apiData.saleDate || apiData.sale_date,
+        auction_status: apiData.status || apiData.auction_status,
+        owner_name: apiData.ownerName || apiData.regridData?.ownerName || apiData.owner_name,
+        screenshot_url: apiData.regridData?.screenshotUrl || apiData.images?.[0]?.url,
+        is_vacant_lot: apiData.isVacantLot || false,
+        is_likely_mobile_home: apiData.isLikelyMobileHome || false,
+        assessed_improvement_value: apiData.regridData?.assessedImprovementValue ?? null,
+      };
+      setProperty(mapped);
+    } catch (error) {
+      console.error('Failed to fetch property:', error);
+      setPropertyError(error instanceof Error ? error.message : 'Failed to fetch property');
+    } finally {
+      setIsLoadingProperty(false);
+    }
   }, [propertyId]);
+
+  useEffect(() => {
+    fetchProperty();
+  }, [fetchProperty]);
+
+  /**
+   * Triggers the n8n Regrid scraper webhook to enrich this property with
+   * coordinates, lot size, year built, and other Regrid data fields.
+   * On success, re-fetches the property which cascades to refresh report,
+   * comparables, and market data via the existing useEffect chain.
+   */
+  const handleEnrichProperty = useCallback(async () => {
+    if (!property || isEnriching) return;
+
+    setIsEnriching(true);
+    toast.info("Starting Regrid enrichment...", {
+      description: "This may take 30-60 seconds (browser automation on VPS).",
+      duration: 10000,
+    });
+
+    try {
+      const countySlug = property.county_name?.toLowerCase().replace(/\s+/g, '-') || '';
+      const stateSlug = property.state?.toLowerCase() || 'pa';
+
+      const response = await fetch("/api/scrape/regrid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: property.id,
+          parcel_id: property.parcel_id,
+          county: countySlug,
+          state: stateSlug,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const extractedFields = data.regrid_data
+          ? Object.keys(data.regrid_data).filter((k: string) => data.regrid_data[k] !== null).length
+          : 0;
+
+        toast.success("Property enriched successfully!", {
+          description: `Extracted ${extractedFields} fields from Regrid. Refreshing report...`,
+          duration: 4000,
+        });
+
+        // Re-fetch property -- triggers cascade: report, comparables, market re-fetch
+        await fetchProperty();
+      } else {
+        toast.error("Enrichment failed", {
+          description: data.error || "The Regrid scraper could not extract data for this property.",
+          duration: 6000,
+        });
+      }
+    } catch (error) {
+      console.error("Error enriching property:", error);
+      toast.error("Enrichment failed", {
+        description: "Network error. Please try again.",
+        duration: 6000,
+      });
+    } finally {
+      setIsEnriching(false);
+    }
+  }, [property, isEnriching, fetchProperty]);
 
   // Fetch report data from API
   const fetchReportData = useCallback(async () => {
@@ -1000,6 +1145,40 @@ export default function PropertyReportPage() {
     }
   }, [property]);
 
+  // Fetch combined market data from /api/market (uses BOTH Realty + Zillow APIs)
+  useEffect(() => {
+    async function fetchMarketData() {
+      if (!property?.zip && !property?.coordinates) return;
+
+      try {
+        const params = new URLSearchParams({ mode: 'area' });
+        if (property.coordinates) {
+          params.set('lat', property.coordinates.lat.toString());
+          params.set('lng', property.coordinates.lng.toString());
+        }
+        if (property.zip) {
+          params.set('location', property.zip);
+        }
+        params.set('radius_miles', '5');
+        params.set('limit', '20');
+
+        const response = await fetch(`/api/market?${params.toString()}`);
+        if (!response.ok) return;
+
+        const json = await response.json();
+        if (json.success) {
+          setCombinedMarketData(json.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch market data:', error);
+      }
+    }
+
+    if (property) {
+      fetchMarketData();
+    }
+  }, [property]);
+
   // Property details (from Supabase or fallback)
   const propertyDetails = property ? {
     parcelId: property.parcel_id || "Unknown",
@@ -1008,23 +1187,27 @@ export default function PropertyReportPage() {
     state: property.state || "PA",
     zip: property.zip || "",
     county: property.county_name || "Unknown",
-    propertyType: property.property_type || "Single Family Residential",
+    propertyType: property.is_vacant_lot
+      ? "Vacant Lot"
+      : property.is_likely_mobile_home
+        ? "Mobile Home"
+        : (getPropertyTypeLabel(property.property_type) || "Unknown"),
     lotSize: property.lot_size_acres
-      ? `${property.lot_size_acres} acres (${property.lot_size_sqft?.toLocaleString() || 0} sqft)`
+      ? `${property.lot_size_acres} acres${property.lot_size_sqft ? ` (${property.lot_size_sqft.toLocaleString()} sqft)` : ''}`
       : "Unknown",
     buildingSqft: property.building_sqft || 0,
     yearBuilt: property.year_built || 0,
     bedrooms: property.bedrooms || 0,
     bathrooms: property.bathrooms || 0,
-    stories: 2,
-    zoning: property.zoning || "Unknown",
+    stories: 0,
+    zoning: property.zoning || "",
     assessedValue: property.assessed_value || 0,
     taxAmount: property.tax_amount || 0,
     ownerName: property.owner_name || "Unknown",
     ownerAddress: property.property_address || "",
     legalDescription: "",
     imageUrl: property.screenshot_url || "/placeholder-property.jpg",
-    coordinates: property.coordinates || { lat: 40.5186, lng: -78.3947 },
+    coordinates: property.coordinates || { lat: 0, lng: 0 },
   } : {
     parcelId: "Loading...",
     address: "Loading...",
@@ -1032,13 +1215,13 @@ export default function PropertyReportPage() {
     state: "PA",
     zip: "",
     county: "",
-    propertyType: "Single Family Residential",
+    propertyType: "Unknown",
     lotSize: "",
     buildingSqft: 0,
     yearBuilt: 0,
     bedrooms: 0,
     bathrooms: 0,
-    stories: 2,
+    stories: 0,
     zoning: "",
     assessedValue: 0,
     taxAmount: 0,
@@ -1046,29 +1229,17 @@ export default function PropertyReportPage() {
     ownerAddress: "",
     legalDescription: "",
     imageUrl: "/placeholder-property.jpg",
-    coordinates: { lat: 40.5186, lng: -78.3947 },
+    coordinates: { lat: 0, lng: 0 },
   };
 
-  // Calculate total score
-  const totalScore = sampleCategories.reduce((sum, cat) => sum + cat.score, 0);
-  const maxScore = 125;
-  const overallGrade: Grade = "B+";
-
-  // Get recommendation based on score
-  const getRecommendation = (score: number) => {
-    if (score >= 100) return { text: "STRONG BUY", color: "emerald" };
-    if (score >= 80) return { text: "BUY", color: "green" };
-    if (score >= 60) return { text: "HOLD", color: "amber" };
-    return { text: "PASS", color: "red" };
-  };
-  const recommendation = getRecommendation(totalScore);
+  // Score calculation is done in computedCategories/computedTotalScore below
 
   // Property address for filename generation
   const fullAddress = `${propertyDetails.address}, ${propertyDetails.city}, ${propertyDetails.state} ${propertyDetails.zip}`;
   const reportId = `RPT-${propertyId?.substring(0, 8) || 'UNKNOWN'}`;
 
   // Merge API data with sample data where available
-  const elevationData = apiData?.data?.elevation;
+  const elevationData = apiData?.data?.elevation as ElevationAnalysis | undefined;
   const climateData = apiData?.data?.climate;
   const seismicData = apiData?.data?.seismicHazard;
   const wildfireData = apiData?.data?.wildfireData;
@@ -1114,7 +1285,7 @@ export default function PropertyReportPage() {
     };
 
     // Ensure we have a valid base earthquake object
-    const baseEarthquake = sampleRiskAssessment.earthquake || {
+    const baseEarthquake = {
       hazardLevel: "very_low" as const,
       pga: 0.05,
       spectralAcceleration02: 0.08,
@@ -1139,7 +1310,7 @@ export default function PropertyReportPage() {
     } : baseEarthquake;
 
     // Base wildfire object for null safety
-    const baseWildfire = sampleRiskAssessment.wildfire || {
+    const baseWildfire = {
       riskLevel: "low" as const,
       fireHistoryYears5: 0,
       fireHistoryYears10: 0,
@@ -1166,7 +1337,7 @@ export default function PropertyReportPage() {
     } : baseWildfire;
 
     // Base environmental object for null safety
-    const baseEnvironmental = sampleRiskAssessment.environmental || {
+    const baseEnvironmental = {
       riskLevel: "low" as const,
       superfundSitesNearby: 0,
       brownfieldSitesNearby: 0,
@@ -1207,7 +1378,7 @@ export default function PropertyReportPage() {
     } : baseEnvironmental;
 
     // Base slope object for null safety
-    const baseSlope = sampleRiskAssessment.slope || {
+    const baseSlope = {
       slopeDegrees: 5,
       slopePercent: 8.7,
       aspect: "SW",
@@ -1228,25 +1399,24 @@ export default function PropertyReportPage() {
     } : baseSlope;
 
     // Base flood object for null safety
-    const baseFlood = sampleRiskAssessment.flood || {
-      floodZone: "X" as const,
+    const baseFlood = {
+      zone: "X" as const,
       zoneDescription: "Area of Minimal Flood Hazard",
+      riskLevel: "minimal" as const,
+      insuranceRequired: false,
+      annualPremiumEstimate: null,
       baseFloodElevation: null,
       propertyElevation: null,
       elevationDifference: null,
-      floodwayStatus: "not_in_floodway" as const,
-      annualFloodProbability: 0.002,
-      historicalFloodEvents: 0,
-      nearestWaterBody: { name: "Local Creek", distanceMiles: 1.5, type: "creek" },
-      insuranceRequired: false,
-      estimatedPremium: null,
+      floodwayStatus: "outside" as const,
+      historicalFlooding: null,
       mitigationRecommendations: [],
       dataSource: { name: "FEMA NFHL", type: "api" as const, reliability: "high" as const },
       confidence: 75,
     };
 
     // Base radon object for null safety
-    const baseRadon = sampleRiskAssessment.radon || {
+    const baseRadon = {
       zoneClassification: 2 as const,
       avgIndoorLevel: 2.5,
       testingRecommended: true,
@@ -1259,7 +1429,7 @@ export default function PropertyReportPage() {
     };
 
     // Base hurricane object for null safety
-    const baseHurricane = sampleRiskAssessment.hurricane || {
+    const baseHurricane = {
       riskLevel: "minimal" as const,
       historicalLandfalls5yr: 0,
       historicalLandfalls25yr: 0,
@@ -1275,7 +1445,7 @@ export default function PropertyReportPage() {
     };
 
     // Base sinkhole object for null safety
-    const baseSinkhole = sampleRiskAssessment.sinkhole || {
+    const baseSinkhole = {
       riskLevel: "low" as const,
       geologyType: "other",
       knownSinkholesNearby: 0,
@@ -1291,6 +1461,7 @@ export default function PropertyReportPage() {
     const calculateCategoryScore = (riskLevel: string): number => {
       switch (riskLevel) {
         case "minimal": return 5;
+        case "very_low": return 8;
         case "low": return 15;
         case "moderate": return 45;
         case "high": return 70;
@@ -1299,15 +1470,20 @@ export default function PropertyReportPage() {
       }
     };
 
+    const floodScore = 5; // Default low risk (no flood API yet)
+    const sinkholeScore = 10; // Default low risk (no sinkhole API yet)
+    const radonScore = 30; // Default moderate (PA is Zone 1-2 for radon)
+    const slopeScore = elevationData ? 10 : 10; // Default low risk
+
     const categoryScores = [
-      { category: "flood" as const, rawScore: sampleRiskAssessment.categoryScores[0].rawScore, weight: 0.2, weightedScore: sampleRiskAssessment.categoryScores[0].weightedScore, riskLevel: "minimal" as const, dataAvailability: "partial" as const },
+      { category: "flood" as const, rawScore: floodScore, weight: 0.2, weightedScore: floodScore * 0.2, riskLevel: "minimal" as const, dataAvailability: "partial" as const },
       { category: "earthquake" as const, rawScore: calculateCategoryScore(earthquakeData.hazardLevel), weight: 0.1, weightedScore: calculateCategoryScore(earthquakeData.hazardLevel) * 0.1, riskLevel: earthquakeData.hazardLevel as "minimal" | "low" | "moderate" | "high", dataAvailability: seismicData ? "full" as const : "partial" as const },
       { category: "wildfire" as const, rawScore: calculateCategoryScore(wildfireRisk.riskLevel), weight: 0.15, weightedScore: calculateCategoryScore(wildfireRisk.riskLevel) * 0.15, riskLevel: wildfireRisk.riskLevel as "minimal" | "low" | "moderate" | "high", dataAvailability: wildfireData ? "full" as const : "partial" as const },
       { category: "hurricane" as const, rawScore: 0, weight: 0.15, weightedScore: 0, riskLevel: "minimal" as const, dataAvailability: "full" as const },
-      { category: "sinkhole" as const, rawScore: sampleRiskAssessment.categoryScores[4].rawScore, weight: 0.1, weightedScore: sampleRiskAssessment.categoryScores[4].weightedScore, riskLevel: "low" as const, dataAvailability: "partial" as const },
+      { category: "sinkhole" as const, rawScore: sinkholeScore, weight: 0.1, weightedScore: sinkholeScore * 0.1, riskLevel: "low" as const, dataAvailability: "partial" as const },
       { category: "environmental" as const, rawScore: calculateCategoryScore(environmentalRisk.riskLevel), weight: 0.15, weightedScore: calculateCategoryScore(environmentalRisk.riskLevel) * 0.15, riskLevel: environmentalRisk.riskLevel as "minimal" | "low" | "moderate" | "high", dataAvailability: environmentalData ? "full" as const : "partial" as const },
-      { category: "radon" as const, rawScore: sampleRiskAssessment.categoryScores[6].rawScore, weight: 0.1, weightedScore: sampleRiskAssessment.categoryScores[6].weightedScore, riskLevel: "moderate" as const, dataAvailability: "full" as const },
-      { category: "slope" as const, rawScore: sampleRiskAssessment.categoryScores[7].rawScore, weight: 0.05, weightedScore: sampleRiskAssessment.categoryScores[7].weightedScore, riskLevel: "low" as const, dataAvailability: elevationData ? "partial" as const : "partial" as const },
+      { category: "radon" as const, rawScore: radonScore, weight: 0.1, weightedScore: radonScore * 0.1, riskLevel: "moderate" as const, dataAvailability: "partial" as const },
+      { category: "slope" as const, rawScore: slopeScore, weight: 0.05, weightedScore: slopeScore * 0.05, riskLevel: "low" as const, dataAvailability: elevationData ? "partial" as const : "partial" as const },
     ];
 
     // Calculate overall risk score from weighted category scores
@@ -1350,12 +1526,10 @@ export default function PropertyReportPage() {
       positiveFactors.push("No nearby Superfund sites");
     }
 
-    // Add sample recommendations if no real data warnings
+    // Add generic recommendations if no real data warnings
     if (recommendations.length === 0) {
-      recommendations.push(...sampleRiskAssessment.recommendations.slice(0, 2));
-    }
-    if (positiveFactors.length < 3) {
-      positiveFactors.push(...sampleRiskAssessment.positiveFactors.filter(f => !positiveFactors.includes(f)).slice(0, 3 - positiveFactors.length));
+      recommendations.push("Conduct property inspection before bidding");
+      recommendations.push("Verify title status and outstanding liens");
     }
 
     // Calculate confidence level based on data availability
@@ -1364,23 +1538,31 @@ export default function PropertyReportPage() {
 
     // Create the risk assessment object with computed values
     const assessment: RiskAssessment = {
-      ...sampleRiskAssessment,
       overallRisk,
       riskScore: Math.round(totalWeightedScore),
       confidenceLevel,
-      // Set risk categories - use sample values for correct typing, override with computed where available
-      flood: sampleRiskAssessment.flood,
-      earthquake: earthquakeData as RiskAssessment["earthquake"],
-      wildfire: wildfireRisk as RiskAssessment["wildfire"],
-      hurricane: sampleRiskAssessment.hurricane,
-      sinkhole: sampleRiskAssessment.sinkhole,
-      environmental: environmentalRisk as RiskAssessment["environmental"],
-      radon: sampleRiskAssessment.radon,
-      slope: slopeData as RiskAssessment["slope"],
+      flood: baseFlood as unknown as RiskAssessment["flood"],
+      earthquake: earthquakeData as unknown as RiskAssessment["earthquake"],
+      wildfire: wildfireRisk as unknown as RiskAssessment["wildfire"],
+      hurricane: baseHurricane as unknown as RiskAssessment["hurricane"],
+      sinkhole: baseSinkhole as unknown as RiskAssessment["sinkhole"],
+      environmental: environmentalRisk as unknown as RiskAssessment["environmental"],
+      radon: baseRadon as unknown as RiskAssessment["radon"],
+      slope: slopeData as unknown as RiskAssessment["slope"],
+      drought: null,
       categoryScores,
+      weightsUsed: {
+        flood: 0.2, earthquake: 0.1, wildfire: 0.15, hurricane: 0.15,
+        sinkhole: 0.1, environmental: 0.15, radon: 0.1, slope: 0.05, drought: 0.0,
+      },
+      insuranceEstimates: {
+        floodInsurance: null, earthquakeInsurance: null, fireInsurance: 0,
+        windstormInsurance: null, totalAnnualCost: 0, availabilityWarnings: [],
+      },
+      mitigationActions: [],
       recommendations,
-      warnings: warnings.length > 0 ? warnings : sampleRiskAssessment.warnings,
-      topRiskFactors: topRiskFactors.length > 0 ? topRiskFactors : sampleRiskAssessment.topRiskFactors,
+      warnings: warnings.length > 0 ? warnings : [],
+      topRiskFactors: topRiskFactors.length > 0 ? topRiskFactors : [],
       positiveFactors,
       assessedAt: new Date(),
     };
@@ -1391,7 +1573,7 @@ export default function PropertyReportPage() {
    * Computed insurance estimates based on real risk data
    */
   const computedInsuranceEstimates: InsuranceEstimates = useMemo(() => {
-    const propertyValue = property?.market_value || 150000;
+    const propertyValue = property?.market_value || property?.assessed_value || 0;
     const baseRate = 0.005; // 0.5% base rate
 
     // Get risk levels with safe fallbacks
@@ -1416,10 +1598,10 @@ export default function PropertyReportPage() {
     const totalAnnualCost = fireInsurance + (earthquakeInsurance || 0);
 
     return {
-      floodInsurance: sampleInsuranceEstimates.floodInsurance,
+      floodInsurance: null,
       earthquakeInsurance,
       fireInsurance,
-      windstormInsurance: sampleInsuranceEstimates.windstormInsurance,
+      windstormInsurance: null,
       totalAnnualCost,
       availabilityWarnings: wildfireRiskLevel === "high"
         ? ["Fire insurance may have restrictions in high wildfire risk areas"]
@@ -1432,17 +1614,17 @@ export default function PropertyReportPage() {
    */
   const computedFinancialAnalysis: FinancialAnalysis = useMemo(() => {
     // Get real values with fallbacks
-    const bidAmount = property?.total_due || sampleFinancialAnalysis.costs.acquisition.bidAmount;
+    const bidAmount = property?.total_due || 0;
     const assessedValue = property?.assessed_value || 0;
     const marketValue = property?.market_value || 0;
     const buildingSqft = property?.building_sqft || 0;
     const yearBuilt = property?.year_built || 0;
 
-    // Calculate ARV from comparables or market value
-    const estimatedARV = comparablesStats?.avg_sold_price || marketValue || sampleFinancialAnalysis.revenue.sale.estimatedARV;
+    // Calculate ARV – prefer LFB 9-step comp analysis, fall back to raw avg, then market value
+    const estimatedARV = lfbArv || comparablesStats?.avg_sold_price || marketValue || 0;
     const arvLow = Math.round(estimatedARV * 0.92); // 8% below
     const arvHigh = Math.round(estimatedARV * 1.1); // 10% above
-    const pricePerSqft = buildingSqft > 0 ? Math.round(estimatedARV / buildingSqft * 100) / 100 : comparablesStats?.avg_price_per_sqft || 103.45;
+    const pricePerSqft = buildingSqft > 0 ? Math.round(estimatedARV / buildingSqft * 100) / 100 : comparablesStats?.avg_price_per_sqft || 0;
 
     // Calculate acquisition costs
     const buyersPremium = Math.round(bidAmount * 0.1); // 10% buyer's premium
@@ -1527,7 +1709,7 @@ export default function PropertyReportPage() {
     else if (propertyAge > 50) keyFactors.push("Older property - higher rehab costs factored in");
 
     // Build risks from real data
-    const risks: string[] = [...sampleFinancialAnalysis.recommendation.risks.slice(0, 2)];
+    const risks: string[] = ["Rehab costs may exceed estimate if hidden issues found"];
     if (propertyAge > 80) risks.unshift("Property age may indicate hidden structural issues");
     if ((computedRiskAssessment.environmental?.superfundSitesNearby ?? 0) > 0) risks.unshift("Environmental contamination risk nearby");
 
@@ -1549,7 +1731,12 @@ export default function PropertyReportPage() {
           totalAcquisition,
         },
         rehab: {
-          ...sampleFinancialAnalysis.costs.rehab,
+          exterior: { roof: 0, siding: 0, windows: 0, doors: 0, landscaping: 0, hardscape: 0, total: 0 },
+          interior: { flooring: 0, paint: 0, kitchen: 0, bathrooms: 0, electrical: 0, plumbing: 0, hvac: 0, fixtures: 0, total: 0 },
+          structural: { foundation: 0, framing: 0, insulation: 0, total: 0 },
+          permits: 0,
+          laborMultiplier: 1.0,
+          materialMultiplier: 1.0,
           totalRehab,
         },
         holding: {
@@ -1587,7 +1774,7 @@ export default function PropertyReportPage() {
           lowEstimate: arvLow,
           highEstimate: arvHigh,
           pricePerSqft,
-          comparablesUsed: realComparables?.length || sampleComparables.length,
+          comparablesUsed: realComparables?.length || 0,
           confidence: hasRealComps ? "high" : "medium",
         },
         rental: {
@@ -1614,19 +1801,19 @@ export default function PropertyReportPage() {
         capRate,
       },
       comparables: {
-        comparables: realComparables || sampleComparables,
+        comparables: realComparables || [],
         estimatedARV,
         arvLowRange: arvLow,
         arvHighRange: arvHigh,
         averagePricePerSqft: comparablesStats?.avg_price_per_sqft || pricePerSqft,
         medianPricePerSqft: comparablesStats?.avg_price_per_sqft || pricePerSqft, // Using avg since median not available
-        comparablesCount: realComparables?.length || sampleComparables.length,
+        comparablesCount: realComparables?.length || 0,
         searchRadiusMiles: 1.0,
         confidence: hasRealComps ? "high" : "medium",
         dataSource: hasRealComps ? "Realty API" : "Sample Data",
         notes: hasRealComps
           ? [`Based on ${realComparables?.length} recent sales`, "Data from Realty API"]
-          : sampleFinancialAnalysis.comparables.notes,
+          : ["No comparable sales data available"],
       },
       recommendation: {
         verdict,
@@ -1635,7 +1822,9 @@ export default function PropertyReportPage() {
         targetProfit: netProfit > 0 ? netProfit : 35000,
         keyFactors,
         risks,
-        opportunities: sampleFinancialAnalysis.recommendation.opportunities,
+        opportunities: estimatedARV > 0
+          ? ["Potential value-add through property improvements", "Rental income as alternative exit strategy"]
+          : [],
         exitStrategy: "flip",
         timelineMonths: holdingPeriodMonths,
       },
@@ -1661,7 +1850,7 @@ export default function PropertyReportPage() {
         ],
       },
     };
-  }, [property, realComparables, comparablesStats, computedInsuranceEstimates.totalAnnualCost, computedRiskAssessment.environmental?.superfundSitesNearby]);
+  }, [property, realComparables, comparablesStats, lfbArv, computedInsuranceEstimates.totalAnnualCost, computedRiskAssessment.environmental?.superfundSitesNearby]);
 
   /**
    * Computed investment score categories using real data
@@ -1683,6 +1872,11 @@ export default function PropertyReportPage() {
       if (pct >= 45) return "D";
       return "F";
     };
+
+    // Helper to safely get priceToARV without falsy-zero trap
+    // priceToARV of 0 is valid (means very cheap acquisition), not missing data
+    const safeNumber = (val: number | undefined | null, fallback: number): number =>
+      val != null && !isNaN(val) ? val : fallback;
 
     // ===== LOCATION SCORE (max 25) =====
     // Based on amenities, broadband, demographics
@@ -1762,7 +1956,7 @@ export default function PropertyReportPage() {
 
     // ===== FINANCIAL SCORE (max 25) =====
     const roi = computedFinancialAnalysis.metrics.roi || 0;
-    const priceToARV = computedFinancialAnalysis.metrics.priceToARV || 1;
+    const priceToARV = safeNumber(computedFinancialAnalysis.metrics.priceToARV, 1);
     const financialFactors: string[] = [];
 
     // ROI score (max 10)
@@ -1893,7 +2087,7 @@ export default function PropertyReportPage() {
         score: locationScore,
         maxScore: 25,
         grade: scoreToGrade(locationScore, 25),
-        factors: locationFactors.length > 0 ? locationFactors : sampleCategories[0].factors,
+        factors: locationFactors.length > 0 ? locationFactors : ["Insufficient data for location analysis"],
         breakdown: locationBreakdown,
       },
       {
@@ -1902,7 +2096,7 @@ export default function PropertyReportPage() {
         score: riskInvestmentScore,
         maxScore: 25,
         grade: scoreToGrade(riskInvestmentScore, 25),
-        factors: riskFactors.length > 0 ? riskFactors : sampleCategories[1].factors,
+        factors: riskFactors.length > 0 ? riskFactors : ["Insufficient data for risk analysis"],
         breakdown: riskBreakdown,
       },
       {
@@ -1911,7 +2105,7 @@ export default function PropertyReportPage() {
         score: financialScore,
         maxScore: 25,
         grade: scoreToGrade(financialScore, 25),
-        factors: financialFactors.length > 0 ? financialFactors : sampleCategories[2].factors,
+        factors: financialFactors.length > 0 ? financialFactors : ["Insufficient data for financial analysis"],
         breakdown: financialBreakdown,
       },
       {
@@ -1920,7 +2114,7 @@ export default function PropertyReportPage() {
         score: marketScore,
         maxScore: 25,
         grade: scoreToGrade(marketScore, 25),
-        factors: marketFactors.length > 0 ? marketFactors : sampleCategories[3].factors,
+        factors: marketFactors.length > 0 ? marketFactors : ["Insufficient data for market analysis"],
         breakdown: marketBreakdown,
       },
       {
@@ -1929,7 +2123,7 @@ export default function PropertyReportPage() {
         score: profitScore,
         maxScore: 25,
         grade: scoreToGrade(profitScore, 25),
-        factors: profitFactors.length > 0 ? profitFactors : sampleCategories[4].factors,
+        factors: profitFactors.length > 0 ? profitFactors : ["Insufficient data for profit analysis"],
         breakdown: profitBreakdown,
       },
     ];
@@ -2207,6 +2401,59 @@ export default function PropertyReportPage() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* ===== Enrichment Banner: Show when property has no coordinates and no regrid data ===== */}
+        {property && !property.coordinates && !property.screenshot_url && (
+          <section className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-5 print:hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-6 w-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-300">
+                    Property Data Incomplete
+                  </h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                    This property has not been enriched with Regrid data. Coordinates, lot size, year built,
+                    and other details are missing. Without coordinates, comparables, market data, and
+                    environmental analysis cannot be generated accurately.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleEnrichProperty}
+                disabled={isEnriching}
+                className={cn(
+                  "flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm whitespace-nowrap transition-colors",
+                  isEnriching
+                    ? "bg-amber-200 dark:bg-amber-800 text-amber-500 dark:text-amber-400 cursor-not-allowed"
+                    : "bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                )}
+              >
+                {isEnriching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Enriching...
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-4 w-4" />
+                    Enrich Property
+                  </>
+                )}
+              </button>
+            </div>
+            {isEnriching && (
+              <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700">
+                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>
+                    Running Regrid scraper via browser automation... This typically takes 30-60 seconds.
+                  </span>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* ===== API Data Status Banner ===== */}
         {(isLoading || apiData || apiError) && (
           <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
@@ -2298,14 +2545,7 @@ export default function PropertyReportPage() {
               Key Strengths
             </h2>
             <ul className="space-y-3">
-              {[
-                "36.3% projected ROI exceeds 20% threshold",
-                "Acquisition at 30% of ARV (well below 70% rule)",
-                "Clear title expected - no major liens",
-                "Strong rental fallback with 7.7% cap rate",
-                "Low risk profile - no flood/earthquake concerns",
-                "Good school district (7/10 rating)",
-              ].map((item, idx) => (
+              {computedStrengths.map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2 text-emerald-700 dark:text-emerald-400">
                   <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-500 mt-0.5" />
                   <span>{item}</span>
@@ -2321,13 +2561,7 @@ export default function PropertyReportPage() {
               Areas of Concern
             </h2>
             <ul className="space-y-3">
-              {[
-                "Pennsylvania Radon Zone 1 - testing required",
-                "Built in 1952 - potential for hidden issues",
-                "Moderate market conditions in area",
-                "Rehab estimates may vary based on inspection",
-                "Limited comparable sales in immediate area",
-              ].map((item, idx) => (
+              {computedConcerns.map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2 text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-500 mt-0.5" />
                   <span>{item}</span>
@@ -2343,37 +2577,72 @@ export default function PropertyReportPage() {
             <Home className="h-5 w-5" />
             Property Overview
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6">
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                ${property?.total_due?.toLocaleString() || '45,000'}
+                {property?.total_due != null ? `$${property.total_due.toLocaleString()}` : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Asking Price</p>
             </div>
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                ${property?.market_value?.toLocaleString() || '150,000'}
+                {computedFinancialAnalysis.revenue.sale.estimatedARV > 0
+                  ? `$${computedFinancialAnalysis.revenue.sale.estimatedARV.toLocaleString()}`
+                  : property?.market_value != null
+                    ? `$${property.market_value.toLocaleString()}`
+                    : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Est. FMV (ARV)</p>
             </div>
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {property?.lot_size_acres?.toFixed(2) || '0.18'} ac
+                {property?.lot_size_acres != null ? `${property.lot_size_acres.toFixed(2)} ac` : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Lot Size</p>
             </div>
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {property?.building_sqft?.toLocaleString() || '1,450'} sqft
+                {property?.building_sqft != null ? `${property.building_sqft.toLocaleString()} sqft` : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Building Size</p>
             </div>
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-              <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">Flip</p>
+              <p className={`text-2xl font-bold ${
+                property?.is_vacant_lot
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : property?.is_likely_mobile_home
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-indigo-600 dark:text-indigo-400'
+              }`}>
+                {property?.is_vacant_lot
+                  ? 'Vacant Lot'
+                  : property?.is_likely_mobile_home
+                    ? 'Mobile Home'
+                    : (getPropertyTypeLabel(property?.property_type) || 'N/A')}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Property Type</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+              <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">
+                {computedFinancialAnalysis.revenue.sale.estimatedARV > 0
+                  ? (computedFinancialAnalysis.recommendation.exitStrategy === 'flip' ? 'Flip'
+                    : computedFinancialAnalysis.recommendation.exitStrategy === 'hold' ? 'Hold'
+                    : 'Buy & Hold')
+                  : 'N/A'}
+              </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Strategy</p>
             </div>
             <div className="text-center p-4 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">70% OFF</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {(() => {
+                  const askingPrice = property?.total_due;
+                  const arvValue = computedFinancialAnalysis.revenue.sale.estimatedARV || property?.market_value;
+                  if (askingPrice != null && arvValue && arvValue > 0) {
+                    return `${Math.round((1 - askingPrice / arvValue) * 100)}% OFF`;
+                  }
+                  return 'N/A';
+                })()}
+              </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Discount</p>
             </div>
           </div>
@@ -2440,12 +2709,47 @@ export default function PropertyReportPage() {
           </div>
           {/* Regrid Aerial View */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-              <Image className="h-5 w-5" />
-              Regrid View
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <Image className="h-5 w-5" />
+                Regrid View
+              </h3>
+              <button
+                onClick={handleEnrichProperty}
+                disabled={isEnriching}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors print:hidden",
+                  isEnriching
+                    ? "bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
+                    : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-400"
+                )}
+                title="Re-scrape Regrid data and screenshot for this property"
+              >
+                {isEnriching ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Scraping...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3" />
+                    Re-scrape
+                  </>
+                )}
+              </button>
+            </div>
             <div className="aspect-video relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
-              {property?.screenshot_url ? (
+              {isEnriching ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <Loader2 className="h-10 w-10 text-amber-500 animate-spin mb-3" />
+                  <p className="text-slate-600 dark:text-slate-300 font-medium mb-1">
+                    Scraping Regrid...
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Running browser automation on VPS (30-60 seconds)
+                  </p>
+                </div>
+              ) : property?.screenshot_url ? (
                 <>
                   <img
                     src={property.screenshot_url}
@@ -2477,6 +2781,9 @@ export default function PropertyReportPage() {
           </div>
         </section>
 
+        {/* ===== SECTION 4B: AI Visual Screening ===== */}
+        <VisualValidation propertyId={propertyId} />
+
         {/* ===== SECTION 5: Location Details ===== */}
         <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">
@@ -2507,7 +2814,7 @@ export default function PropertyReportPage() {
             </div>
             <div>
               <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Zoning</h4>
-              <p className="text-slate-900 dark:text-slate-100">{propertyDetails.zoning || 'R-1 Residential'}</p>
+              <p className="text-slate-900 dark:text-slate-100">{propertyDetails.zoning || 'N/A'}</p>
             </div>
             <div>
               <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Owner</h4>
@@ -2518,46 +2825,34 @@ export default function PropertyReportPage() {
 
         {/* ===== SECTION 6: Location Context ===== */}
         <LocationAnalysis
-          score={21}
+          score={computedCategories.find(c => c.key === "location")?.score ?? 0}
           maxScore={25}
-          grade="A-"
-          neighborhood={`Downtown ${propertyDetails.city || 'Altoona'}`}
+          grade={computedCategories.find(c => c.key === "location")?.grade ?? "C"}
+          neighborhood={censusData?.geographic?.countyName || propertyDetails.city || 'Unknown'}
           stats={{
-            medianIncome: 45200,
-            populationDensity: 2850,
-            homeownershipRate: 62,
-            medianAge: 38,
-            vacancyRate: 8.5,
-            crimeRate: "low",
-            schoolRating: 7,
-            walkScore: 65,
-            transitScore: 42,
-            bikeScore: 48,
+            medianIncome: censusData?.demographics?.medianHouseholdIncome ?? 0,
+            populationDensity: undefined, // Census tract area not available for density calculation
+            homeownershipRate: censusData?.demographics?.ownerOccupiedPct ?? 0,
+            medianAge: censusData?.demographics?.medianAge ?? 0,
+            vacancyRate: censusData?.demographics?.vacancyRate ?? 0,
+            crimeRate: undefined,
+            schoolRating: amenitiesData?.schoolRating ?? undefined,
+            walkScore: amenitiesData?.walkScore ?? amenitiesData?.walkabilityScore ?? undefined,
+            transitScore: amenitiesData?.transitScore ?? undefined,
+            bikeScore: amenitiesData?.bikeScore ?? undefined,
           }}
-          amenities={[
-            { name: "Altoona Area High School", type: "school", distance: 0.8, rating: 4 },
-            { name: "UPMC Altoona", type: "hospital", distance: 1.2 },
-            { name: "Logan Town Centre", type: "shopping", distance: 1.5, rating: 4 },
-            { name: "Amtrak Station", type: "transit", distance: 0.5 },
-            { name: "Highland Park", type: "park", distance: 0.3, rating: 5 },
-            { name: "Sheetz", type: "other", distance: 0.2 },
-          ]}
-          trends={[
-            { metric: "Home Values", current: "$142,000", changePercent: 3.2, period: "YoY", trend: "up" },
-            { metric: "Days on Market", current: 45, changePercent: -8, period: "YoY", trend: "down" },
-            { metric: "New Listings", current: 125, changePercent: 2.1, period: "MoM", trend: "up" },
-            { metric: "Inventory", current: 3.2, changePercent: -5, period: "YoY", trend: "down" },
-          ]}
-          factors={[
-            "Low crime rate for the area",
-            "Good school district (7/10)",
-            "Near downtown amenities",
-            "Access to Amtrak station",
-          ]}
-          concerns={[
-            "Limited public transit options",
-            "Some vacant properties nearby",
-          ]}
+          amenities={(amenitiesData?.nearest ?? []).map(a => ({
+            name: a.name,
+            type: (a.type === 'grocery_store' ? 'shopping'
+              : a.type === 'gas_station' ? 'other'
+              : a.type as 'school' | 'hospital' | 'shopping' | 'transit' | 'park' | 'restaurant' | 'other'),
+            distance: a.distance,
+          }))}
+          trends={[]}
+          factors={computedCategories.find(c => c.key === "location")?.factors ?? []}
+          concerns={censusData?.demographics?.vacancyRate && censusData.demographics.vacancyRate > 10
+            ? [`Higher vacancy rate (${censusData.demographics.vacancyRate.toFixed(1)}%)`]
+            : !censusData ? ["Census data not yet loaded"] : []}
           googleMapsUrl={`https://maps.google.com/?q=${encodeURIComponent(fullAddress)}`}
         />
 
@@ -2578,26 +2873,46 @@ export default function PropertyReportPage() {
             <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-sm text-slate-500 dark:text-slate-400">Elevation</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {elevationData ? `${elevationData.elevation}m` : '358m'}
+                {elevationData?.elevation ? `${elevationData.elevation.meters}m` : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {elevationData ? `${elevationData.elevationFeet}ft` : '1,175ft'} above sea level
+                {elevationData?.elevation ? `${elevationData.elevation.feet}ft above sea level` : 'Data pending'}
               </p>
             </div>
             <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-sm text-slate-500 dark:text-slate-400">Average Slope</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">8%</p>
-              <p className="text-sm text-emerald-600 dark:text-emerald-400">Gentle - Suitable for development</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {elevationData?.terrain ? `${elevationData.terrain.averageSlope.toFixed(1)}%` : 'N/A'}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {elevationData?.terrain ? elevationData.terrain.classificationLabel : 'Data pending'}
+              </p>
             </div>
             <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-sm text-slate-500 dark:text-slate-400">Max Slope</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">15%</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Moderate at property edges</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {elevationData?.terrain ? `${elevationData.terrain.maxSlope.toFixed(1)}%` : 'N/A'}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {elevationData?.terrain
+                  ? elevationData.terrain.slopeDirection !== 'flat'
+                    ? `Steepest toward ${elevationData.terrain.slopeDirection}`
+                    : 'Relatively flat terrain'
+                  : 'Data pending'}
+              </p>
             </div>
             <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-sm text-slate-500 dark:text-slate-400">Classification</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">Stable</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">No landslide risk</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {elevationData?.terrain
+                  ? elevationData.terrain.stability === 'stable' ? 'Stable'
+                    : elevationData.terrain.stability === 'moderate_risk' ? 'Moderate'
+                    : 'At Risk'
+                  : 'N/A'}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {elevationData?.terrain ? elevationData.terrain.stabilityLabel : 'Requires terrain analysis'}
+              </p>
             </div>
           </div>
         </section>
@@ -2617,7 +2932,7 @@ export default function PropertyReportPage() {
             />
             <InsuranceEstimateCard
               estimates={computedInsuranceEstimates}
-              propertyValue={property?.market_value || 150000}
+              propertyValue={property?.market_value || property?.assessed_value || 0}
               showChart
               showDetails
             />
@@ -2636,59 +2951,24 @@ export default function PropertyReportPage() {
           />
         </section>
 
-        {/* ===== SECTION 10: Comparable Sales ===== */}
-        <ComparablesSection
-          comparables={(realComparables || sampleComparables).map(comp => ({
-            id: comp.id,
-            address: comp.address,
-            city: comp.city || "",
-            distance: comp.distanceMiles || 0,
-            salePrice: comp.salePrice,
-            saleDate: new Date(comp.saleDate),
-            sqft: comp.sqft,
-            lotSizeAcres: comp.lotSizeSqft ? comp.lotSizeSqft / 43560 : undefined,
-            bedrooms: comp.bedrooms,
-            bathrooms: comp.bathrooms,
-            yearBuilt: comp.yearBuilt,
-            pricePerSqft: comp.pricePerSqft,
-            condition: "good" as const,
-          }))}
-          analysis={{
-            compCount: realComparables?.length || comparablesStats?.count || 4,
-            avgSalePrice: comparablesStats?.avg_sold_price || 150000,
-            medianSalePrice: comparablesStats?.median_sold_price || 148500,
-            avgPricePerSqft: comparablesStats?.avg_price_per_sqft || 102.56,
-            avgDaysOnMarket: 42,
-            suggestedArv: comparablesStats?.avg_sold_price || 150000,
-            confidence: realComparables ? (realComparables.length >= 5 ? "high" : realComparables.length >= 3 ? "medium" : "low") : "medium",
-            searchRadius: 1.0,
-            dateRange: "Last 6 months",
-          }}
-          subjectProperty={{
-            sqft: property?.building_sqft || 1450,
-            lotSizeAcres: property?.lot_size_acres || 0.18,
-            bedrooms: property?.bedrooms || 3,
-            bathrooms: property?.bathrooms || 1.5,
-            yearBuilt: property?.year_built || 1952,
-          }}
-        />
-
-        {/* ===== SECTION 10B: Live Comparable Sales ===== */}
+        {/* ===== SECTION 10: Comparable Sales (LFB 9-Step Analysis) ===== */}
         <section>
-          <h2 className="flex items-center gap-2 text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6">
-            <TrendingUp className="h-6 w-6" />
-            Live Market Data
-            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full">
-              Realty API
-            </span>
-          </h2>
           <ComparablesCard
-            postalCode={propertyDetails.zip || "16602"}
-            radiusMiles={2}
-            limit={10}
-            subjectValue={property?.assessed_value || 85000}
-            subjectSqft={property?.building_sqft || 1450}
+            lat={propertyDetails.coordinates?.lat || undefined}
+            lng={propertyDetails.coordinates?.lng || undefined}
+            postalCode={propertyDetails.zip || ""}
+            radiusMiles={5}
+            limit={25}
+            subjectValue={property?.assessed_value || 0}
+            subjectSqft={property?.building_sqft || 0}
+            subjectLotSqft={property?.lot_size_acres ? Math.round(property.lot_size_acres * 43560) : 0}
+            subjectBeds={property?.bedrooms || 0}
+            subjectBaths={property?.bathrooms || 0}
+            subjectYearBuilt={property?.year_built || 0}
+            subjectPropertyType={property?.property_type || ""}
+            subjectTotalDue={property?.total_due || 0}
             defaultExpanded={true}
+            onAnalysisComplete={handleLfbAnalysisComplete}
           />
         </section>
 
@@ -2727,7 +3007,7 @@ export default function PropertyReportPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {censusData?.demographics?.population?.toLocaleString() || '43,270'}
+                {censusData?.demographics?.population?.toLocaleString() || 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Population</p>
               <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -2736,7 +3016,7 @@ export default function PropertyReportPage() {
             </div>
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                ${(censusData?.demographics?.medianHouseholdIncome || 45200).toLocaleString()}
+                {censusData?.demographics?.medianHouseholdIncome ? `$${censusData.demographics.medianHouseholdIncome.toLocaleString()}` : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Median Income</p>
               {censusData?.demographics?.unemploymentRate !== undefined && (
@@ -2747,7 +3027,7 @@ export default function PropertyReportPage() {
             </div>
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                ${(censusData?.demographics?.medianHomeValue || 142000).toLocaleString()}
+                {censusData?.demographics?.medianHomeValue ? `$${censusData.demographics.medianHomeValue.toLocaleString()}` : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Median Home Value</p>
               {censusData?.demographics?.ownerOccupiedPct !== undefined && (
@@ -2758,7 +3038,7 @@ export default function PropertyReportPage() {
             </div>
             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50">
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {censusData?.demographics?.bachelorsDegreeOrHigherPct?.toFixed(0) || '27'}%
+                {censusData?.demographics?.bachelorsDegreeOrHigherPct != null ? `${censusData.demographics.bachelorsDegreeOrHigherPct.toFixed(0)}%` : 'N/A'}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Bachelor&apos;s Degree+</p>
               {censusData?.demographics?.medianAge !== undefined && (
@@ -2823,12 +3103,12 @@ export default function PropertyReportPage() {
               altText={`FEMA Flood Zone Map for ${propertyDetails.address}`}
             />
           </div>
-          <div className="flex items-center gap-4 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-            <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+          <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-700">
+            <Info className="h-8 w-8 text-slate-400 dark:text-slate-500 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-emerald-800 dark:text-emerald-300">Zone X - Minimal Flood Hazard</p>
-              <p className="text-sm text-emerald-700 dark:text-emerald-400">
-                This property is located outside of the 500-year flood plain. Flood insurance is not required for federally-backed mortgages.
+              <p className="font-semibold text-slate-800 dark:text-slate-300">Flood Zone Data</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Use the interactive FEMA map above to check the flood zone for this property. Confirm zone designation before purchase.
               </p>
             </div>
           </div>
@@ -2844,86 +3124,84 @@ export default function PropertyReportPage() {
             <div>
               <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Current Zoning</h4>
               <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{property?.zoning || propertyDetails.zoning || 'R-1'}</p>
-                <p className="text-blue-700 dark:text-blue-300">{property?.land_use || 'Residential'}</p>
+                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{property?.zoning || 'N/A'}</p>
+                <p className="text-blue-700 dark:text-blue-300">{property?.land_use || 'N/A'}</p>
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Permitted Uses</h4>
-              <ul className="space-y-2">
-                {["Single family dwelling", "Home occupation (limited)", "Accessory structures", "In-law suite (conditional)"].map((use, idx) => (
-                  <li key={idx} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                    <CheckCircle className="h-4 w-4 text-emerald-500" />
-                    {use}
-                  </li>
-                ))}
-              </ul>
+              <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Property Details</h4>
+              <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                <div className="flex justify-between">
+                  <span>Property Type:</span>
+                  <span className="font-medium">{property?.is_vacant_lot
+                    ? 'Vacant Lot'
+                    : property?.is_likely_mobile_home
+                      ? 'Mobile Home'
+                      : (getPropertyTypeLabel(property?.property_type) || 'N/A')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Year Built:</span>
+                  <span className="font-medium">{property?.year_built || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Bedrooms:</span>
+                  <span className="font-medium">{property?.bedrooms || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Bathrooms:</span>
+                  <span className="font-medium">{property?.bathrooms || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Assessed Value:</span>
+                  <span className="font-medium">
+                    {property?.assessed_value != null
+                      ? `$${property.assessed_value.toLocaleString()}`
+                      : 'N/A'}
+                  </span>
+                </div>
+                {property?.assessed_improvement_value != null && (
+                  <div className="flex justify-between">
+                    <span>Improvement Value:</span>
+                    <span className="font-medium">
+                      ${property.assessed_improvement_value.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </section>
 
         {/* ===== SECTION 15: Market Analysis ===== */}
         <MarketAnalysis
-          score={18}
+          score={computedCategories.find(c => c.key === "market")?.score ?? 0}
           maxScore={25}
-          grade="B"
+          grade={computedCategories.find(c => c.key === "market")?.grade ?? "C"}
           metrics={{
-            medianSalePrice: 142000,
-            pricePerSqft: 98,
-            daysOnMarket: 45,
-            absorptionRate: 3.2,
-            listToSaleRatio: 0.97,
-            priceChangeYoY: 3.2,
-            recentSales: 125,
-            activeListings: 156,
-            salesVolumeChangeYoY: 2.5,
-            inventoryChangeYoY: -5.2,
+            medianSalePrice: combinedMarketData?.combined?.medianPrice || comparablesStats?.median_sold_price || censusData?.demographics?.medianHomeValue || 0,
+            pricePerSqft: combinedMarketData?.combined?.avgPricePerSqft || combinedMarketData?.realty?.statistics?.avg_price_per_sqft || comparablesStats?.avg_price_per_sqft || 0,
+            daysOnMarket: combinedMarketData?.combined?.avgDaysOnMarket || combinedMarketData?.realty?.statistics?.avg_days_on_market || 0,
+            absorptionRate: combinedMarketData?.calculatedMetrics?.absorptionRate || 0,
+            listToSaleRatio: combinedMarketData?.calculatedMetrics?.listToSaleRatio || 0,
+            priceChangeYoY: combinedMarketData?.historicalMetrics?.priceChangeYoY || 0,
+            recentSales: combinedMarketData?.combined?.recentSales || realComparables?.length || 0,
+            activeListings: combinedMarketData?.combined?.activeListings || 0,
+            salesVolumeChangeYoY: combinedMarketData?.historicalMetrics?.salesVolumeChangeYoY || 0,
+            inventoryChangeYoY: 0,
           }}
           trends={{
-            priceTrends: [
-              { period: "Jan 2025", value: 138000 },
-              { period: "Feb 2025", value: 139500 },
-              { period: "Mar 2025", value: 140000 },
-              { period: "Apr 2025", value: 141500 },
-              { period: "May 2025", value: 142000 },
-              { period: "Jun 2025", value: 142500 },
-            ],
-            volumeTrends: [
-              { period: "Jan 2025", value: 18 },
-              { period: "Feb 2025", value: 22 },
-              { period: "Mar 2025", value: 28 },
-              { period: "Apr 2025", value: 32 },
-              { period: "May 2025", value: 35 },
-              { period: "Jun 2025", value: 38 },
-            ],
-            domTrends: [
-              { period: "Jan 2025", value: 52 },
-              { period: "Feb 2025", value: 48 },
-              { period: "Mar 2025", value: 45 },
-              { period: "Apr 2025", value: 42 },
-              { period: "May 2025", value: 40 },
-              { period: "Jun 2025", value: 38 },
-            ],
+            priceTrends: [],
+            volumeTrends: [],
+            domTrends: [],
           }}
-          marketType="buyers"
-          marketHealth={68}
-          supplyDemand="balanced"
-          segments={[
-            { name: "Under $100K", value: 15, format: "percentage", comparison: "below" },
-            { name: "$100K-$150K", value: 35, format: "percentage", comparison: "similar" },
-            { name: "$150K-$200K", value: 30, format: "percentage", comparison: "above" },
-            { name: "$200K+", value: 20, format: "percentage", comparison: "above" },
-          ]}
-          factors={[
-            "Steady employment from healthcare and education sectors",
-            "Affordable housing relative to state average",
-            "Low mortgage rates supporting buyer activity",
-          ]}
-          concerns={[
-            "Population decline trend in Blair County",
-            "Limited new construction activity",
-            "Aging housing stock may limit appreciation",
-          ]}
+          marketType={(combinedMarketData?.combined?.marketType as "balanced" | "buyers" | "sellers") || "balanced"}
+          marketHealth={combinedMarketData?.combined?.marketHealth || 0}
+          supplyDemand={(combinedMarketData?.calculatedMetrics?.supplyDemand as "balanced" | "undersupply" | "oversupply") || "balanced"}
+          segments={[]}
+          factors={computedCategories.find(c => c.key === "market")?.factors ?? []}
+          concerns={!realComparables || realComparables.length < 3
+            ? ["Limited comparable sales data available"]
+            : []}
         />
 
         {/* ===== SECTION 16: Title Research & Liens ===== */}

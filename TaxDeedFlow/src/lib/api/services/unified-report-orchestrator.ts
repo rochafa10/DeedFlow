@@ -146,6 +146,9 @@ interface SupabasePropertyData {
     zoning: string | null;
     land_use: string | null;
     screenshot_url: string | null;
+    assessed_improvement_value: number | null;
+    is_vacant_lot: boolean;
+    is_likely_mobile_home: boolean;
   } | null;
 }
 
@@ -213,6 +216,10 @@ function convertToPropertyData(
     has_screenshot: raw.has_screenshot ?? false,
     // Images
     screenshot_url: regrid?.screenshot_url ?? null,
+    // Assessor and classification flags
+    assessed_improvement_value: regrid?.assessed_improvement_value ?? null,
+    is_vacant_lot: regrid?.is_vacant_lot ?? false,
+    is_likely_mobile_home: regrid?.is_likely_mobile_home ?? false,
   };
 }
 
@@ -1071,6 +1078,9 @@ export async function generateFullReport(
           has_regrid_data: false,
           has_screenshot: false,
           screenshot_url: null,
+          assessed_improvement_value: null,
+          is_vacant_lot: false,
+          is_likely_mobile_home: false,
         };
 
     // Parse address for city/state/zip if needed

@@ -120,6 +120,10 @@ export interface Screenshot {
 
 /**
  * Property Visual Validation
+ *
+ * Stores results from AI-powered investability screening using GPT-4o
+ * vision analysis of satellite, map, street view, and Regrid images.
+ * Updated to include all columns from property_visual_validation table.
  */
 export interface PropertyVisualValidation {
   id: string;
@@ -127,22 +131,37 @@ export interface PropertyVisualValidation {
 
   // Validation results
   validation_status: 'approved' | 'rejected' | 'caution' | 'pending';
-  rejection_reason?: string;
-  caution_flags?: string[];
+  confidence_score?: number | null;
+  structure_present?: boolean | null;
+  road_access?: boolean | null;
+  land_use_observed?: string | null;
+  lot_shape?: string | null;
+  red_flags?: Record<string, unknown> | null;
+  skip_reason?: string | null;
 
-  // AI analysis
-  ai_notes?: string;
-  confidence_score?: number;
+  // Images analyzed (JSONB with satellite/map/street_view/regrid flags)
+  images_analyzed?: Record<string, unknown> | null;
 
-  // Inspector details
-  validated_by?: string;
-  validated_at?: string;
+  // Image URLs
+  regrid_screenshot_url?: string | null;
+  google_maps_url?: string | null;
+  street_view_url?: string | null;
+  zillow_url?: string | null;
+  satellite_image_url?: string | null;
+  map_image_url?: string | null;
 
-  // Images analyzed
-  images_analyzed?: string[];
+  // AI analysis findings (JSONB with full analysis details)
+  findings?: Record<string, unknown> | null;
 
-  created_at: string;
-  updated_at: string;
+  // Inspector / AI details
+  validated_at?: string | null;
+  validated_by?: string | null;
+  notes?: string | null;
+
+  // AI model tracking (added Track 1)
+  ai_model?: string | null;
+  ai_tokens_used?: number | null;
+  image_count?: number | null;
 }
 
 // ============================================================

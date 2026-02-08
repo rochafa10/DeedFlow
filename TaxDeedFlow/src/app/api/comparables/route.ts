@@ -1,13 +1,15 @@
 /**
  * Comparables API Route
  *
- * Fetches comparable properties from Realty in US API.
- * Supports search by coordinates or postal code.
+ * Fetches comparable properties from Realty in US API and applies
+ * LFB 9-Step professional comp analysis (scoring, adjustments, ARV, MAO).
  *
  * Enhanced mode (`?mode=enhanced`) returns:
- * - Sold comparables
+ * - Scored & graded comparables (A/B/C/D/F)
+ * - ARV calculation
+ * - MAO calculation (60-65% for tax deeds)
  * - Active listings count
- * - Calculated market metrics (list-to-sale ratio, market health, etc.)
+ * - Calculated market metrics
  *
  * @route GET /api/comparables
  * @route POST /api/comparables
@@ -24,29 +26,39 @@ import {
   calculateMarketHistory,
   type MarketHistoryMetrics,
 } from '@/lib/utils/market-history-calculations';
+import {
+  analyzeComparables,
+  type SubjectProperty,
+  type CompAnalysisResult,
+} from '@/lib/utils/comp-analysis';
 import { logger } from '@/lib/logger';
 
 // Mark as dynamic to prevent static generation issues
 export const dynamic = 'force-dynamic';
 
 /**
- * Enhanced market data response type
+ * Reverse geocode coordinates to get a postal code using OpenStreetMap Nominatim.
  */
-interface EnhancedMarketData {
-  comparables: RealtyComparable[];
-  statistics: {
-    count: number;
-    avg_sold_price: number;
-    median_sold_price: number;
-    min_sold_price: number;
-    max_sold_price: number;
-    avg_price_per_sqft: number;
-    avg_days_on_market: number;
-  };
-  activeListingsCount: number | null;
-  calculatedMetrics: CalculatedMarketMetrics | null;
-  historicalMetrics: MarketHistoryMetrics | null;
-  dataSourceType: 'live' | 'partial' | 'sample';
+async function reverseGeocodeToZip(lat: number, lng: number): Promise<string | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=16`;
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(5000),
+      headers: { 'User-Agent': 'TaxDeedFlow/1.0' },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const postcode = data?.address?.postcode;
+    if (postcode && /^\d{5}(-\d{4})?$/.test(postcode)) {
+      return postcode.substring(0, 5);
+    }
+    return null;
+  } catch (error) {
+    logger.debug('[Comparables API] Reverse geocode failed:', {
+      message: error instanceof Error ? error.message : 'Unknown',
+    });
+    return null;
+  }
 }
 
 /**
@@ -67,36 +79,202 @@ async function fetchActiveListingsCount(
 }
 
 /**
+ * Parse subject property details from query params.
+ */
+function parseSubjectProperty(searchParams: URLSearchParams): SubjectProperty {
+  return {
+    building_sqft: searchParams.get('subject_sqft') ? parseInt(searchParams.get('subject_sqft')!) : undefined,
+    lot_sqft: searchParams.get('subject_lot_sqft') ? parseInt(searchParams.get('subject_lot_sqft')!) : undefined,
+    year_built: searchParams.get('subject_year_built') ? parseInt(searchParams.get('subject_year_built')!) : undefined,
+    beds: searchParams.get('subject_beds') ? parseInt(searchParams.get('subject_beds')!) : undefined,
+    baths: searchParams.get('subject_baths') ? parseFloat(searchParams.get('subject_baths')!) : undefined,
+    property_type: searchParams.get('subject_type') || undefined,
+    assessed_value: searchParams.get('subject_value') ? parseFloat(searchParams.get('subject_value')!) : undefined,
+  };
+}
+
+/**
+ * LFB-compliant tiered search strategy.
+ *
+ * Tier 1: 180 days, prop_type filter, sqft range (strict LFB)
+ * Tier 2: 365 days, prop_type filter, no sqft filter
+ * Tier 3: 730 days, no filters (rural fallback)
+ *
+ * Returns all raw comps found; scoring happens after via analyzeComparables().
+ */
+async function tieredSearch(
+  realtyService: ReturnType<typeof getRealtyService>,
+  resolvedPostalCode: string | undefined,
+  parsedLat: number | undefined,
+  parsedLng: number | undefined,
+  radiusMiles: number,
+  limit: number,
+  subject: SubjectProperty,
+): Promise<{
+  comparables: RealtyComparable[];
+  statistics: Record<string, number> | null;
+  daysUsed: number;
+  radiusUsed: number;
+  filtersApplied: string[];
+  cached: boolean;
+}> {
+  // Build search tiers per LFB guidelines
+  const tiers: {
+    days: number;
+    propType?: string;
+    sqftMin?: number;
+    sqftMax?: number;
+    label: string;
+  }[] = [];
+
+  // Tier 1: 180 days, strict filters
+  const tier1: typeof tiers[0] = { days: 180, label: 'LFB strict (180d)' };
+  if (subject.property_type) tier1.propType = subject.property_type;
+  if (subject.building_sqft && subject.building_sqft > 0) {
+    tier1.sqftMin = Math.max(0, subject.building_sqft - 500);
+    tier1.sqftMax = subject.building_sqft + 500;
+  }
+  tiers.push(tier1);
+
+  // Tier 2: 365 days, type filter only
+  const tier2: typeof tiers[0] = { days: 365, label: 'LFB relaxed (365d)' };
+  if (subject.property_type) tier2.propType = subject.property_type;
+  tiers.push(tier2);
+
+  // Tier 3: 730 days, no filters (fallback for rural)
+  tiers.push({ days: 730, label: 'Rural fallback (730d)' });
+
+  let bestResult: {
+    comparables: RealtyComparable[];
+    statistics: Record<string, number> | null;
+    cached: boolean;
+  } | null = null;
+  let daysUsed = 730;
+  let radiusUsed = radiusMiles;
+  const filtersApplied: string[] = [];
+
+  for (let i = 0; i < tiers.length; i++) {
+    const tier = tiers[i];
+
+    // Rate limit protection between API calls
+    if (i > 0 && bestResult) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
+    const options: Partial<ComparableSearchOptions> = {
+      limit,
+      sold_within_days: tier.days,
+      prop_type: tier.propType || undefined,
+      sqft_min: tier.sqftMin,
+      sqft_max: tier.sqftMax,
+    };
+
+    let result;
+
+    // Postal code search first (most reliable)
+    if (resolvedPostalCode) {
+      result = await realtyService.getSoldComparables({
+        ...options,
+        postal_code: resolvedPostalCode,
+      });
+    } else if (parsedLat && parsedLng) {
+      result = await realtyService.getSoldComparables({
+        ...options,
+        lat: parsedLat,
+        lng: parsedLng,
+        radius_miles: radiusMiles,
+      });
+    }
+
+    const count = result?.data?.comparables?.length || 0;
+    logger.info(`[Comparables API] Tier "${tier.label}": ${count} results`);
+
+    if (count >= 3) {
+      daysUsed = tier.days;
+      radiusUsed = radiusMiles;
+      if (tier.propType) filtersApplied.push(`type:${tier.propType}`);
+      if (tier.sqftMin) filtersApplied.push(`sqft:${tier.sqftMin}-${tier.sqftMax}`);
+      filtersApplied.push(`days:${tier.days}`);
+
+      return {
+        comparables: result!.data?.comparables || [],
+        statistics: result!.data?.statistics || null,
+        daysUsed,
+        radiusUsed,
+        filtersApplied,
+        cached: result!.cached || false,
+      };
+    }
+
+    // Keep the best result so far (most comps)
+    if (!bestResult || count > (bestResult.comparables?.length || 0)) {
+      bestResult = {
+        comparables: result?.data?.comparables || [],
+        statistics: result?.data?.statistics || null,
+        cached: result?.cached || false,
+      };
+      daysUsed = tier.days;
+    }
+  }
+
+  // If postal code didn't work well, try coordinate fallback with wider radius
+  if (parsedLat && parsedLng && (bestResult?.comparables?.length || 0) < 3) {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const wideResult = await realtyService.getSoldComparables({
+      lat: parsedLat,
+      lng: parsedLng,
+      radius_miles: 25,
+      limit,
+      sold_within_days: 730,
+    });
+    const wideCount = wideResult.data?.comparables?.length || 0;
+    if (wideCount > (bestResult?.comparables?.length || 0)) {
+      bestResult = {
+        comparables: wideResult.data?.comparables || [],
+        statistics: wideResult.data?.statistics || null,
+        cached: wideResult.cached || false,
+      };
+      radiusUsed = 25;
+      daysUsed = 730;
+    }
+  }
+
+  filtersApplied.push(`days:${daysUsed}`, `radius:${radiusUsed}mi`);
+
+  return {
+    comparables: bestResult?.comparables || [],
+    statistics: bestResult?.statistics || null,
+    daysUsed,
+    radiusUsed,
+    filtersApplied,
+    cached: bestResult?.cached || false,
+  };
+}
+
+/**
  * GET /api/comparables
  *
  * Query params:
- * - lat: latitude (required if no postal_code)
- * - lng: longitude (required if no postal_code)
- * - postal_code: ZIP code (required if no lat/lng)
- * - radius_miles: search radius (default 1)
- * - limit: max results (default 10, max 50)
- * - status: 'sold' | 'for_sale' (default 'sold')
- * - beds_min, beds_max: bedroom filters
- * - sqft_min, sqft_max: square footage filters
- * - prop_type: 'single_family' | 'condo' | 'townhome' | 'multi_family' | 'land'
- * - mode: 'standard' | 'enhanced' (default 'standard')
- *         Enhanced mode includes active listings count and calculated market metrics
+ * - lat, lng: coordinates
+ * - postal_code: ZIP code
+ * - radius_miles: search radius (default 5)
+ * - limit: max results (default 25, max 50)
+ * - prop_type: property type filter
+ * - mode: 'standard' | 'enhanced' (default 'enhanced')
+ * - subject_sqft, subject_lot_sqft, subject_beds, subject_baths,
+ *   subject_year_built, subject_type, subject_value: subject property details
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // Parse coordinates
     const lat = searchParams.get('lat');
     const lng = searchParams.get('lng');
     const postalCode = searchParams.get('postal_code');
-    const radiusMiles = parseFloat(searchParams.get('radius_miles') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
-    const status = searchParams.get('status') || 'sold';
-    const propType = searchParams.get('prop_type');
-    const mode = searchParams.get('mode') || 'standard';
+    const radiusMiles = parseFloat(searchParams.get('radius_miles') || '5');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '25'), 50);
+    const mode = searchParams.get('mode') || 'enhanced';
 
-    // Validate input
     if (!postalCode && (!lat || !lng)) {
       return NextResponse.json(
         { error: 'Either postal_code or lat/lng coordinates are required' },
@@ -105,129 +283,123 @@ export async function GET(request: NextRequest) {
     }
 
     const realtyService = getRealtyService();
+    const subject = parseSubjectProperty(searchParams);
 
-    // Build search options
-    const options: ComparableSearchOptions = {
-      postal_code: postalCode || undefined,
-      lat: lat ? parseFloat(lat) : undefined,
-      lng: lng ? parseFloat(lng) : undefined,
-      radius_miles: radiusMiles,
+    // Resolve postal code
+    let resolvedPostalCode = postalCode || undefined;
+    const parsedLat = lat ? parseFloat(lat) : undefined;
+    const parsedLng = lng ? parseFloat(lng) : undefined;
+
+    if (!resolvedPostalCode && parsedLat && parsedLng) {
+      resolvedPostalCode = await reverseGeocodeToZip(parsedLat, parsedLng) || undefined;
+      if (resolvedPostalCode) {
+        logger.info(`[Comparables API] Resolved ZIP: ${resolvedPostalCode}`);
+      }
+    }
+
+    // LFB tiered search
+    const searchResult = await tieredSearch(
+      realtyService,
+      resolvedPostalCode,
+      parsedLat,
+      parsedLng,
+      radiusMiles,
       limit,
-      beds_min: searchParams.get('beds_min') ? parseInt(searchParams.get('beds_min')!) : undefined,
-      beds_max: searchParams.get('beds_max') ? parseInt(searchParams.get('beds_max')!) : undefined,
-      sqft_min: searchParams.get('sqft_min') ? parseInt(searchParams.get('sqft_min')!) : undefined,
-      sqft_max: searchParams.get('sqft_max') ? parseInt(searchParams.get('sqft_max')!) : undefined,
-      prop_type: propType || undefined,
-    };
+      subject,
+    );
 
-    const result = await realtyService.getSoldComparables(options);
+    // Run LFB 9-step comp analysis
+    const analysis = analyzeComparables(subject, searchResult.comparables, {
+      daysUsed: searchResult.daysUsed,
+      radiusUsed: searchResult.radiusUsed,
+      filtersApplied: searchResult.filtersApplied,
+    });
 
-    // Enhanced mode: include active listings and calculated metrics
     if (mode === 'enhanced') {
-      // Fetch active listings count in parallel
+      // Fetch active listings count
       const activeListingsCount = await fetchActiveListingsCount(realtyService, {
         postal_code: postalCode || undefined,
-        lat: lat ? parseFloat(lat) : undefined,
-        lng: lng ? parseFloat(lng) : undefined,
+        lat: parsedLat,
+        lng: parsedLng,
       });
 
-      // Calculate market metrics
+      // Calculate market metrics from all comps
+      const allComps = searchResult.comparables;
+      const statistics = searchResult.statistics;
       let calculatedMetrics: CalculatedMarketMetrics | null = null;
-      const comparables = result.data?.comparables || [];
-      const statistics = result.data?.statistics;
 
-      if (comparables.length >= 3 && statistics) {
+      if (allComps.length >= 3 && statistics) {
         const input: MarketCalculationInput = {
-          comparables,
-          avgDaysOnMarket: statistics.avg_days_on_market,
-          avgPricePerSqft: statistics.avg_price_per_sqft,
+          comparables: allComps,
+          avgDaysOnMarket: (statistics as Record<string, number>).avg_days_on_market || 0,
+          avgPricePerSqft: (statistics as Record<string, number>).avg_price_per_sqft || 0,
           activeListingsCount: activeListingsCount || undefined,
-          soldCount: statistics.count,
-          monthsOfData: 6, // Default assumption
+          soldCount: (statistics as Record<string, number>).count || allComps.length,
+          monthsOfData: Math.ceil(searchResult.daysUsed / 30),
         };
         calculatedMetrics = calculateAllMarketMetrics(input);
       }
 
-      // Calculate historical metrics (YoY changes) if we have enough data
+      // Historical metrics
       let historicalMetrics: MarketHistoryMetrics | null = null;
-      if (comparables.length >= 5) {
-        // Try to fetch extended historical data for YoY calculations
-        try {
-          const extendedOptions: ComparableSearchOptions = {
-            postal_code: postalCode || undefined,
-            lat: lat ? parseFloat(lat) : undefined,
-            lng: lng ? parseFloat(lng) : undefined,
-            radius_miles: radiusMiles,
-            limit: 100, // Get more for historical analysis
-            sold_within_days: 365, // 12 months of data
-            beds_min: searchParams.get('beds_min') ? parseInt(searchParams.get('beds_min')!) : undefined,
-            beds_max: searchParams.get('beds_max') ? parseInt(searchParams.get('beds_max')!) : undefined,
-            prop_type: propType || undefined,
-          };
-
-          const extendedResult = await realtyService.getSoldComparables(extendedOptions);
-          const extendedComps = extendedResult.data?.comparables || [];
-
-          if (extendedComps.length >= 10) {
-            historicalMetrics = calculateMarketHistory(extendedComps);
-          } else {
-            // Use whatever data we have
-            historicalMetrics = calculateMarketHistory(comparables);
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          logger.warn('[Comparables API] Failed to fetch extended historical data:', { message });
-          // Fall back to using current comparables
-          historicalMetrics = calculateMarketHistory(comparables);
-        }
+      if (allComps.length >= 5) {
+        historicalMetrics = calculateMarketHistory(allComps);
       }
 
-      // Determine data source type
+      // Data source type
       let dataSourceType: 'live' | 'partial' | 'sample' = 'sample';
-      if (comparables.length > 0 && activeListingsCount !== null) {
+      if (allComps.length > 0 && activeListingsCount !== null) {
         dataSourceType = 'live';
-      } else if (comparables.length > 0) {
+      } else if (allComps.length > 0) {
         dataSourceType = 'partial';
       }
 
-      const enhancedData: EnhancedMarketData = {
-        comparables,
-        statistics: statistics || {
-          count: 0,
-          avg_sold_price: 0,
-          median_sold_price: 0,
-          min_sold_price: 0,
-          max_sold_price: 0,
-          avg_price_per_sqft: 0,
-          avg_days_on_market: 0,
-        },
-        activeListingsCount,
-        calculatedMetrics,
-        historicalMetrics,
-        dataSourceType,
-      };
-
       return NextResponse.json({
         success: true,
-        data: enhancedData,
+        data: {
+          comparables: searchResult.comparables,
+          statistics: statistics || {
+            count: 0,
+            avg_sold_price: 0,
+            median_sold_price: 0,
+            min_sold_price: 0,
+            max_sold_price: 0,
+            avg_price_per_sqft: 0,
+            avg_days_on_market: 0,
+          },
+          activeListingsCount,
+          calculatedMetrics,
+          historicalMetrics,
+          dataSourceType,
+          // LFB Analysis
+          analysis,
+        },
         meta: {
           source: 'realty-in-us',
           mode: 'enhanced',
-          cached: result.cached || false,
+          cached: searchResult.cached,
           timestamp: new Date().toISOString(),
+          search_days_used: searchResult.daysUsed,
+          search_radius_used: searchResult.radiusUsed,
+          filters_applied: searchResult.filtersApplied,
         },
       });
     }
 
-    // Standard mode: return basic comparables data
+    // Standard mode
     return NextResponse.json({
       success: true,
-      data: result.data,
+      data: {
+        ...searchResult,
+        analysis,
+      },
       meta: {
         source: 'realty-in-us',
         mode: 'standard',
-        cached: result.cached || false,
+        cached: searchResult.cached,
         timestamp: new Date().toISOString(),
+        search_days_used: searchResult.daysUsed,
+        search_radius_used: searchResult.radiusUsed,
       },
     });
   } catch (error) {
@@ -247,19 +419,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/comparables
- *
- * Body:
- * {
- *   lat: number,
- *   lng: number,
- *   radius_miles?: number,
- *   limit?: number,
- *   beds_min?: number,
- *   beds_max?: number,
- *   sqft_min?: number,
- *   sqft_max?: number,
- *   prop_type?: string
- * }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -280,8 +439,9 @@ export async function POST(request: NextRequest) {
       const options: ComparableSearchOptions = {
         lat,
         lng,
-        radius_miles: body.radius_miles || 1,
-        limit: Math.min(body.limit || 10, 50),
+        radius_miles: body.radius_miles || 5,
+        sold_within_days: body.sold_within_days || 730,
+        limit: Math.min(body.limit || 25, 50),
         beds_min: body.beds_min,
         beds_max: body.beds_max,
         sqft_min: body.sqft_min,
@@ -303,7 +463,7 @@ export async function POST(request: NextRequest) {
     } else if (postal_code) {
       const options: ComparableSearchOptions = {
         postal_code,
-        limit: Math.min(body.limit || 10, 50),
+        limit: Math.min(body.limit || 25, 50),
         beds_min: body.beds_min,
         beds_max: body.beds_max,
         sqft_min: body.sqft_min,

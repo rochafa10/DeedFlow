@@ -462,6 +462,12 @@ export interface PropertyData {
   has_screenshot: boolean;
   /** URL to the property screenshot */
   screenshot_url: string | null;
+  /** Assessed improvement value from county assessor (0 = vacant/no structure) */
+  assessed_improvement_value: number | null;
+  /** Flag indicating property is a vacant lot (from Regrid or assessor data) */
+  is_vacant_lot: boolean;
+  /** Flag indicating property is likely a mobile/manufactured home */
+  is_likely_mobile_home: boolean;
 }
 
 // ============================================

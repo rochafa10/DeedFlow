@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
 
     logger.log(`[Regrid Scraper] Processing property ${parcel_id} in ${county}, ${state}`)
 
-    // Scrape Regrid data using their public search
-    const regridData = await scrapeRegridData(parcel_id, address, county, state)
+    // Scrape Regrid data — tries n8n (real Playwright scraper) first, placeholder fallback
+    const regridData = await scrapeRegridData(parcel_id, address, county, state, property_id)
 
     if (!regridData.success || !regridData.data) {
       logger.error(`[Regrid Scraper] Failed to scrape ${parcel_id}:`, { error: regridData.error || 'No data returned' })
@@ -230,32 +230,32 @@ async function scrapeRegridData(
   parcelId: string,
   address: string | undefined,
   county: string,
-  state: string
+  state: string,
+  propertyId?: string
 ): Promise<{
   success: boolean
   data?: RegridData
   error?: string
 }> {
+  // Try the real n8n Regrid scraper first (Playwright on VPS).
+  // This runs server-side so there are no CORS issues.
+  const n8nResult = await tryN8nRegridScraper(parcelId, address, county, state, propertyId)
+  if (n8nResult.success && n8nResult.data) {
+    return n8nResult
+  }
+
+  logger.log(`[Regrid Scraper] n8n scraper unavailable (${n8nResult.error}), falling back to placeholder`)
+
+  // Fallback to placeholder data if n8n is unreachable
   try {
-    // Regrid uses a public tiles API that we can query
-    // First, try to search by parcel ID
-    const searchQuery = encodeURIComponent(`${parcelId} ${county} ${state}`)
-    const searchUrl = `https://app.regrid.com/api/v1/search.json?query=${searchQuery}`
-
-    // Try the Regrid API (may require API key for production)
-    // For now, we'll use a mock/simulated response based on the parcel structure
-    // In production, you would either:
-    // 1. Use Regrid's paid API
-    // 2. Use Playwright in a dedicated scraping service
-    // 3. Use a third-party scraping service
-
-    // Simulate scraping with reasonable defaults based on parcel data
-    const data = await fetchRegridDataWithFallback(parcelId, address, county, state)
-
-    return {
-      success: true,
-      data,
+    const data = generatePlaceholderRegridData(parcelId, address, county, state)
+    data.additional_fields = {
+      ...(data.additional_fields || {}),
+      _scrape_method: "placeholder",
+      _scrape_note: "n8n scraper unavailable - placeholder data generated",
+      _n8n_error: n8nResult.error,
     }
+    return { success: true, data }
   } catch (error) {
     return {
       success: false,
@@ -265,51 +265,71 @@ async function scrapeRegridData(
 }
 
 /**
- * Fetches Regrid data with fallback to derived/estimated values
- * In production, this would make actual API calls to Regrid
+ * Proxies the scrape request to the n8n webhook which runs the real
+ * Playwright-based Regrid scraper on the VPS (pwrunner container).
+ * Called server-side to avoid browser CORS restrictions.
  */
-async function fetchRegridDataWithFallback(
+async function tryN8nRegridScraper(
   parcelId: string,
   address: string | undefined,
   county: string,
-  state: string
-): Promise<RegridData> {
-  // Try to fetch from Regrid's public endpoints
-  // Note: Regrid's full API requires a subscription
+  state: string,
+  propertyId?: string
+): Promise<{
+  success: boolean
+  data?: RegridData
+  error?: string
+}> {
+  const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || "https://n8n.lfb-investments.com/webhook/scrape-property"
 
-  // For MVP, we'll try a public endpoint and fall back to minimal data
   try {
-    // Regrid's tile/parcel lookup endpoint
-    const encodedParcel = encodeURIComponent(parcelId.replace(/[^a-zA-Z0-9]/g, ""))
-    const encodedCounty = encodeURIComponent(county.toLowerCase().replace(/\s+/g, "-"))
-    const encodedState = encodeURIComponent(state.toLowerCase())
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 180_000) // 180s timeout to match n8n workflow
 
-    // Try the parcel page URL to get coordinates
-    const parcelUrl = `https://app.regrid.com/us/${encodedState}/${encodedCounty}/parcel/${encodedParcel}`
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        property_id: propertyId,
+        parcel_id: parcelId,
+        address,
+        county,
+        state,
+      }),
+      signal: controller.signal,
+    })
 
-    // Attempt to fetch parcel data
-    // In a real implementation, you might use:
-    // 1. Regrid API with API key
-    // 2. A headless browser service
-    // 3. Web scraping with proper rate limiting
+    clearTimeout(timeout)
 
-    // For now, generate realistic placeholder data
-    // This allows the workflow to be tested end-to-end
-    const placeholderData = generatePlaceholderRegridData(parcelId, address, county, state)
-
-    // Add a note that this is placeholder data
-    placeholderData.additional_fields = {
-      ...(placeholderData.additional_fields || {}),
-      _scrape_method: "placeholder",
-      _scrape_note: "Placeholder data - configure Regrid API key for real data",
-      parcel_url: parcelUrl,
+    if (!response.ok) {
+      return { success: false, error: `n8n returned ${response.status}` }
     }
 
-    return placeholderData
+    const result = await response.json()
 
+    if (result.success && result.regrid_data) {
+      // n8n returned real scraped data — map it to our RegridData shape
+      const rd = result.regrid_data
+      return {
+        success: true,
+        data: {
+          ...rd,
+          additional_fields: {
+            ...(rd.additional_fields || {}),
+            _scrape_method: "n8n_playwright",
+          },
+          data_quality_score: rd.data_quality_score ?? 0.85,
+        },
+      }
+    }
+
+    return { success: false, error: result.error || "n8n returned no data" }
   } catch (error) {
-    // Return minimal data on error
-    return generatePlaceholderRegridData(parcelId, address, county, state)
+    const msg = error instanceof Error ? error.message : "Unknown error"
+    if (msg.includes("abort")) {
+      return { success: false, error: "n8n request timed out (180s)" }
+    }
+    return { success: false, error: msg }
   }
 }
 

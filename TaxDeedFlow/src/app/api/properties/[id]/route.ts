@@ -111,7 +111,11 @@ export async function GET(
       zipCode: "", // Extract from address if needed
       totalDue: property.total_due || 0,
       status: property.visual_validation_status || property.auction_status || "parsed",
-      propertyType: regridData?.property_type || "Unknown",
+      propertyType: property.is_vacant_lot
+        ? "Vacant Lot"
+        : property.is_likely_mobile_home
+          ? "Mobile Home"
+          : (regridData?.property_type || "Unknown"),
       lotSize: regridData?.lot_size_acres
         ? `${regridData.lot_size_acres} acres`
         : (regridData?.lot_size_sqft ? `${regridData.lot_size_sqft} sqft` : "Unknown"),
@@ -130,6 +134,8 @@ export async function GET(
       latitude: regridData?.latitude || null,
       longitude: regridData?.longitude || null,
       ownerName: property.owner_name || regridData?.raw_data?.owner_name || null,
+      isVacantLot: property.is_vacant_lot || false,
+      isLikelyMobileHome: property.is_likely_mobile_home || false,
 
       // Regrid data
       regridData: regridData ? {
@@ -138,7 +144,7 @@ export async function GET(
         propertyClass: regridData.property_class,
         zoning: regridData.zoning,
         assessedLandValue: regridData.assessed_value,
-        assessedImprovementValue: null,
+        assessedImprovementValue: regridData?.assessed_improvement_value ?? null,
         marketValue: regridData.market_value,
         lastSaleDate: null,
         lastSalePrice: null,

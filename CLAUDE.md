@@ -93,56 +93,124 @@ When working on this project, you have standing permission to:
 
 ---
 
-## VPS Access (DigitalOcean Droplet)
+## DigitalOcean Agent
 
-**DO NOT ask about VPS access - use the browser to login to DigitalOcean.**
+@agents/DIGITALOCEAN-AGENT.md
+
+The DigitalOcean Agent manages all infrastructure on your DigitalOcean account:
+- Droplet management (create, resize, restart, snapshot)
+- Docker container operations on the VPS
+- DNS and domain management
+- Firewall and networking configuration
+- Monitoring and billing
+
+### DigitalOcean API Access (Preferred)
+```bash
+# Set your API token
+export DIGITALOCEAN_TOKEN="dop_v1_xxxxxxxxxxxxxxxxxxxx"
+
+# Use the API utility script
+node scripts/digitalocean-api.js droplets      # List all droplets
+node scripts/digitalocean-api.js droplet <id>  # Get droplet details
+node scripts/digitalocean-api.js reboot <id>   # Reboot droplet
+node scripts/digitalocean-api.js snapshot <id> "backup-name"  # Create snapshot
+node scripts/digitalocean-api.js billing       # Check billing
+node scripts/digitalocean-api.js help          # See all commands
+```
+
+### Quick Commands
+```
+"List all droplets"           -> Show droplet status
+"Restart n8n droplet"         -> Reboot the VPS
+"Create snapshot before upgrade"  -> Backup current state
+"Deploy script to pwrunner"   -> Deploy to container
+"Show billing status"         -> Check costs
+```
+
+---
+
+## VPS Access (DigitalOcean Droplet)
 
 ### VPS Details
 - **IP Address**: 192.241.153.13
 - **Provider**: DigitalOcean
-- **Droplet Name**: n8n-production (or similar)
-- **Access Method**: DigitalOcean Web Console (via browser)
+- **Droplet Name**: n8n-droplet
+- **Droplet ID**: 517414136
+- **Region**: nyc1 (New York 1)
+- **Size**: s-2vcpu-4gb (2 vCPU, 4GB RAM, 80GB disk)
+- **Access Methods**:
+  1. **API (Preferred)** - Use DIGITALOCEAN_TOKEN with scripts/digitalocean-api.js
+  2. **Web Console** - Browser login to cloud.digitalocean.com
 
-### How to Access VPS
+### How to Access VPS via Browser (Fallback)
 1. Navigate to https://cloud.digitalocean.com/login
 2. Click "Sign In with Google" (user's Google account is linked)
 3. Go to Droplets → Select the droplet → Click "Console" or "Access"
 4. Use the web-based terminal to run commands
 
 ### Docker Containers on VPS
-| Container | Purpose | Port |
-|-----------|---------|------|
-| `n8n` | Workflow automation | 5678 |
-| `pwrunner` (n8n-production-pwrunner-1) | Playwright screenshot service | 3001 |
+| Container | Container ID | Purpose | Port |
+|-----------|--------------|---------|------|
+| n8n-production-pwrunner-1 | f3dce7c59905 | Playwright screenshot service | 3001 |
+| n8n-production-n8n-1 | 996f73a2c068 | n8n workflow automation (v2.4.8) | 5678 |
+| n8n-production-nginx-1 | bfb0652376e4 | Reverse proxy | 80, 443 |
+| n8n-production-cloudflared-1 | 4bf66773574a | Cloudflare tunnel | - |
 
-### Deploying Scripts to pwrunner Container
+### ⚠️ CRITICAL: Deploying Scripts to Docker Container
+
+**VNC Console has issues with special characters (`:`, `|`, `>`, `https://`). Use this proven method:**
+
+#### Step 1: Upload script to 0x0.st (from local machine)
 ```bash
-# From VPS console:
-# 1. Create/update script file
-cat > /tmp/regrid-screenshot.js << 'EOF'
-[script content here]
-EOF
-
-# 2. Copy to container
-docker cp /tmp/regrid-screenshot.js n8n-production-pwrunner-1:/app/scripts/regrid-screenshot.js
-
-# 3. Verify
-docker exec n8n-production-pwrunner-1 cat /app/scripts/regrid-screenshot.js | head -20
+curl -k -F "file=@scripts/your-script.js" https://0x0.st
+# Returns: https://0x0.st/XXXX.js (save the XXXX.js part)
 ```
 
-### Common Docker Commands
+#### Step 2: Access VNC Console via Playwright
+```
+Navigate to: https://cloud.digitalocean.com/droplets/517414136/console
+Click on canvas to activate, press Enter for prompt
+```
+
+#### Step 3: Download DIRECTLY INTO the container (key insight!)
+```bash
+# Use wget WITHOUT https:// - download directly into container
+# Use container ID, not name, to avoid colon issues
+docker exec f3dce7c59905 wget -O /app/scripts/your-script.js 0x0.st/XXXX.js
+```
+
+#### Step 4: Verify
+```bash
+docker exec f3dce7c59905 ls -la /app/scripts/
+```
+
+### Why This Works
+- `wget` auto-adds `http://` if no protocol specified (avoids colon issue)
+- Using container ID avoids the `container:/path` colon issue
+- File goes directly into container (no `docker cp` needed)
+
+### What Does NOT Work via VNC
+- ❌ `curl https://...` - colon breaks URL
+- ❌ `docker cp file container:/path` - colon breaks path
+- ❌ `cat file | docker exec -i` - pipe becomes backslash
+- ❌ Heredocs with special chars - various issues
+
+### Common Docker Commands (use Container ID)
 ```bash
 # List containers
 docker ps
 
 # View container logs
-docker logs n8n-production-pwrunner-1 --tail 50
+docker logs f3dce7c59905 --tail 50
 
 # Restart container
-docker restart n8n-production-pwrunner-1
+docker restart f3dce7c59905
 
 # Execute command in container
-docker exec -it n8n-production-pwrunner-1 /bin/sh
+docker exec f3dce7c59905 ls -la /app/scripts/
+
+# Download file directly into container
+docker exec f3dce7c59905 wget -O /app/scripts/script.js 0x0.st/XXXX.js
 ```
 
 ## Core Agents

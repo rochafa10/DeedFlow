@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Service imports
-import { getGeoapifyService } from '@/lib/api/services/geoapify-service';
+import { getGeoapifyService, type AmenitiesSummary } from '@/lib/api/services/geoapify-service';
 import { getFCCService } from '@/lib/api/services/fcc-service';
 import { getElevationService } from '@/lib/api/services/elevation-service';
 import { getClimateService } from '@/lib/api/services/climate-service';
@@ -23,6 +23,7 @@ import { getNASAFIRMSService } from '@/lib/api/services/nasa-firms-service';
 import { getEPAService } from '@/lib/api/services/epa-service';
 import { getOpenAIService } from '@/lib/api/services/openai-service';
 import { getCensusService } from '@/lib/api/services/census-service';
+import { calculateLocationScores } from '@/lib/utils/location-scoring';
 import { logger } from '@/lib/logger';
 
 interface ReportRequest {
@@ -166,9 +167,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           case 'epa':
             reportData.environmentalSites = responseData;
             break;
-          case 'geoapify':
-            reportData.amenities = responseData;
+          case 'geoapify': {
+            // Transform raw AmenitiesSummary to flattened format and calculate scores
+            const rawAmenities = responseData as AmenitiesSummary;
+            const locationScores = calculateLocationScores(rawAmenities);
+            const amenityCounts = rawAmenities.counts;
+            const totalAmenityCount = Object.values(amenityCounts).reduce((sum, c) => sum + (c || 0), 0);
+            reportData.amenities = {
+              hospitals: amenityCounts.hospitals,
+              schools: amenityCounts.schools,
+              parks: amenityCounts.parks,
+              restaurants: amenityCounts.restaurants,
+              groceryStores: amenityCounts.grocery_stores,
+              publicTransit: amenityCounts.public_transport,
+              total: totalAmenityCount,
+              walkabilityScore: rawAmenities.score,
+              // Computed location scores
+              walkScore: locationScores.walkScore,
+              transitScore: locationScores.transitScore,
+              bikeScore: locationScores.bikeScore,
+              schoolRating: locationScores.schoolRating,
+              // Nearest amenities for display
+              nearest: rawAmenities.nearest ? Object.entries(rawAmenities.nearest)
+                .filter(([, place]) => place != null)
+                .map(([type, place]) => ({
+                  name: place!.name || type.replace(/_/g, ' '),
+                  type,
+                  distance: place!.distance ? Math.round(place!.distance * 0.000621371 * 10) / 10 : 0, // meters to miles
+                })) : [],
+            };
             break;
+          }
           case 'fcc':
             reportData.broadband = responseData;
             break;

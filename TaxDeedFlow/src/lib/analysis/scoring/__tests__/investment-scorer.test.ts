@@ -68,6 +68,10 @@ const mockBaseProperty: PropertyData = {
   pipeline_stage: 'scored',
   has_regrid_data: true,
   has_screenshot: true,
+  screenshot_url: 'https://storage.example.com/screenshots/test-prop-001.png',
+  assessed_improvement_value: 85000,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**

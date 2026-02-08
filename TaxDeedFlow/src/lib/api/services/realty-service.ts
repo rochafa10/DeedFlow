@@ -407,6 +407,10 @@ export class RealtyService extends BaseApiService {
           lng: options.lng,
         },
       };
+      // Send radius for coordinate-based searches
+      if (options.radius_miles) {
+        requestBody.search_radius_mi = options.radius_miles;
+      }
     }
 
     // Optional filters
@@ -416,12 +420,19 @@ export class RealtyService extends BaseApiService {
     if (options.sqft_max) requestBody.sqft_max = options.sqft_max;
     if (options.prop_type) requestBody.type = [options.prop_type];
 
-    // Date filter - calculate sold_date range if sold_within_days is specified
+    // Date filter - use sold_within_days if specified, otherwise default to 2 years
     if (options.sold_within_days) {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - options.sold_within_days);
       requestBody.sold_date = {
         min: cutoffDate.toISOString().split('T')[0],
+      };
+    } else {
+      // Default to 2 years lookback for better coverage in rural areas
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setDate(twoYearsAgo.getDate() - 730);
+      requestBody.sold_date = {
+        min: twoYearsAgo.toISOString().split('T')[0],
       };
     }
 

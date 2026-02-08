@@ -273,6 +273,9 @@ export function detectPropertyType(
     land_use?: string | null;
     building_sqft?: number | null;
     lot_size_acres?: number | null;
+    assessed_improvement_value?: number | null;
+    is_vacant_lot?: boolean;
+    is_likely_mobile_home?: boolean;
   },
   externalData?: {
     propertyClass?: string;
@@ -304,7 +307,36 @@ export function detectPropertyType(
     if (landUseType) return landUseType;
   }
 
-  // Step 5: Infer from building data
+  // Step 5: Check assessed improvement value (most reliable vacancy signal)
+  // An improvement value of 0 from the county assessor means no structure exists.
+  // This is far more reliable than building_sqft which is nearly always NULL.
+  if (property.assessed_improvement_value !== undefined &&
+      property.assessed_improvement_value !== null) {
+    if (property.assessed_improvement_value === 0) {
+      if (property.lot_size_acres && property.lot_size_acres > 5) {
+        return 'agricultural';
+      }
+      return 'vacant_land';
+    }
+    // Has improvement value > 0, so has structure -- continue to type detection below
+  }
+
+  // Step 6: Check is_vacant_lot flag from database (Regrid or assessor data)
+  if (property.is_vacant_lot === true) {
+    if (property.lot_size_acres && property.lot_size_acres > 5) {
+      return 'agricultural';
+    }
+    return 'vacant_land';
+  }
+
+  // Step 7: Check mobile home flag before falling back to building_sqft
+  if (property.is_likely_mobile_home === true) {
+    return 'manufactured_home';
+  }
+
+  // Step 8: Legacy fallback -- infer from building_sqft
+  // NOTE: building_sqft is nearly always NULL in our data, so the checks
+  // above (assessed_improvement_value, is_vacant_lot) should catch most cases.
   if (
     property.building_sqft === null ||
     property.building_sqft === undefined ||

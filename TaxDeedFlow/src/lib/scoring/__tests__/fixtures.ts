@@ -95,6 +95,9 @@ export const mockIdealProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-ideal-001.png',
+  assessed_improvement_value: 85000,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -195,6 +198,9 @@ export const mockMinimalProperty: PropertyData = {
   has_regrid_data: false,
   has_screenshot: false,
   screenshot_url: null,
+  assessed_improvement_value: null,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -252,6 +258,9 @@ export const mockVacantLandProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-vacant-001.png',
+  assessed_improvement_value: 0,
+  is_vacant_lot: true,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -354,6 +363,9 @@ export const mockVeryOldProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-old-001.png',
+  assessed_improvement_value: 60000,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -394,6 +406,9 @@ export const mockHighValueProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-highvalue-001.png',
+  assessed_improvement_value: 750000,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -434,6 +449,9 @@ export const mockCemeteryProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-cemetery-001.png',
+  assessed_improvement_value: 0,
+  is_vacant_lot: true,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -474,6 +492,9 @@ export const mockContaminatedProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-contaminated-001.png',
+  assessed_improvement_value: 45000,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -570,6 +591,9 @@ export const mockSliverLotProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-sliver-001.png',
+  assessed_improvement_value: 0,
+  is_vacant_lot: true,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -610,6 +634,115 @@ export const mockFloodZoneProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-flood-001.png',
+  assessed_improvement_value: 70000,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
+};
+
+/**
+ * Mobile/manufactured home property - low improvement value, tiny lot
+ * Represents a typical mobile home on a rented pad (e.g., 119 Nora Dr)
+ */
+export const mockMobileHomeProperty: PropertyData = {
+  id: 'prop-mobilehome-001',
+  parcel_id: '10.11-13..-445.00-000',
+  address: '119 Nora Drive',
+  city: 'Altoona',
+  state: 'PA',
+  zip: '16601',
+  county_id: 'county-blair-001',
+  county_name: 'Blair',
+  owner_name: 'Jane Mobile',
+  total_due: 1200,
+  tax_amount: 950,
+  tax_year: 2024,
+  sale_type: 'repository',
+  sale_date: null,
+  coordinates: {
+    latitude: 40.4985,
+    longitude: -78.4102,
+  },
+  lot_size_sqft: 436, // ~0.01 acre, tiny mobile home pad
+  lot_size_acres: 0.01,
+  building_sqft: null, // Usually unknown for mobile homes
+  year_built: 1978,
+  bedrooms: 2,
+  bathrooms: 1,
+  assessed_value: 3500,
+  market_value: 4000,
+  property_type: 'unknown',
+  zoning: 'R-1',
+  land_use: 'Residential',
+  validation_status: 'CAUTION',
+  pipeline_stage: 'validated',
+  has_regrid_data: true,
+  has_screenshot: true,
+  screenshot_url: 'https://storage.example.com/screenshots/prop-mobilehome-001.png',
+  assessed_improvement_value: 2200, // Very low improvement value typical of mobile homes
+  is_vacant_lot: false,
+  is_likely_mobile_home: true,
+};
+
+/**
+ * External data for mobile home property
+ */
+export const mockMobileHomeExternalData: ExternalData = {
+  walkScore: 25,
+  transitScore: 5,
+  bikeScore: 15,
+  crimeData: {
+    crimeIndex: 40,
+    violentCrimeRate: 2.0,
+    propertyCrimeRate: 12.5,
+    source: 'CrimeGrade',
+    asOf: new Date('2026-01-01'),
+  },
+  schoolRating: {
+    overallRating: 5,
+    elementaryRating: 5,
+    middleRating: 5,
+    highRating: 4,
+    source: 'GreatSchools',
+  },
+  floodZone: {
+    zone: 'X',
+    riskLevel: 'minimal',
+    insuranceRequired: false,
+    baseFloodElevation: null,
+  },
+  nearbyAmenities: {
+    restaurants: 3,
+    groceryStores: 1,
+    parks: 2,
+    hospitals: 1,
+    shopping: 2,
+    totalScore: 30,
+  },
+  environmentalHazards: {
+    superfundSites: 0,
+    brownfieldSites: 0,
+    airQualityIndex: 45,
+    riskScore: 12,
+  },
+  marketData: {
+    medianDaysOnMarket: 90,
+    priceChangeYoY: 1.0,
+    inventoryCount: 60,
+    absorptionRate: 1.5,
+    medianSalePrice: 8000,
+    pricePerSqFt: null, // Not meaningful for mobile homes
+  },
+  comparableSales: {
+    count: 2,
+    avgSalePrice: 5000,
+    medianSalePrice: 4500,
+    avgPricePerSqFt: null,
+    dateRange: {
+      start: new Date('2025-06-01'),
+      end: new Date('2025-12-31'),
+    },
+  },
+  accessData: null,
 };
 
 /**
@@ -790,6 +923,7 @@ export const batchTestProperties: PropertyData[] = [
   mockContaminatedProperty,
   mockSliverLotProperty,
   mockFloodZoneProperty,
+  mockMobileHomeProperty,
 ];
 
 /**
@@ -805,6 +939,7 @@ export const batchExternalDataMap: Record<string, ExternalData | null> = {
   'prop-contaminated-001': mockContaminatedExternalData,
   'prop-sliver-001': null,
   'prop-flood-001': mockFloodZoneExternalData,
+  'prop-mobilehome-001': mockMobileHomeExternalData,
 };
 
 // ============================================

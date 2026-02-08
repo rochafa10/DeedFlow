@@ -69,6 +69,9 @@ export const mockIdealProperty: PropertyData = {
   has_regrid_data: true,
   has_screenshot: true,
   screenshot_url: 'https://storage.example.com/screenshots/prop-ideal-001.png',
+  assessed_improvement_value: 85000,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**
@@ -168,6 +171,9 @@ export const mockMinimalProperty: PropertyData = {
   has_regrid_data: false,
   has_screenshot: false,
   screenshot_url: null,
+  assessed_improvement_value: null,
+  is_vacant_lot: false,
+  is_likely_mobile_home: false,
 };
 
 /**

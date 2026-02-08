@@ -218,6 +218,74 @@ export interface PropertyImageryAnalysisResponse {
   analyzedAt: string; // ISO 8601 timestamp
 }
 
+// ============================================================================
+// Visual Validation / Investability Types
+// ============================================================================
+
+/**
+ * Image input for property investability analysis.
+ *
+ * Each image is tagged with its source type so the AI model can weigh
+ * satellite imagery differently from street-level photos.
+ */
+export interface VisualValidationImage {
+  /** Publicly-accessible URL to the image */
+  url: string;
+  /** Source / perspective of the image */
+  type: 'satellite' | 'map' | 'street_view' | 'regrid';
+  /** Detail level to request from GPT-4o vision */
+  detail: 'high' | 'low';
+}
+
+/**
+ * Structured result from GPT-4o property investability screening.
+ *
+ * The `status` field drives downstream pipeline routing:
+ * - APPROVED  -> continue to condition / title analysis
+ * - CAUTION   -> flag for manual review before proceeding
+ * - REJECTED  -> skip all further analysis for this property
+ */
+export interface VisualValidationResult {
+  /** Overall screening decision */
+  status: 'APPROVED' | 'CAUTION' | 'REJECTED';
+  /** Model confidence in the decision (0-100) */
+  confidence: number;
+  /** 1-2 sentence overview of the property */
+  summary: string;
+  /** Positive findings that support investability */
+  positives: string[];
+  /** Concerns that warrant caution / manual review */
+  concerns: string[];
+  /** Immediate disqualifiers that trigger rejection */
+  redFlags: string[];
+  /** Actionable next-step recommendation */
+  recommendation: string;
+  /** AI's best determination of property type (e.g. "single-family residential") */
+  propertyType: string;
+  /** Whether a built structure is visible on the parcel */
+  structurePresent: boolean;
+  /** Whether the parcel has visible road frontage / access */
+  roadAccess: boolean;
+  /** Observed land use category (e.g. "residential", "commercial", "vacant") */
+  landUseObserved: string;
+}
+
+/**
+ * Context about the property that supplements the images.
+ * All fields are optional -- the model works with whatever is available.
+ */
+export interface VisualValidationPropertyContext {
+  address?: string;
+  parcelId?: string;
+  lotSize?: string;
+  propertyType?: string;
+  zoning?: string;
+}
+
+// ============================================================================
+// Service Configuration
+// ============================================================================
+
 /**
  * OpenAI Service Configuration
  */
@@ -777,6 +845,294 @@ Be thorough but realistic. Consider the image type (satellite vs street view).`;
     return {
       ...response,
       data: analysisResponse,
+    };
+  }
+
+  // ==========================================================================
+  // Property Investability Screening (Visual Validation)
+  // ==========================================================================
+
+  /**
+   * System prompt that instructs GPT-4o to act as a property investment
+   * screener. Contains the full REJECT / CAUTION / APPROVED decision tree.
+   */
+  private static readonly INVESTABILITY_SYSTEM_PROMPT = `You are an expert property investment screener for a tax deed auction investor.
+
+Your job is to analyze aerial, satellite, map, and street-level images of a property parcel and determine whether it is worth investing in.
+
+Return your analysis as a JSON object with these exact fields:
+{
+  "status": "APPROVED" | "CAUTION" | "REJECTED",
+  "confidence": <number 0-100>,
+  "summary": "<1-2 sentence overview>",
+  "positives": ["<positive finding>", ...],
+  "concerns": ["<caution flag>", ...],
+  "redFlags": ["<disqualifier>", ...],
+  "recommendation": "<what the investor should do next>",
+  "propertyType": "<your best guess at the property type>",
+  "structurePresent": <boolean>,
+  "roadAccess": <boolean>,
+  "landUseObserved": "<observed land use category>"
+}
+
+DECISION RULES (apply strictly):
+
+REJECT immediately if ANY of the following are true:
+- Cemetery (headstones, grave markers, memorial park layout visible)
+- Water body covering >30% of the parcel (lake, pond, river, reservoir)
+- Utility property (power lines, substations, electrical towers on the parcel)
+- Railroad property (tracks running on or through the parcel)
+- Landlocked parcel (no visible road access or frontage whatsoever)
+- Sliver lot (extremely narrow strip of land that is clearly unbuildable)
+- Public infrastructure (roads, bridges, dams, government facilities)
+- Landfill or waste disposal facility
+Any single disqualifier -> status MUST be "REJECTED".
+List each disqualifier in the "redFlags" array.
+
+Flag as CAUTION if none of the above disqualifiers are present BUT any of these are true:
+- Vacant lot under approximately 0.1 acres with no structure
+- Industrial or heavy-commercial zone surroundings
+- Flood-prone area indicators (near waterway, low terrain, retention pond adjacent)
+- Steep terrain or hillside that may limit buildability
+- Irregular or flag-shaped lot
+- Mobile home or manufactured housing visible
+- Heavy forest cover obscuring the ground (cannot confirm land use)
+- No street-view imagery available (reduces confidence)
+- Parcel is directly adjacent to active railroad tracks or major highway
+- Signs of environmental contamination (discolored soil, barrels, industrial runoff)
+If no disqualifiers but 2 or more caution flags -> status = "CAUTION".
+
+APPROVE if:
+- Residential structure is visible on the parcel
+- Lot shape is regular (rectangular or square)
+- Road frontage is clearly visible
+- Surrounding area is a residential neighborhood
+- Utilities (power lines to the structure, fire hydrant, etc.) appear present
+If zero disqualifiers and fewer than 2 caution flags -> status = "APPROVED".
+
+ADDITIONAL INSTRUCTIONS:
+- Be conservative. When uncertain, lean toward CAUTION over APPROVED.
+- Confidence should reflect how clearly the images support your decision.
+- If only low-resolution or map-only images are provided, lower your confidence accordingly.
+- Always provide at least one item in the "positives" array when the property is not REJECTED.
+- Keep the "summary" to 1-2 concise sentences.
+- "recommendation" should be a single actionable next step for the investor.
+- Respond ONLY with the JSON object. No markdown, no commentary.`;
+
+  /**
+   * Analyze property images to determine investment suitability.
+   *
+   * Uses GPT-4o vision to screen aerial/satellite/street-level images against
+   * a strict REJECT / CAUTION / APPROVED decision tree. This method is the
+   * AI backbone of the Visual Validation pipeline stage.
+   *
+   * @param images - 1-4 images of the property from different sources
+   * @param propertyContext - Optional metadata about the property
+   * @returns Structured validation result and token usage count
+   *
+   * @example
+   * ```ts
+   * const { result, tokensUsed } = await openai.analyzePropertyInvestability(
+   *   [
+   *     { url: 'https://...satellite.png', type: 'satellite', detail: 'high' },
+   *     { url: 'https://...street.png', type: 'street_view', detail: 'high' },
+   *   ],
+   *   { address: '456 Oak St, Altoona, PA 16602', parcelId: '01.01-04..-156.00-000' }
+   * );
+   * console.log(result.status); // "APPROVED" | "CAUTION" | "REJECTED"
+   * ```
+   */
+  public async analyzePropertyInvestability(
+    images: VisualValidationImage[],
+    propertyContext?: VisualValidationPropertyContext
+  ): Promise<{ result: VisualValidationResult; tokensUsed: number }> {
+    // ---- Input validation ------------------------------------------------
+    if (!images || images.length === 0) {
+      throw new ValidationError(
+        'At least one image is required for investability analysis',
+        'images',
+        'validation',
+        'images',
+        { required: 'true', minLength: '1' },
+        images
+      );
+    }
+
+    if (images.length > 4) {
+      throw new ValidationError(
+        'A maximum of 4 images are supported per analysis',
+        'images',
+        'validation',
+        'images',
+        { maxLength: '4' },
+        images
+      );
+    }
+
+    // ---- Build the user message content (text + images) ------------------
+    let userText = 'Analyze the following property images for investment suitability.\n\n';
+
+    // Append property context when available
+    if (propertyContext) {
+      userText += 'Property Context:\n';
+      if (propertyContext.address) {
+        userText += `- Address: ${propertyContext.address}\n`;
+      }
+      if (propertyContext.parcelId) {
+        userText += `- Parcel ID: ${propertyContext.parcelId}\n`;
+      }
+      if (propertyContext.lotSize) {
+        userText += `- Lot Size: ${propertyContext.lotSize}\n`;
+      }
+      if (propertyContext.propertyType) {
+        userText += `- Property Type: ${propertyContext.propertyType}\n`;
+      }
+      if (propertyContext.zoning) {
+        userText += `- Zoning: ${propertyContext.zoning}\n`;
+      }
+      userText += '\n';
+    }
+
+    // Describe each image to the model so it knows the perspective
+    userText += `Images provided (${images.length}):\n`;
+    images.forEach((img, i) => {
+      userText += `  ${i + 1}. Type: ${img.type} | Detail: ${img.detail}\n`;
+    });
+    userText += '\nApply the REJECT / CAUTION / APPROVED rules and return your JSON assessment.';
+
+    // Assemble multi-modal content array
+    const visionContent: Array<TextContent | ImageUrlContent> = [
+      { type: 'text', text: userText },
+    ];
+
+    for (const img of images) {
+      visionContent.push({
+        type: 'image_url',
+        image_url: {
+          url: img.url,
+          detail: img.detail,
+        },
+      });
+    }
+
+    // ---- Call the OpenAI API with JSON response format -------------------
+    // We bypass createChatCompletion() here because we need to set
+    // response_format: { type: "json_object" } which is not exposed
+    // through the generic chat completion options.
+    const endpoint = '/chat/completions';
+
+    const requestBody = {
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: OpenAIService.INVESTABILITY_SYSTEM_PROMPT,
+        },
+        {
+          role: 'user',
+          content: visionContent,
+        },
+      ],
+      temperature: 0.2,       // Deterministic for consistent screening decisions
+      max_tokens: 800,
+      response_format: { type: 'json_object' as const },
+    };
+
+    try {
+      const response = await this.post<{
+        id: string;
+        model: string;
+        choices: Array<{
+          message: { content: string };
+          finish_reason: string;
+        }>;
+        usage: {
+          prompt_tokens: number;
+          completion_tokens: number;
+          total_tokens: number;
+        };
+      }>(endpoint, requestBody);
+
+      const choice = response.data.choices[0];
+      if (!choice) {
+        throw new ApiError(
+          'No completion generated for investability analysis',
+          500,
+          endpoint,
+          response.requestId
+        );
+      }
+
+      // ---- Parse the JSON response --------------------------------------
+      let parsed: VisualValidationResult;
+      try {
+        parsed = JSON.parse(choice.message.content);
+      } catch (parseError) {
+        throw new ApiError(
+          `Failed to parse investability JSON response: ${
+            parseError instanceof Error ? parseError.message : 'Unknown error'
+          }`,
+          500,
+          endpoint,
+          response.requestId
+        );
+      }
+
+      // ---- Validate and sanitize the parsed result -----------------------
+      const result = this.sanitizeInvestabilityResult(parsed);
+
+      const tokensUsed = response.data.usage.total_tokens;
+
+      return { result, tokensUsed };
+    } catch (error) {
+      // Re-throw known API errors without wrapping
+      if (error instanceof ApiError || error instanceof ValidationError) {
+        throw error;
+      }
+
+      // Wrap unexpected errors
+      throw new ApiError(
+        `Investability analysis failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        500,
+        endpoint,
+        'unknown'
+      );
+    }
+  }
+
+  /**
+   * Validates and normalizes a parsed VisualValidationResult, applying
+   * safe defaults for any missing or malformed fields.
+   *
+   * @param raw - The raw parsed JSON from the model response
+   * @returns A well-formed VisualValidationResult
+   */
+  private sanitizeInvestabilityResult(raw: Partial<VisualValidationResult>): VisualValidationResult {
+    // Ensure status is one of the valid enum values
+    const validStatuses: VisualValidationResult['status'][] = ['APPROVED', 'CAUTION', 'REJECTED'];
+    const status = validStatuses.includes(raw.status as VisualValidationResult['status'])
+      ? (raw.status as VisualValidationResult['status'])
+      : 'CAUTION'; // Default to CAUTION when uncertain
+
+    // Clamp confidence to 0-100
+    const confidence = typeof raw.confidence === 'number'
+      ? Math.max(0, Math.min(100, Math.round(raw.confidence)))
+      : 50;
+
+    return {
+      status,
+      confidence,
+      summary: typeof raw.summary === 'string' ? raw.summary : 'Unable to generate summary from imagery.',
+      positives: Array.isArray(raw.positives) ? raw.positives.filter((s) => typeof s === 'string') : [],
+      concerns: Array.isArray(raw.concerns) ? raw.concerns.filter((s) => typeof s === 'string') : [],
+      redFlags: Array.isArray(raw.redFlags) ? raw.redFlags.filter((s) => typeof s === 'string') : [],
+      recommendation: typeof raw.recommendation === 'string' ? raw.recommendation : 'Manual review recommended.',
+      propertyType: typeof raw.propertyType === 'string' ? raw.propertyType : 'unknown',
+      structurePresent: typeof raw.structurePresent === 'boolean' ? raw.structurePresent : false,
+      roadAccess: typeof raw.roadAccess === 'boolean' ? raw.roadAccess : false,
+      landUseObserved: typeof raw.landUseObserved === 'string' ? raw.landUseObserved : 'unknown',
     };
   }
 }

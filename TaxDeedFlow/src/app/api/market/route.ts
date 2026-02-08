@@ -28,6 +28,28 @@ import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 
 /**
+ * Reverse geocode coordinates to get a postal code using OpenStreetMap Nominatim.
+ */
+async function reverseGeocodeToZip(lat: number, lng: number): Promise<string | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=16`;
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(5000),
+      headers: { 'User-Agent': 'TaxDeedFlow/1.0' },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const postcode = data?.address?.postcode;
+    if (postcode && /^\d{5}(-\d{4})?$/.test(postcode)) {
+      return postcode.substring(0, 5);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Combined market data response
  */
 interface CombinedMarketData {
@@ -236,9 +258,16 @@ async function getAreaMarketData(
   const realtyService = getRealtyService();
   const zillowService = getZillowService();
 
-  // Determine search parameters
-  const postalCode = location.match(/^\d{5}$/) ? location : undefined;
-  const cityState = !postalCode ? location : undefined;
+  // Determine search parameters - resolve ZIP from coordinates if needed
+  let postalCode = location.match(/^\d{5}$/) ? location : undefined;
+  if (!postalCode && lat && lng) {
+    const resolved = await reverseGeocodeToZip(lat, lng);
+    if (resolved) {
+      postalCode = resolved;
+      logger.info(`[Market API] Resolved ZIP from coordinates: ${postalCode}`);
+    }
+  }
+  const cityState = !postalCode ? (location || undefined) : undefined;
 
   // Fetch data from both APIs in parallel
   const [realtyResult, zillowSoldResult, zillowForSaleResult] = await Promise.allSettled([
@@ -354,6 +383,19 @@ async function getAreaMarketData(
   const totalActiveListings = activeListingsCount || zillowForSale.length || 0;
   const totalRecentSales = realtyComparables.length || zillowSold.length || 0;
 
+  // Calculate avg price per sqft from Zillow data as fallback when Realty doesn't have sqft
+  let zillowAvgPricePerSqft: number | null = null;
+  const zillowWithSqft = zillowSold.filter(
+    (p) => (p.livingArea || 0) > 0 && (p.price || 0) > 0
+  );
+  if (zillowWithSqft.length >= 2) {
+    const totalPricePerSqft = zillowWithSqft.reduce(
+      (sum, p) => sum + (p.price || 0) / (p.livingArea || 1),
+      0
+    );
+    zillowAvgPricePerSqft = Math.round(totalPricePerSqft / zillowWithSqft.length);
+  }
+
   // Calculate Zestimate vs Sold price difference
   let zestimateVsSoldDiff: number | null = null;
   if (medianZestimate && realtyStatistics.median_sold_price > 0) {
@@ -402,7 +444,7 @@ async function getAreaMarketData(
     historicalMetrics,
     combined: {
       medianPrice: realtyStatistics.median_sold_price || medianZestimate,
-      avgPricePerSqft: realtyStatistics.avg_price_per_sqft || null,
+      avgPricePerSqft: realtyStatistics.avg_price_per_sqft || zillowAvgPricePerSqft || null,
       avgDaysOnMarket: realtyStatistics.avg_days_on_market || null,
       activeListings: totalActiveListings,
       recentSales: totalRecentSales,

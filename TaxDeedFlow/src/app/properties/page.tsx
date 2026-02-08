@@ -35,7 +35,9 @@ import {
   MinusSquare,
   Loader2,
   Database,
+  Sparkles,
 } from "lucide-react"
+import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
@@ -55,6 +57,7 @@ interface Property {
   auctionStatus: string
   propertyType: string
   propertyClass: string | null // Property class from Regrid (Residence, Lot, etc.)
+  regridPropertyType: string | null // Property type code from Regrid (R, L1, T, etc.)
   lotSize: string
   saleType: string
   validation: string | null
@@ -71,6 +74,9 @@ interface Property {
   sewerService: string | null
   // Regrid enrichment indicator
   hasRegridData: boolean
+  // Vacant lot and mobile home detection flags
+  isVacantLot: boolean
+  isLikelyMobileHome: boolean
 }
 
 // Date range options for filtering
@@ -82,6 +88,52 @@ const DATE_RANGES = [
   { value: "90days", label: "Next 90 Days" },
   { value: "6months", label: "Next 6 Months" },
 ]
+
+// Property type code mappings from Regrid
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  // Residential
+  "R": "Residential",
+  "RA": "Residential Apt",
+  "RO": "Residential Other",
+  "RT": "Row/Townhouse",
+  "Residential": "Residential",
+  // Lots/Land
+  "L1": "Vacant Lot",
+  "L2": "Vacant Lot",
+  "L3": "Vacant Lot",
+  "LO": "Lot Other",
+  "V": "Vacant",
+  // Trailer / Mobile Home lot (PA county code)
+  "T": "Trailer/MH Lot",
+  // Commercial
+  "C1": "Commercial",
+  "CL": "Commercial Lot",
+  "CG": "Commercial General",
+  "CH": "Commercial Heavy",
+  "CS": "Commercial Service",
+}
+
+// Get readable property type label
+function getPropertyTypeLabel(
+  regridType: string | null,
+  propertyClass: string | null,
+  isVacantLot?: boolean,
+  isLikelyMobileHome?: boolean
+): string {
+  // Detection flags take priority over Regrid codes
+  if (isVacantLot) return "Vacant Lot"
+  if (isLikelyMobileHome) return "Mobile Home"
+  if (regridType && PROPERTY_TYPE_LABELS[regridType]) {
+    return PROPERTY_TYPE_LABELS[regridType]
+  }
+  if (regridType) {
+    return regridType // Return the code if no mapping found
+  }
+  if (propertyClass && propertyClass !== "Add-On") {
+    return propertyClass
+  }
+  return "-"
+}
 
 type PropertyStatus = "active" | "pending" | "expired" | "sold" | "withdrawn" | "unknown"
 
@@ -181,6 +233,16 @@ const VALIDATION_CONFIG: Record<
 type SortField = "saleDate" | "totalDue" | "county" | "parcelId" | null
 type SortDirection = "asc" | "desc"
 
+// Safe lookup for STATUS_CONFIG - handles unexpected status values from database
+function getStatusConfig(status: string) {
+  return STATUS_CONFIG[status as PropertyStatus] || STATUS_CONFIG.unknown
+}
+
+// Safe lookup for VALIDATION_CONFIG - handles unexpected validation values from database
+function getValidationConfig(validation: string) {
+  return VALIDATION_CONFIG[validation as NonNullable<ValidationStatus>] || VALIDATION_CONFIG.caution
+}
+
 // Saved filter type
 interface SavedFilter {
   id: string
@@ -215,6 +277,7 @@ function PropertiesContent() {
   const [countyFilter, setCountyFilter] = useState<string>("all")
   const [dateRangeFilter, setDateRangeFilter] = useState<string>("all")
   const [saleTypeFilter, setSaleTypeFilter] = useState<string>("all")
+  const [validationFilter, setValidationFilter] = useState<string>("all")
   const [showFilters, setShowFilters] = useState(false)
   const [sortField, setSortField] = useState<SortField>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
@@ -231,7 +294,9 @@ function PropertiesContent() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [allCounties, setAllCounties] = useState<string[]>([])
+  const [countyNameToIdMap, setCountyNameToIdMap] = useState<Map<string, string>>(new Map())
   const [scrapingPropertyId, setScrapingPropertyId] = useState<string | null>(null)
+  const [isBatchValidating, setIsBatchValidating] = useState(false)
 
   // Sale ID filter (for filtering properties by specific auction)
   const saleIdFilter = searchParams.get("sale_id")
@@ -293,6 +358,17 @@ function PropertiesContent() {
           property_type?: string
           propertyType?: string
           property_class?: string
+          regrid_property_type?: string
+          year_built?: number
+          bedrooms?: number
+          bathrooms?: number
+          building_sqft?: number
+          assessed_value?: number
+          lot_size_acres?: number
+          lot_dimensions?: string
+          water_service?: string
+          sewer_service?: string
+          market_value?: number
           lot_size?: string
           lotSize?: string
           sale_type?: string
@@ -301,6 +377,9 @@ function PropertiesContent() {
           validation?: string | null
           sale_date?: string
           saleDate?: string
+          // Assessor and classification flags from database
+          is_vacant_lot?: boolean
+          is_likely_mobile_home?: boolean
           // Regrid enrichment data - provides fallback values for property details
           regrid_data?: {
             property_type?: string
@@ -337,11 +416,13 @@ function PropertiesContent() {
           county: p.counties?.county_name || p.county || "Unknown",
           state: p.counties?.state_code || p.state || p.regrid_data?.additional_fields?.state || "PA",
           totalDue: p.total_due || p.totalDue || 0,
-          status: p.auction_status || p.status || "parsed",
+          status: p.auction_status || p.status || "unknown",
           // Property type fallback: property_type -> propertyType -> regrid property_type -> default
           propertyType: p.property_type || p.propertyType || p.regrid_data?.property_type || "Unknown",
           // Property class from database (Residence, Lot, Commercial, etc.)
           propertyClass: p.property_class || null,
+          // Regrid property type code (R, L1, T, etc.)
+          regridPropertyType: p.regrid_property_type || p.regrid_data?.property_type || null,
           // Lot size fallback: lot_size -> lotSize -> formatted regrid acres -> default
           lotSize: p.lot_size || p.lotSize || (p.regrid_data?.lot_size_acres ? `${p.regrid_data.lot_size_acres.toFixed(2)} acres` : "Unknown"),
           saleType: p.sale_type || p.saleType || "Tax Deed",
@@ -360,6 +441,9 @@ function PropertiesContent() {
           sewerService: p.sewer_service || p.regrid_data?.sewer_service || null,
           // Regrid enrichment indicator - true if regrid_data exists
           hasRegridData: !!p.regrid_data,
+          // Vacant lot and mobile home detection flags from database
+          isVacantLot: !!p.is_vacant_lot,
+          isLikelyMobileHome: !!p.is_likely_mobile_home,
         }))
         setProperties(transformedProperties)
       } catch (error) {
@@ -373,17 +457,27 @@ function PropertiesContent() {
   }, [auctionStatusFilter, saleIdFilter, dateRangeFilter, saleTypeParam]) // Re-fetch when auction status, sale_id, date range, or sale type filter changes
 
   // Fetch all counties for the filter dropdown (separate from properties)
+  // Also builds a name-to-id map for use by batch AI screening
   useEffect(() => {
     const fetchCounties = async () => {
       try {
         const response = await authFetch('/api/counties?has_properties=true')
         if (response.ok) {
           const result = await response.json()
-          const countyNames = (result.data || [])
-            .map((c: { name: string }) => c.name)
+          const counties = (result.data || []) as { id: string; name: string }[]
+          const countyNames = counties
+            .map((c) => c.name)
             .filter((name: string) => name && name !== 'Unknown')
             .sort()
           setAllCounties(countyNames)
+          // Build name -> id map for batch API calls
+          const nameIdMap = new Map<string, string>()
+          for (const c of counties) {
+            if (c.name && c.name !== 'Unknown') {
+              nameIdMap.set(c.name, c.id)
+            }
+          }
+          setCountyNameToIdMap(nameIdMap)
         }
       } catch (error) {
         console.error("Error fetching counties:", error)
@@ -436,10 +530,10 @@ function PropertiesContent() {
       const countySlug = property.county?.toLowerCase().replace(/\s+/g, '-') || ''
       const stateSlug = property.state?.toLowerCase() || 'pa'
 
-      // Call the n8n webhook which triggers the full Regrid scraper workflow
-      // This uses the pwrunner container with the v17 script to extract 50+ fields
+      // Call our API route which proxies to the n8n Regrid scraper (avoids CORS)
+      // The API route tries the real n8n Playwright scraper first, placeholder fallback
       // Note: This may take 30-60 seconds as it uses browser automation on the VPS
-      const response = await fetch("https://n8n.lfb-investments.com/webhook/scrape-property", {
+      const response = await fetch("/api/scrape/regrid", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -489,6 +583,159 @@ function PropertiesContent() {
     }
   }
 
+  // Handle batch AI visual validation screening
+  // Calls the batch endpoint to process up to 20 properties through GPT-4o vision analysis
+  const handleBatchAIScreening = async () => {
+    setIsBatchValidating(true)
+    try {
+      // Resolve county ID from the current county filter (if active)
+      const countyId = countyFilter !== "all" ? countyNameToIdMap.get(countyFilter) ?? null : null
+
+      const response = await authFetch("/api/analysis/visual-validation/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          countyId,
+          limit: 20,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        toast.error(result.error || "Batch screening failed")
+        return
+      }
+
+      const data = result.data as {
+        processed: number
+        approved: number
+        caution: number
+        rejected: number
+        failed: number
+        skipped: number
+      }
+
+      // Show summary toast
+      if (data.processed === 0 && data.skipped === 0) {
+        toast.info("No properties pending AI screening" + (countyFilter !== "all" ? ` in ${countyFilter} County` : ""))
+      } else {
+        const parts: string[] = []
+        if (data.approved > 0) parts.push(`${data.approved} approved`)
+        if (data.caution > 0) parts.push(`${data.caution} caution`)
+        if (data.rejected > 0) parts.push(`${data.rejected} rejected`)
+        if (data.failed > 0) parts.push(`${data.failed} failed`)
+        if (data.skipped > 0) parts.push(`${data.skipped} skipped`)
+
+        toast.success(`Screened ${data.processed} properties: ${parts.join(", ")}`, {
+          duration: 6000,
+        })
+      }
+
+      // Refresh properties to show updated validation statuses
+      // Trigger re-fetch by toggling the auctionStatusFilter dependency
+      // We do a full page reload of properties data to pick up new validation_status values
+      const params = new URLSearchParams()
+      params.append('limit', '500')
+      if (auctionStatusFilter) params.append('auction_status', auctionStatusFilter)
+      if (saleIdFilter) params.append('sale_id', saleIdFilter)
+      if (dateRangeFilter && dateRangeFilter !== 'all') params.append('date_range', dateRangeFilter)
+      if (saleTypeParam && saleTypeParam !== 'all') params.append('sale_type', saleTypeParam)
+
+      const refreshResponse = await authFetch(`/api/properties?${params.toString()}`)
+      if (refreshResponse.ok) {
+        const refreshResult = await refreshResponse.json()
+        // Re-transform properties using the same transform logic
+        const refreshedProperties: Property[] = (refreshResult.data || []).map((p: {
+          id: string
+          parcel_id?: string
+          parcelId?: string
+          property_address?: string
+          address?: string
+          city?: string
+          county?: string
+          counties?: { county_name?: string; state_code?: string }
+          state?: string
+          total_due?: number
+          totalDue?: number
+          auction_status?: string
+          status?: string
+          property_type?: string
+          propertyType?: string
+          property_class?: string
+          regrid_property_type?: string
+          year_built?: number
+          bedrooms?: number
+          bathrooms?: number
+          building_sqft?: number
+          assessed_value?: number
+          lot_size_acres?: number
+          lot_dimensions?: string
+          water_service?: string
+          sewer_service?: string
+          lot_size?: string
+          lotSize?: string
+          sale_type?: string
+          saleType?: string
+          visual_validation_status?: string
+          validation?: string | null
+          sale_date?: string
+          saleDate?: string
+          is_vacant_lot?: boolean
+          is_likely_mobile_home?: boolean
+          regrid_data?: {
+            property_type?: string
+            lot_size_acres?: number
+            lot_dimensions?: string
+            building_sqft?: number
+            year_built?: number
+            bedrooms?: number
+            bathrooms?: number
+            assessed_value?: number
+            water_service?: string
+            sewer_service?: string
+            additional_fields?: { address?: string; city?: string; state?: string; [key: string]: unknown }
+          } | null
+        }) => ({
+          id: p.id,
+          parcelId: p.parcel_id || p.parcelId || "",
+          address: p.property_address || p.address || p.regrid_data?.additional_fields?.address || "Address not available",
+          city: p.city || p.regrid_data?.additional_fields?.city || "",
+          county: p.counties?.county_name || p.county || "Unknown",
+          state: p.counties?.state_code || p.state || p.regrid_data?.additional_fields?.state || "PA",
+          totalDue: p.total_due || p.totalDue || 0,
+          status: p.auction_status || p.status || "unknown",
+          propertyType: p.property_type || p.propertyType || p.regrid_data?.property_type || "Unknown",
+          propertyClass: p.property_class || null,
+          regridPropertyType: p.regrid_property_type || p.regrid_data?.property_type || null,
+          lotSize: p.lot_size || p.lotSize || (p.regrid_data?.lot_size_acres ? `${p.regrid_data.lot_size_acres.toFixed(2)} acres` : "Unknown"),
+          saleType: p.sale_type || p.saleType || "Tax Deed",
+          validation: p.visual_validation_status?.toLowerCase() || p.validation || null,
+          saleDate: p.sale_date || p.saleDate || "",
+          auctionStatus: p.auction_status || "unknown",
+          yearBuilt: p.year_built || p.regrid_data?.year_built || null,
+          bedrooms: p.bedrooms || p.regrid_data?.bedrooms || null,
+          bathrooms: p.bathrooms || p.regrid_data?.bathrooms || null,
+          buildingSqft: p.building_sqft || p.regrid_data?.building_sqft || null,
+          assessedValue: p.assessed_value || p.regrid_data?.assessed_value || null,
+          lotSizeAcres: p.lot_size_acres || p.regrid_data?.lot_size_acres || null,
+          lotDimensions: p.lot_dimensions || p.regrid_data?.lot_dimensions || null,
+          waterService: p.water_service || p.regrid_data?.water_service || null,
+          sewerService: p.sewer_service || p.regrid_data?.sewer_service || null,
+          hasRegridData: !!p.regrid_data,
+          isVacantLot: !!p.is_vacant_lot,
+          isLikelyMobileHome: !!p.is_likely_mobile_home,
+        }))
+        setProperties(refreshedProperties)
+      }
+    } catch (error) {
+      console.error("Error running batch AI screening:", error)
+      toast.error("Failed to run batch AI screening. Please try again.")
+    } finally {
+      setIsBatchValidating(false)
+    }
+  }
+
   // Get unique counties for filter dropdown - use allCounties from API, fallback to properties
   const uniqueCounties = allCounties.length > 0
     ? allCounties
@@ -498,7 +745,7 @@ function PropertiesContent() {
   const validStatuses: PropertyStatus[] = ["active", "pending", "expired", "sold", "withdrawn", "unknown"]
 
   // Function to update URL parameters
-  const updateUrlParams = useCallback((updates: { stage?: string | null; auctionStatus?: string | null; county?: string | null; dateRange?: string | null; saleType?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null; pageSize?: number | null }) => {
+  const updateUrlParams = useCallback((updates: { stage?: string | null; auctionStatus?: string | null; county?: string | null; dateRange?: string | null; saleType?: string | null; validation?: string | null; q?: string | null; page?: number | null; sort?: string | null; dir?: string | null; pageSize?: number | null }) => {
     const params = new URLSearchParams(searchParams.toString())
 
     if (updates.stage !== undefined) {
@@ -538,6 +785,14 @@ function PropertiesContent() {
         params.set("saleType", updates.saleType)
       } else {
         params.delete("saleType")
+      }
+    }
+
+    if (updates.validation !== undefined) {
+      if (updates.validation && updates.validation !== "all") {
+        params.set("validation", updates.validation)
+      } else {
+        params.delete("validation")
       }
     }
 
@@ -640,6 +895,17 @@ function PropertiesContent() {
     }
   }, [searchParams])
 
+  // Read validation filter from URL params
+  useEffect(() => {
+    const validationParam = searchParams.get("validation")
+    const validValues = ["all", "approved", "caution", "rejected", "pending"]
+    if (validationParam && validValues.includes(validationParam)) {
+      setValidationFilter(validationParam)
+    } else if (!validationParam) {
+      setValidationFilter("all")
+    }
+  }, [searchParams])
+
   // Read search query from URL params
   useEffect(() => {
     const qParam = searchParams.get("q")
@@ -656,7 +922,8 @@ function PropertiesContent() {
     const hasCounty = searchParams.get("county")
     const hasDateRange = searchParams.get("dateRange")
     const hasSaleType = searchParams.get("saleType")
-    if (hasStage || hasCounty || hasDateRange || hasSaleType) {
+    const hasValidation = searchParams.get("validation")
+    if (hasStage || hasCounty || hasDateRange || hasSaleType || hasValidation) {
       setShowFilters(true)
     }
   }, [searchParams])
@@ -952,11 +1219,16 @@ function PropertiesContent() {
 
     const matchesDateRange = isWithinDateRange(property.saleDate, dateRangeFilter)
 
-    return matchesSearch && matchesStatus && matchesAuctionStatus && matchesCounty && matchesDateRange
+    const matchesValidation =
+      validationFilter === "all" ||
+      (validationFilter === "pending" && !property.validation) ||
+      (validationFilter !== "pending" && property.validation === validationFilter)
+
+    return matchesSearch && matchesStatus && matchesAuctionStatus && matchesCounty && matchesDateRange && matchesValidation
   })
 
   // Count active filters (auctionStatus "active" is the default, so only count if different)
-  const activeFilterCount = [statusFilter !== "all", auctionStatusFilter !== "active", countyFilter !== "all", dateRangeFilter !== "all", saleTypeFilter !== "all", !!saleIdFilter].filter(Boolean).length
+  const activeFilterCount = [statusFilter !== "all", auctionStatusFilter !== "active", countyFilter !== "all", dateRangeFilter !== "all", saleTypeFilter !== "all", validationFilter !== "all", !!saleIdFilter].filter(Boolean).length
 
   // Sort properties if a sort field is selected
   const sortedProperties = [...filteredProperties].sort((a, b) => {
@@ -1081,15 +1353,15 @@ function PropertiesContent() {
     const rows = selectedProps.map(property => [
       property.parcelId, property.address, property.city, property.state,
       property.county, property.totalDue.toFixed(2),
-      property.propertyClass || "",
+      getPropertyTypeLabel(property.regridPropertyType, property.propertyClass, property.isVacantLot, property.isLikelyMobileHome),
       property.yearBuilt || "", property.bedrooms || "", property.bathrooms || "",
       property.buildingSqft || "", property.assessedValue || "",
       property.lotDimensions || "", property.waterService || "", property.sewerService || "",
       property.saleDate,
       property.saleType, property.propertyType, property.lotSize,
-      STATUS_CONFIG[property.status as PropertyStatus].label,
+      getStatusConfig(property.status).label,
       AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus,
-      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending",
+      property.validation ? getValidationConfig(property.validation!).label : "Pending",
       property.hasRegridData ? "Yes" : "No"
     ])
 
@@ -1151,7 +1423,7 @@ function PropertiesContent() {
       property.state,
       property.county,
       property.totalDue.toFixed(2),
-      property.propertyClass || "",
+      getPropertyTypeLabel(property.regridPropertyType, property.propertyClass, property.isVacantLot, property.isLikelyMobileHome),
       property.yearBuilt || "",
       property.bedrooms || "",
       property.bathrooms || "",
@@ -1164,9 +1436,9 @@ function PropertiesContent() {
       property.saleType,
       property.propertyType,
       property.lotSize,
-      STATUS_CONFIG[property.status as PropertyStatus].label,
+      getStatusConfig(property.status).label,
       AUCTION_STATUS_CONFIG[property.auctionStatus as Exclude<AuctionStatusType, "all">]?.label || property.auctionStatus,
-      property.validation ? VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label : "Pending",
+      property.validation ? getValidationConfig(property.validation!).label : "Pending",
       property.hasRegridData ? "Yes" : "No"
     ])
 
@@ -1254,6 +1526,30 @@ function PropertiesContent() {
             >
               <Download className="h-4 w-4" />
               Export CSV
+            </button>
+
+            {/* Batch AI Screening Button - runs GPT-4o vision analysis on pending properties */}
+            <button
+              onClick={handleBatchAIScreening}
+              disabled={isBatchValidating}
+              className={cn(
+                "flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg border text-sm font-medium transition-colors",
+                isBatchValidating
+                  ? "bg-violet-100 text-violet-400 border-violet-200 cursor-not-allowed"
+                  : "bg-white text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300"
+              )}
+              title={
+                countyFilter !== "all"
+                  ? `Screen up to 20 pending properties in ${countyFilter} County`
+                  : "Screen up to 20 pending properties across all counties"
+              }
+            >
+              {isBatchValidating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {isBatchValidating ? "Screening..." : "AI Screen"}
             </button>
 
             {/* Save Filter Button - min 44px touch target */}
@@ -1467,6 +1763,27 @@ function PropertiesContent() {
                     <option value="repository">Repository</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    AI Screening
+                  </label>
+                  <select
+                    value={validationFilter}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setValidationFilter(newValue)
+                      setCurrentPage(1)
+                      updateUrlParams({ validation: newValue, page: null })
+                    }}
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="approved">Approved (Pass)</option>
+                    <option value="caution">Caution (Review)</option>
+                    <option value="rejected">Rejected (Fail)</option>
+                    <option value="pending">Not Analyzed</option>
+                  </select>
+                </div>
                 {activeFilterCount > 0 && (
                   <div className="flex items-end">
                     <button
@@ -1476,8 +1793,9 @@ function PropertiesContent() {
                         setCountyFilter("all")
                         setDateRangeFilter("all")
                         setSaleTypeFilter("all")
+                        setValidationFilter("all")
                         setCurrentPage(1)
-                        updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, page: null })
+                        updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, validation: null, page: null })
                       }}
                       className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 underline"
                     >
@@ -1580,6 +1898,22 @@ function PropertiesContent() {
                         }}
                         className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
                         aria-label="Remove auction status filter"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {validationFilter !== "all" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                      Screening: {validationFilter === "pending" ? "Not Analyzed" : validationFilter.charAt(0).toUpperCase() + validationFilter.slice(1)}
+                      <button
+                        onClick={() => {
+                          setValidationFilter("all")
+                          setCurrentPage(1)
+                          updateUrlParams({ validation: null, page: null })
+                        }}
+                        className="min-w-[24px] min-h-[24px] hover:bg-primary/20 rounded-full flex items-center justify-center"
+                        aria-label="Remove screening filter"
                       >
                         ×
                       </button>
@@ -1695,11 +2029,11 @@ function PropertiesContent() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                            STATUS_CONFIG[property.status as PropertyStatus].color
+                            getStatusConfig(property.status).color
                           )}
                         >
-                          {STATUS_CONFIG[property.status as PropertyStatus].icon}
-                          {STATUS_CONFIG[property.status as PropertyStatus].label}
+                          {getStatusConfig(property.status).icon}
+                          {getStatusConfig(property.status).label}
                         </span>
                         <span
                           className={cn(
@@ -1714,11 +2048,11 @@ function PropertiesContent() {
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                              VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].color
+                              getValidationConfig(property.validation!).color
                             )}
                           >
-                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].icon}
-                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label}
+                            {getValidationConfig(property.validation!).icon}
+                            {getValidationConfig(property.validation!).label}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-400 dark:text-slate-500">
@@ -1750,7 +2084,7 @@ function PropertiesContent() {
                         <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Type</div>
                         <div className="flex items-center gap-1.5">
                           <Building2 className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                          <span className="text-sm text-slate-900 dark:text-slate-100">{property.propertyClass || "-"}</span>
+                          <span className="text-sm text-slate-900 dark:text-slate-100">{getPropertyTypeLabel(property.regridPropertyType, property.propertyClass, property.isVacantLot, property.isLikelyMobileHome)}</span>
                         </div>
                       </div>
                       <div>
@@ -1861,7 +2195,7 @@ function PropertiesContent() {
                         )}
                       </ul>
                     </div>
-                    {(trimmedSearch || statusFilter !== "all" || auctionStatusFilter !== "active" || countyFilter !== "all" || dateRangeFilter !== "all" || saleTypeFilter !== "all") && (
+                    {(trimmedSearch || statusFilter !== "all" || auctionStatusFilter !== "active" || countyFilter !== "all" || dateRangeFilter !== "all" || saleTypeFilter !== "all" || validationFilter !== "all") && (
                       <button
                         onClick={() => {
                           setSearchQuery("")
@@ -1870,8 +2204,9 @@ function PropertiesContent() {
                           setCountyFilter("all")
                           setDateRangeFilter("all")
                           setSaleTypeFilter("all")
+                          setValidationFilter("all")
                           setCurrentPage(1)
-                          updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, q: null, page: null })
+                          updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, validation: null, q: null, page: null })
                         }}
                         className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 dark:text-blue-400 dark:hover:text-blue-300 border border-primary/30 dark:border-blue-500/30 rounded-lg hover:bg-primary/5 dark:hover:bg-blue-500/10 transition-colors"
                       >
@@ -2060,7 +2395,7 @@ function PropertiesContent() {
                       {/* Property Type/Class */}
                       <td className="px-4 py-4">
                         <span className="text-sm text-slate-600">
-                          {property.propertyClass || "-"}
+                          {getPropertyTypeLabel(property.regridPropertyType, property.propertyClass, property.isVacantLot, property.isLikelyMobileHome)}
                         </span>
                       </td>
                       {/* Year Built */}
@@ -2134,12 +2469,11 @@ function PropertiesContent() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                            STATUS_CONFIG[property.status as PropertyStatus]
-                              .color
+                            getStatusConfig(property.status).color
                           )}
                         >
-                          {STATUS_CONFIG[property.status as PropertyStatus].icon}
-                          {STATUS_CONFIG[property.status as PropertyStatus].label}
+                          {getStatusConfig(property.status).icon}
+                          {getStatusConfig(property.status).label}
                         </span>
                       </td>
                       {/* Auction Status */}
@@ -2160,12 +2494,11 @@ function PropertiesContent() {
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                              VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>]
-                                .color
+                              getValidationConfig(property.validation!).color
                             )}
                           >
-                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].icon}
-                            {VALIDATION_CONFIG[property.validation as NonNullable<ValidationStatus>].label}
+                            {getValidationConfig(property.validation!).icon}
+                            {getValidationConfig(property.validation!).label}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs text-slate-400">
@@ -2260,7 +2593,7 @@ function PropertiesContent() {
                             )}
                           </ul>
                         </div>
-                        {(trimmedSearch || statusFilter !== "all" || auctionStatusFilter !== "active" || countyFilter !== "all" || dateRangeFilter !== "all" || saleTypeFilter !== "all") && (
+                        {(trimmedSearch || statusFilter !== "all" || auctionStatusFilter !== "active" || countyFilter !== "all" || dateRangeFilter !== "all" || saleTypeFilter !== "all" || validationFilter !== "all") && (
                           <button
                             onClick={() => {
                               setSearchQuery("")
@@ -2269,8 +2602,9 @@ function PropertiesContent() {
                               setCountyFilter("all")
                               setDateRangeFilter("all")
                               setSaleTypeFilter("all")
+                              setValidationFilter("all")
                               setCurrentPage(1)
-                              updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, q: null, page: null })
+                              updateUrlParams({ stage: null, auctionStatus: null, county: null, dateRange: null, saleType: null, validation: null, q: null, page: null })
                             }}
                             className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors"
                           >
@@ -2429,6 +2763,11 @@ function PropertiesContent() {
                     {saleTypeFilter !== "all" && (
                       <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
                         Sale Type: {saleTypeFilter.charAt(0).toUpperCase() + saleTypeFilter.slice(1)}
+                      </span>
+                    )}
+                    {validationFilter !== "all" && (
+                      <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700">
+                        Screening: {validationFilter === "pending" ? "Not Analyzed" : validationFilter.charAt(0).toUpperCase() + validationFilter.slice(1)}
                       </span>
                     )}
                     {searchQuery.trim() && (

@@ -656,8 +656,25 @@ function detectUtilityProperty(property: Partial<PropertyData>): {
 
 /**
  * Detect if property has no structure
+ *
+ * Uses a priority-based approach:
+ * 1. assessed_improvement_value -- Most reliable signal from county assessor.
+ *    A value of 0 definitively means no improvement (no structure).
+ * 2. is_vacant_lot flag -- Set by Regrid or assessor data in the database.
+ * 3. building_sqft -- Legacy fallback; nearly always NULL in our data,
+ *    so it over-reports "no structure" when used alone.
  */
 function detectNoStructure(property: Partial<PropertyData>): boolean {
+  // Most reliable: assessor improvement value
+  if (property.assessed_improvement_value !== undefined &&
+      property.assessed_improvement_value !== null) {
+    return property.assessed_improvement_value === 0;
+  }
+  // Fallback: vacant lot flag
+  if (property.is_vacant_lot === true) {
+    return true;
+  }
+  // Legacy fallback: building sqft
   return (
     property.building_sqft === null ||
     property.building_sqft === undefined ||
