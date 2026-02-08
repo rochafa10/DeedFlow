@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   Play,
@@ -12,12 +12,10 @@ import {
   XCircle,
   AlertTriangle,
   Search,
-  Filter,
   MoreHorizontal,
   Layers,
   Activity,
   TrendingUp,
-  Calendar,
   ArrowRight,
   Loader2,
 } from "lucide-react"
@@ -128,6 +126,26 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   bid_strategy: "Bid Strategy",
 }
 
+function formatCountyState(county: string, state: string): string {
+  if (state) return `${county}, ${state}`
+  return county
+}
+
+function ExecutionBadge({ jobType }: { jobType: string }) {
+  if (jobType === "regrid_scraping") {
+    return (
+      <span className="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-700">
+        n8n
+      </span>
+    )
+  }
+  return (
+    <span className="px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-500">
+      Manual
+    </span>
+  )
+}
+
 export default function BatchJobsPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -154,8 +172,19 @@ export default function BatchJobsPage() {
   // Job detail modal state
   const [selectedJob, setSelectedJob] = useState<BatchJob | null>(null)
 
+  // n8n feedback state
+  const [n8nFeedback, setN8nFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const n8nDismissRef = useRef<NodeJS.Timeout | null>(null)
+
   // Counties for dropdown
   const [counties, setCounties] = useState<Array<{ id: string; name: string; state: string }>>([])
+
+  // Clean up n8n dismiss timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (n8nDismissRef.current) clearTimeout(n8nDismissRef.current)
+    }
+  }, [])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -325,11 +354,28 @@ export default function BatchJobsPage() {
       const response = await authPatch(`/api/batch-jobs/${jobId}`, { status: newStatus })
 
       if (response.ok) {
+        const result = await response.json()
+
+        // Show n8n feedback when resuming a job that triggers a workflow
+        if (newStatus === "in_progress" && result?.n8n_triggered !== undefined) {
+          const feedback = result.n8n_triggered
+            ? { type: 'success' as const, message: 'n8n workflow triggered successfully' }
+            : result.n8n_error
+              ? { type: 'error' as const, message: `n8n trigger failed: ${result.n8n_error}` }
+              : null
+
+          if (feedback) {
+            setN8nFeedback(feedback)
+            if (n8nDismissRef.current) clearTimeout(n8nDismissRef.current)
+            n8nDismissRef.current = setTimeout(() => setN8nFeedback(null), 5000)
+          }
+        }
+
         // Refresh the data
         const refreshResponse = await authFetch("/api/batch-jobs")
         if (refreshResponse.ok) {
-          const result = await refreshResponse.json()
-          setBatchJobsData(result.data)
+          const refreshResult = await refreshResponse.json()
+          setBatchJobsData(refreshResult.data)
         }
       }
     } catch (error) {
@@ -438,6 +484,26 @@ export default function BatchJobsPage() {
           </div>
         </div>
 
+        {/* n8n Feedback Toast */}
+        {n8nFeedback && (
+          <div className={cn(
+            "mb-4 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium animate-in fade-in",
+            n8nFeedback.type === 'success'
+              ? "bg-green-50 text-green-700 border border-green-200"
+              : "bg-red-50 text-red-700 border border-red-200"
+          )}>
+            {n8nFeedback.type === 'success' ? (
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            )}
+            {n8nFeedback.message}
+            <button onClick={() => setN8nFeedback(null)} className="ml-auto text-current opacity-60 hover:opacity-100">
+              <XCircle className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Active Jobs Section */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
@@ -469,9 +535,10 @@ export default function BatchJobsPage() {
                           )}>
                             {statusConfig.label}
                           </span>
+                          <ExecutionBadge jobType={job.type} />
                         </div>
                         <div className="text-sm text-slate-500 mt-1">
-                          {JOB_TYPE_LABELS[job.type]} • {job.county}, {job.state}
+                          {JOB_TYPE_LABELS[job.type]} • {formatCountyState(job.county, job.state)}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -506,7 +573,12 @@ export default function BatchJobsPage() {
                         <span className="text-slate-600">
                           {job.processedItems.toLocaleString()} / {job.totalItems.toLocaleString()} items
                         </span>
-                        <span className="font-medium text-slate-900">{job.progress}%</span>
+                        <span className="font-medium text-slate-900 inline-flex items-center">
+                          {job.progress}%
+                          {job.processedItems > job.totalItems && (
+                            <AlertTriangle className="h-3 w-3 text-amber-500 ml-1" title="Data integrity: processed exceeds total" />
+                          )}
+                        </span>
                       </div>
                       <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                         <div
@@ -514,7 +586,7 @@ export default function BatchJobsPage() {
                             "h-full rounded-full transition-all",
                             job.status === "running" ? "bg-blue-500" : "bg-amber-500"
                           )}
-                          style={{ width: `${job.progress}%` }}
+                          style={{ width: `${Math.min(job.progress, 100)}%` }}
                         />
                       </div>
                     </div>
@@ -641,7 +713,7 @@ export default function BatchJobsPage() {
                           <div>
                             <div className="font-medium text-slate-900">{job.name}</div>
                             <div className="text-sm text-slate-500">
-                              {job.county}, {job.state}
+                              {formatCountyState(job.county, job.state)}
                             </div>
                           </div>
                         </td>
@@ -850,7 +922,7 @@ export default function BatchJobsPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">{selectedJob.name}</h2>
-                <p className="text-sm text-slate-500">{selectedJob.county}, {selectedJob.state}</p>
+                <p className="text-sm text-slate-500">{formatCountyState(selectedJob.county, selectedJob.state)}</p>
               </div>
               <button
                 onClick={() => setSelectedJob(null)}

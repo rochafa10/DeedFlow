@@ -75,17 +75,16 @@ export async function GET(request: NextRequest) {
     // Transform to frontend format
     const transformedJobs = (jobs || []).map((job: any) => {
       const progress = job.total_items > 0
-        ? Math.round((job.processed_items / job.total_items) * 100)
+        ? Math.min(100, Math.round((job.processed_items / job.total_items) * 100))
         : 0
 
-      // Use database values if available, otherwise calculate
-      const totalBatches = job.total_batches || (job.batch_size > 0
-        ? Math.ceil(job.total_items / job.batch_size)
-        : 1)
+      const totalBatches = job.total_batches
+        || (job.batch_size > 0 ? Math.ceil(job.total_items / job.batch_size) : 1)
 
-      const currentBatch = job.current_batch || (job.batch_size > 0
-        ? Math.ceil(job.processed_items / job.batch_size)
-        : 1)
+      const currentBatch = Math.min(
+        job.current_batch || (job.batch_size > 0 ? Math.ceil(job.processed_items / job.batch_size) : 1),
+        totalBatches
+      )
 
       // Calculate duration
       let duration = null
@@ -112,11 +111,11 @@ export async function GET(request: NextRequest) {
 
       return {
         id: job.id,
-        name: `${formatJobType(job.job_type)} - ${job.counties?.county_name || "Unknown"}`,
+        name: `${formatJobType(job.job_type)} - ${job.counties?.county_name || "No County"}`,
         type: job.job_type,
-        county: job.counties?.county_name || "Unknown",
+        county: job.counties?.county_name || "No County",
         countyId: job.county_id,
-        state: job.counties?.state_code || "??",
+        state: job.counties?.state_code || "",
         status: mappedStatus,
         progress,
         totalItems: job.total_items || 0,
