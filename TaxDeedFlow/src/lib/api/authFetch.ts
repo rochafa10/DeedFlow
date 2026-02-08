@@ -21,11 +21,31 @@ export async function authFetch(url: string, options: FetchOptions = {}): Promis
   // Build headers
   const headers = new Headers(fetchOptions.headers || {})
 
-  // Add auth header if Supabase is configured and auth is not skipped
-  if (!skipAuth && supabase) {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) {
-      headers.set("Authorization", `Bearer ${session.access_token}`)
+  // Add auth header if not skipped
+  if (!skipAuth) {
+    let authenticated = false
+
+    // Try Supabase session first (production auth)
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        headers.set("Authorization", `Bearer ${session.access_token}`)
+        authenticated = true
+      }
+    }
+
+    // Fallback: Demo mode - check localStorage for demo user
+    if (!authenticated && typeof window !== "undefined") {
+      try {
+        const storedUser = localStorage.getItem("taxdeedflow_user")
+        if (storedUser) {
+          JSON.parse(storedUser) // Validate JSON before sending
+          headers.set("X-User-Token", storedUser)
+          authenticated = true
+        }
+      } catch {
+        console.warn("[authFetch] Invalid or inaccessible demo token in localStorage")
+      }
     }
   }
 
