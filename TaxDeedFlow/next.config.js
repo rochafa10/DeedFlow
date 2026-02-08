@@ -1,9 +1,14 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: true, // Disabled - using custom service worker and registration
-  register: false,
-  skipWaiting: true,
-})
+let withPWA = (config) => config;
+try {
+  withPWA = require('next-pwa')({
+    dest: 'public',
+    disable: true,
+    register: false,
+    skipWaiting: true,
+  });
+} catch (e) {
+  // next-pwa not installed, skip
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -14,6 +19,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: '*.supabase.co',
         pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'maps.googleapis.com',
+        pathname: '/maps/api/**',
       },
     ],
   },

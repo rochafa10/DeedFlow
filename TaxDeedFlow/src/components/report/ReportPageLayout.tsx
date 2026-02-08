@@ -569,6 +569,15 @@ export function ReportPageLayout({
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
+                ) : locationDetails.coordinates.lat && locationDetails.coordinates.lng && !(locationDetails.coordinates.lat === 0 && locationDetails.coordinates.lng === 0) ? (
+                  <iframe
+                    src={`https://app.regrid.com/us#map=17/${locationDetails.coordinates.lat}/${locationDetails.coordinates.lng}`}
+                    className="w-full h-full border-0"
+                    title={`Regrid parcel map of ${locationDetails.address}`}
+                    loading="lazy"
+                    allow="fullscreen"
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400">
                     <AlertCircle className="h-8 w-8 mb-2 text-amber-500" />
